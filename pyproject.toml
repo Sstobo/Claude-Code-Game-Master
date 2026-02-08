@@ -3,7 +3,7 @@ name = "dm-claude"
 version = "0.2.0"
 description = "AI-powered D&D Dungeon Master assistant for running campaigns with Claude Code"
 authors = [
-    { name = "Sean Stobo", email = "seanstobo@gmail.com" }
+    { name = "Sean Stobo" }
 ]
 readme = "README.md"
 license = { text = "CC-BY-NC-SA-4.0" }
@@ -64,6 +64,7 @@ Homepage = "https://github.com/Sstobo/Claude-Code-Game-Master"
 Documentation = "https://github.com/Sstobo/Claude-Code-Game-Master/wiki"
 Repository = "https://github.com/Sstobo/Claude-Code-Game-Master"
 Issues = "https://github.com/Sstobo/Claude-Code-Game-Master/issues"
+Author = "https://www.linkedin.com/in/sean-stobo/"
 
 [build-system]
 requires = ["setuptools>=68.0.0", "wheel"]

@@ -127,4 +127,4 @@ This work is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licens
 
 ---
 
-*Your story awaits. Run `/dm` to begin.*
+Built by [Sean Stobo](https://www.linkedin.com/in/sean-stobo/). Your story awaits. Run `/dm` to begin.
