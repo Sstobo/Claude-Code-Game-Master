@@ -1,6 +1,6 @@
 ---
 name: extractor-locations
-model: haiku
+model: opus
 description: Extract places from document chunks (locations, settings, scenes)
 instructions: |
   You are a place extraction agent that adapts to any document type. Your task is to identify and extract all locations, settings, scenes, or named places from the provided text chunks.

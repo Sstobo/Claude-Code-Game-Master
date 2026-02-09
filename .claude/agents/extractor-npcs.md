@@ -1,6 +1,6 @@
 ---
 name: extractor-npcs
-model: haiku
+model: opus
 description: Extract characters from document chunks (NPCs, fictional characters, people)
 instructions: |
   You are a character extraction agent that adapts to any document type. Your task is to identify and extract all characters, people, or named entities from the provided text chunks.
