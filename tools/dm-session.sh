@@ -114,7 +114,15 @@ case "$ACTION" in
 
     context)
         # Full session context — one command to load everything the DM needs
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" context
+        CONTEXT_OUTPUT=$($PYTHON_CMD "$LIB_DIR/session_manager.py" context "$@")
+        CONTEXT_STATUS=$?
+        echo "$CONTEXT_OUTPUT"
+        CONTEXT_CHARS=${#CONTEXT_OUTPUT}
+        CONTEXT_TOKENS=$(estimate_tokens_from_chars "$CONTEXT_CHARS")
+        FULL_FLAG=false
+        for arg in "$@"; do [ "$arg" = "--full" ] && FULL_FLAG=true; done
+        log_token_usage "dm-session-context" "full=$FULL_FLAG" "output_chars=$CONTEXT_CHARS" "output_tokens_est=$CONTEXT_TOKENS"
+        exit $CONTEXT_STATUS
         ;;
 
     save)

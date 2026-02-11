@@ -174,13 +174,20 @@ class NPCManager(EntityManager):
 
         # Tags
         tags = npc.get('tags', {})
-        if tags.get('locations') or tags.get('quests'):
-            lines.append("")
-            lines.append("--- TAGS ---")
-            if tags.get('locations'):
-                lines.append(f"Locations: {', '.join(tags['locations'])}")
-            if tags.get('quests'):
-                lines.append(f"Quests: {', '.join(tags['quests'])}")
+        if isinstance(tags, list):
+            # Simple string tags from extraction
+            if tags:
+                lines.append("")
+                lines.append("--- TAGS ---")
+                lines.append(', '.join(tags))
+        elif isinstance(tags, dict):
+            if tags.get('locations') or tags.get('quests'):
+                lines.append("")
+                lines.append("--- TAGS ---")
+                if tags.get('locations'):
+                    lines.append(f"Locations: {', '.join(tags['locations'])}")
+                if tags.get('quests'):
+                    lines.append(f"Quests: {', '.join(tags['quests'])}")
 
         # Recent events
         events = npc.get('events', [])
@@ -247,7 +254,10 @@ class NPCManager(EntityManager):
         """
         npc = self.get_npc_status(name)
         if npc:
-            return npc.get('tags', {'locations': [], 'quests': []})
+            tags = npc.get('tags', {'locations': [], 'quests': []})
+            if isinstance(tags, list):
+                return {'locations': [], 'quests': []}
+            return tags
         return None
 
     def _manage_tags(self, name: str, tag_type: str, tags: tuple, action: str) -> bool:
@@ -266,8 +276,8 @@ class NPCManager(EntityManager):
             print(f"[ERROR] NPC {name} not found")
             return False
 
-        # Ensure tags structure exists
-        if 'tags' not in npcs[name]:
+        # Ensure tags structure exists as dict (migrate from list if needed)
+        if 'tags' not in npcs[name] or isinstance(npcs[name]['tags'], list):
             npcs[name]['tags'] = {'locations': [], 'quests': []}
         if tag_type not in npcs[name]['tags']:
             npcs[name]['tags'][tag_type] = []

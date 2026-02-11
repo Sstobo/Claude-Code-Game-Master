@@ -248,7 +248,15 @@ class WorldSearcher:
         facts = self.json_ops.load_json('facts.json')
         return facts.get(category, [])
 
-    def print_results(self, results: Dict[str, Any], query: str = ""):
+    def _format_text(self, text: str, full: bool = False, limit: int = 220) -> str:
+        """Optionally truncate long text for token-efficient output."""
+        if full or not text:
+            return text
+        if len(text) <= limit:
+            return text
+        return text[:limit - 3].rstrip() + "..."
+
+    def print_results(self, results: Dict[str, Any], query: str = "", full: bool = False):
         """Print formatted search results"""
         found_anything = False
 
@@ -263,14 +271,15 @@ class WorldSearcher:
             print("\nNPCs:")
             found_anything = True
             for name, npc in results['npcs'].items():
-                print(f"  - {name}: {npc.get('description', '')} ({npc.get('attitude', '')})")
+                desc = self._format_text(npc.get('description', ''), full=full, limit=240)
+                print(f"  - {name}: {desc} ({npc.get('attitude', '')})")
                 if npc.get('events'):
                     last_event = npc['events'][-1]
                     # Handle both string events and dict events
                     if isinstance(last_event, dict):
-                        print(f"    Last event: {last_event.get('event', '')}")
+                        print(f"    Last event: {self._format_text(last_event.get('event', ''), full=full, limit=140)}")
                     else:
-                        print(f"    Last event: {last_event}")
+                        print(f"    Last event: {self._format_text(str(last_event), full=full, limit=140)}")
 
         if results.get('locations'):
             print("\nLOCATIONS:")
@@ -278,7 +287,7 @@ class WorldSearcher:
             for name, loc in results['locations'].items():
                 print(f"  - {name}: {loc.get('position', '')}")
                 if loc.get('description'):
-                    print(f"    {loc['description']}")
+                    print(f"    {self._format_text(loc['description'], full=full, limit=260)}")
                 if loc.get('connections'):
                     print(f"    Connections: {len(loc['connections'])}")
 
@@ -286,7 +295,9 @@ class WorldSearcher:
             print("\nCONSEQUENCES:")
             found_anything = True
             for c in results['consequences']:
-                print(f"  [{c.get('id', '?')}] {c.get('consequence', '')} (triggers: {c.get('trigger', '')})")
+                consequence_text = self._format_text(c.get('consequence', ''), full=full, limit=180)
+                trigger_text = self._format_text(c.get('trigger', ''), full=full, limit=60)
+                print(f"  [{c.get('id', '?')}] {consequence_text} (triggers: {trigger_text})")
 
         if results.get('plots'):
             print("\nPLOTS:")
@@ -300,16 +311,14 @@ class WorldSearcher:
                 elif status == 'FAILED':
                     status_marker = " [FAILED]"
                 print(f"  - {name} ({plot_type}){status_marker}")
-                desc = plot.get('description', '')[:80]
-                if len(plot.get('description', '')) > 80:
-                    desc += "..."
-                print(f"    {desc}")
+                print(f"    {self._format_text(plot.get('description', ''), full=full, limit=80)}")
 
         if results.get('related_plots'):
+            related_items = list(results['related_plots'].items())
+            max_related = len(related_items) if full else 3
             print("\nRELATED PLOTS (referenced by matched NPCs/locations):")
             found_anything = True
-            for name, plot in results['related_plots'].items():
-                status = plot.get('status', 'active').upper()
+            for name, plot in related_items[:max_related]:
                 plot_type = plot.get('type', 'unknown').upper()
                 # Show which NPCs/locations link this plot
                 npcs = plot.get('npcs', [])
@@ -323,12 +332,14 @@ class WorldSearcher:
                 print(f"  - {name} ({plot_type})")
                 if link_str:
                     print(f"    → {link_str}")
+            if len(related_items) > max_related:
+                print(f"  ... and {len(related_items) - max_related} more (use --full)")
 
         if not found_anything:
             print(f"\nNo results found for \"{query}\"")
             self._print_suggestions()
 
-    def print_npc_results(self, npcs: Dict[str, Dict], tag_type: str = "", tag_value: str = ""):
+    def print_npc_results(self, npcs: Dict[str, Dict], tag_type: str = "", tag_value: str = "", full: bool = False):
         """Print formatted NPC results with tag details"""
         if not npcs:
             print(f"\nNo NPCs found with {tag_type} tag \"{tag_value}\"")
@@ -337,14 +348,21 @@ class WorldSearcher:
 
         print("\nNPCs:")
         for name, npc in npcs.items():
-            print(f"  - {name}: {npc.get('description', '')} ({npc.get('attitude', '')})")
+            desc = self._format_text(npc.get('description', ''), full=full, limit=240)
+            print(f"  - {name}: {desc} ({npc.get('attitude', '')})")
             tags = npc.get('tags', {})
-            if tags.get('locations'):
-                print(f"    Locations: {', '.join(tags['locations'])}")
-            if tags.get('quests'):
-                print(f"    Quests: {', '.join(tags['quests'])}")
+            if isinstance(tags, dict):
+                if tags.get('locations'):
+                    print(f"    Locations: {', '.join(tags['locations'])}")
+                if tags.get('quests'):
+                    print(f"    Quests: {', '.join(tags['quests'])}")
             if npc.get('events'):
-                print(f"    Last event: {npc['events'][-1].get('event', '')}")
+                last_event = npc['events'][-1]
+                if isinstance(last_event, dict):
+                    text = last_event.get('event', '')
+                else:
+                    text = str(last_event)
+                print(f"    Last event: {self._format_text(text, full=full, limit=140)}")
 
     def _print_suggestions(self):
         """Print available NPCs and dungeons to help with typos"""
@@ -396,6 +414,7 @@ def main():
     parser.add_argument('query', nargs='*', help='Search query')
     parser.add_argument('--tag-location', help='Search NPCs by location tag')
     parser.add_argument('--tag-quest', help='Search NPCs by quest tag')
+    parser.add_argument('--full', action='store_true', help='Show full descriptions')
 
     args = parser.parse_args()
 
@@ -404,15 +423,15 @@ def main():
     # Tag-based search
     if args.tag_location:
         npcs = searcher.search_npcs_by_tag('locations', args.tag_location)
-        searcher.print_npc_results(npcs, 'location', args.tag_location)
+        searcher.print_npc_results(npcs, 'location', args.tag_location, full=args.full)
     elif args.tag_quest:
         npcs = searcher.search_npcs_by_tag('quests', args.tag_quest)
-        searcher.print_npc_results(npcs, 'quest', args.tag_quest)
+        searcher.print_npc_results(npcs, 'quest', args.tag_quest, full=args.full)
     elif args.query:
         # Regular search
         query = ' '.join(args.query)
         results = searcher.search_all(query)
-        searcher.print_results(results, query)
+        searcher.print_results(results, query, full=args.full)
     else:
         parser.print_help()
         sys.exit(1)

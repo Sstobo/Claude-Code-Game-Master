@@ -322,7 +322,13 @@ class SessionManager(EntityManager):
 
     # ==================== Full Session Context ====================
 
-    def get_full_context(self) -> str:
+    def _truncate(self, text: str, limit: int, full: bool) -> str:
+        """Trim long text in compact context mode."""
+        if full or not text or len(text) <= limit:
+            return text
+        return text[:limit - 3].rstrip() + "..."
+
+    def get_full_context(self, full: bool = False) -> str:
         """
         Aggregate all session state into a single readable output.
         Replaces the 5-step startup checklist with one command.
@@ -383,7 +389,10 @@ class SessionManager(EntityManager):
         party = {n: d for n, d in npcs.items() if isinstance(d, dict) and d.get('is_party_member')}
 
         if party:
-            for npc_name, npc_data in party.items():
+            party_items = list(party.items())
+            max_party = len(party_items) if full else 8
+            shown_party = party_items[:max_party]
+            for npc_name, npc_data in shown_party:
                 sheet = npc_data.get('character_sheet', {})
                 hp = sheet.get('hp', {'current': 10, 'max': 10})
                 ac = sheet.get('ac', 10)
@@ -392,23 +401,26 @@ class SessionManager(EntityManager):
                 cls = sheet.get('class', 'Commoner')
                 conditions = sheet.get('conditions', [])
                 cond_str = f" [{', '.join(conditions)}]" if conditions else ""
-                desc = npc_data.get('description', '')
+                desc = self._truncate(npc_data.get('description', ''), 180, full)
 
                 lines.append(f"{npc_name} (Lvl {level} {race} {cls}) HP: {hp['current']}/{hp['max']} AC: {ac}{cond_str}")
                 if desc:
                     lines.append(f"  {desc}")
 
-                # Last 3 events
+                # Recent events
                 events = npc_data.get('events', [])
                 if events:
-                    recent = events[-3:]
+                    recent = events[-3:] if full else events[-2:]
                     event_strs = []
                     for ev in recent:
                         if isinstance(ev, dict):
-                            event_strs.append(f"\"{ev.get('event', '')}\"")
+                            event_strs.append(f"\"{self._truncate(ev.get('event', ''), 120, full)}\"")
                         else:
-                            event_strs.append(f"\"{ev}\"")
+                            event_strs.append(f"\"{self._truncate(str(ev), 120, full)}\"")
                     lines.append(f"  Recent: {' -> '.join(event_strs)}")
+                lines.append("")
+            if not full and len(party_items) > max_party:
+                lines.append(f"... and {len(party_items) - max_party} more party members (use --full)")
                 lines.append("")
         else:
             lines.append("(none)")
@@ -435,8 +447,11 @@ class SessionManager(EntityManager):
                     pending.append(f"[{short_id}] {event} -> triggers: {trigger}")
 
         if pending:
-            for p in pending:
+            max_pending = len(pending) if full else 10
+            for p in pending[:max_pending]:
                 lines.append(p)
+            if not full and len(pending) > max_pending:
+                lines.append(f"... and {len(pending) - max_pending} more pending consequences (use --full)")
         else:
             lines.append("(none)")
 
@@ -447,10 +462,14 @@ class SessionManager(EntityManager):
             lines.append("--- CAMPAIGN RULES ---")
             if isinstance(rules, dict):
                 for key, val in rules.items():
-                    lines.append(f"- {key}: {val}")
+                    value_text = self._truncate(str(val), 220, full)
+                    lines.append(f"- {key}: {value_text}")
             elif isinstance(rules, list):
-                for rule in rules:
-                    lines.append(f"- {rule}")
+                max_rules = len(rules) if full else 12
+                for rule in rules[:max_rules]:
+                    lines.append(f"- {self._truncate(str(rule), 220, full)}")
+                if not full and len(rules) > max_rules:
+                    lines.append(f"- ... and {len(rules) - max_rules} more rules (use --full)")
 
         return "\n".join(lines)
 
@@ -586,7 +605,8 @@ def main():
     subparsers.add_parser('history', help='Show session history')
 
     # Full session context
-    subparsers.add_parser('context', help='Get full session context (one-command startup)')
+    context_parser = subparsers.add_parser('context', help='Get full session context (one-command startup)')
+    context_parser.add_argument('--full', action='store_true', help='Show full context with less truncation')
 
     args = parser.parse_args()
 
@@ -639,7 +659,7 @@ def main():
             print(entry)
 
     elif args.action == 'context':
-        print(manager.get_full_context())
+        print(manager.get_full_context(full=getattr(args, 'full', False)))
 
 
 if __name__ == "__main__":

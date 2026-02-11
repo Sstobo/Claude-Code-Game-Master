@@ -72,6 +72,7 @@ htmlcov/
 .pytest_cache/
 .tox/
 .nox/
+docs/production/
 
 # mypy
 .mypy_cache/

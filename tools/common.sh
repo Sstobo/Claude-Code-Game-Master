@@ -161,6 +161,38 @@ info() {
     echo -e "${BLUE}[INFO] $1${NC}"
 }
 
+# Approximate token count from character count (rule of thumb: ~4 chars/token)
+estimate_tokens_from_chars() {
+    local chars="$1"
+    if [ -z "$chars" ] || [ "$chars" -le 0 ] 2>/dev/null; then
+        echo "0"
+        return 0
+    fi
+    echo $(((chars + 3) / 4))
+}
+
+# Log token usage estimates for high-cost tool calls
+# Format: timestamp<TAB>campaign=<name><TAB>command=<name><TAB>k=v...
+log_token_usage() {
+    local command_name="$1"
+    shift
+
+    local usage_dir="$WORLD_STATE_BASE/usage"
+    local usage_log="$usage_dir/token-usage.log"
+    local campaign_name
+    campaign_name=$(get_active_campaign)
+    if [ -z "$campaign_name" ]; then
+        campaign_name="none"
+    fi
+
+    mkdir -p "$usage_dir"
+    printf "%s\tcampaign=%s\tcommand=%s\t%s\n" \
+        "$(get_timestamp)" \
+        "$campaign_name" \
+        "$command_name" \
+        "$*" >> "$usage_log"
+}
+
 # Check if required environment variables are set
 check_env() {
     local var_name="$1"

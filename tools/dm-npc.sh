@@ -96,15 +96,34 @@ case "$ACTION" in
         ;;
 
     status)
-        $PYTHON_CMD "$LIB_DIR/npc_manager.py" status "$NAME"
+        STATUS_OUTPUT=$($PYTHON_CMD "$LIB_DIR/npc_manager.py" status "$NAME")
+        STATUS_CODE=$?
+        echo "$STATUS_OUTPUT"
 
         # Auto-query RAG for NPC context if vectors exist
         CAMPAIGN_DIR=$(bash "$TOOLS_DIR/dm-campaign.sh" path 2>/dev/null)
+        RAG_OUTPUT=""
+        RAG_CODE=0
         if [ -d "$CAMPAIGN_DIR/vectors" ]; then
             echo ""
             echo "Source Material Context"
             echo "======================="
-            $PYTHON_CMD "$LIB_DIR/entity_enhancer.py" search "$NAME personality dialogue background" -n 5
+            RAG_OUTPUT=$($PYTHON_CMD "$LIB_DIR/entity_enhancer.py" search "$NAME personality dialogue background" -n 4 --excerpt-chars 250)
+            RAG_CODE=$?
+            echo "$RAG_OUTPUT"
+        fi
+
+        STATUS_CHARS=${#STATUS_OUTPUT}
+        RAG_CHARS=${#RAG_OUTPUT}
+        STATUS_TOKENS=$(estimate_tokens_from_chars "$STATUS_CHARS")
+        RAG_TOKENS=$(estimate_tokens_from_chars "$RAG_CHARS")
+        log_token_usage "dm-npc-status" "name_chars=${#NAME}" "status_chars=$STATUS_CHARS" "status_tokens_est=$STATUS_TOKENS" "rag_chars=$RAG_CHARS" "rag_tokens_est=$RAG_TOKENS"
+
+        if [ $STATUS_CODE -ne 0 ]; then
+            exit $STATUS_CODE
+        fi
+        if [ $RAG_CODE -ne 0 ]; then
+            exit $RAG_CODE
         fi
         ;;
 

@@ -731,6 +731,8 @@ def main():
     search_parser = subparsers.add_parser('search', help='Direct RAG search (no entity filtering)')
     search_parser.add_argument('query', help='Search query (keywords, phrases, questions)')
     search_parser.add_argument('-n', '--num', type=int, default=15, help='Max results')
+    search_parser.add_argument('--full', action='store_true', help='Show full passage text')
+    search_parser.add_argument('--excerpt-chars', type=int, default=350, help='Excerpt length when not using --full')
 
     # Dungeon check command
     dungeon_parser = subparsers.add_parser('dungeon-check', help='Check dungeon room structure')
@@ -836,7 +838,13 @@ def main():
                 relevance = 1 - p['distance']
                 page = p['metadata'].get('page', '?')
                 print(f"--- Passage {i} (relevance: {relevance:.2f}, page: {page}) ---")
-                print(p['text'])
+                if args.full:
+                    print(p['text'])
+                else:
+                    excerpt = p['text'][:args.excerpt_chars]
+                    if len(p['text']) > args.excerpt_chars:
+                        excerpt += "..."
+                    print(excerpt)
                 print()
         else:
             print("No passages found. Is the vector store populated?")
