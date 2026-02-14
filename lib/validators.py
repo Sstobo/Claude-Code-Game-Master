@@ -26,7 +26,7 @@ class Validators:
             return False, "Name too long (max 100 characters)"
 
         # Check characters
-        pattern = r"^[a-zA-Z0-9\s\-']+$"
+        pattern = r"^[a-zA-Zа-яА-ЯёЁ0-9\s\-'«»]+$"
         if not re.match(pattern, name):
             return False, "Invalid name. Use only letters, numbers, spaces, hyphens, and apostrophes"
 
@@ -40,7 +40,12 @@ class Validators:
         """
         valid_attitudes = [
             'friendly', 'neutral', 'hostile', 'suspicious', 'helpful',
-            'indifferent', 'fearful', 'respectful', 'dismissive', 'curious'
+            'indifferent', 'fearful', 'respectful', 'dismissive', 'curious',
+            'дружелюбный', 'дружелюбная', 'нейтральный', 'нейтральная',
+            'враждебный', 'враждебная', 'подозрительный', 'подозрительная',
+            'ворчливый', 'ворчливая', 'любопытный', 'любопытная',
+            'равнодушный', 'равнодушная', 'уважительный', 'уважительная',
+            'испуганный', 'испуганная', 'помогающий', 'помогающая'
         ]
 
         attitude_lower = attitude.lower().strip()

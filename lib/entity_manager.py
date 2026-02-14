@@ -23,27 +23,39 @@ class EntityManager:
     to ensure consistent campaign directory handling and JSON operations.
     """
 
-    def __init__(self, world_state_dir: str = None):
+    def __init__(self, world_state_dir: str = None, require_active_campaign: bool = True):
         """Initialize the entity manager with campaign context.
 
         Args:
-            world_state_dir: Base world state directory. Defaults to "world-state".
+            world_state_dir: Base world state directory OR direct campaign directory path.
+                           Defaults to "world-state".
+            require_active_campaign: If True, requires active campaign.
+                                   If False, uses world_state_dir as direct campaign path.
+                                   Useful for testing.
 
         Raises:
-            RuntimeError: If no active campaign is set.
+            RuntimeError: If require_active_campaign=True and no active campaign is set.
         """
-        base_dir = world_state_dir or "world-state"
-        self.campaign_mgr = CampaignManager(base_dir)
+        if not require_active_campaign and world_state_dir:
+            # Direct campaign directory (for testing)
+            self.campaign_dir = Path(world_state_dir)
+            self.json_ops = JsonOperations(str(self.campaign_dir))
+            self.validators = Validators()
+            self.campaign_mgr = None
+        else:
+            # Normal flow: require active campaign
+            base_dir = world_state_dir or "world-state"
+            self.campaign_mgr = CampaignManager(base_dir)
 
-        # Get the active campaign directory
-        active_dir = self.campaign_mgr.get_active_campaign_dir()
+            # Get the active campaign directory
+            active_dir = self.campaign_mgr.get_active_campaign_dir()
 
-        if active_dir is None:
-            raise RuntimeError("No active campaign. Run /new-game or /import first.")
+            if active_dir is None:
+                raise RuntimeError("No active campaign. Run /new-game or /import first.")
 
-        self.campaign_dir = active_dir
-        self.json_ops = JsonOperations(str(active_dir))
-        self.validators = Validators()
+            self.campaign_dir = active_dir
+            self.json_ops = JsonOperations(str(active_dir))
+            self.validators = Validators()
 
     def _load_entities(self, filename: str) -> dict:
         """Load entities from JSON file.

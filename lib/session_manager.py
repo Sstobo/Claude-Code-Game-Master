@@ -19,8 +19,8 @@ from entity_manager import EntityManager
 class SessionManager(EntityManager):
     """Manage D&D session operations. Inherits from EntityManager for common functionality."""
 
-    def __init__(self, world_state_dir: str = None):
-        super().__init__(world_state_dir)
+    def __init__(self, world_state_dir: str = None, require_active_campaign: bool = True):
+        super().__init__(world_state_dir, require_active_campaign)
 
         # Additional paths specific to session management
         self.world_state_dir = self.campaign_dir  # Alias for compatibility
@@ -145,7 +145,7 @@ class SessionManager(EntityManager):
 
     def move_party(self, location: str) -> Dict[str, str]:
         """
-        Move party to new location
+        Move party to new location with automatic time calculation
         Returns dict with previous and current location
         """
         campaign = self.json_ops.load_json(self.campaign_file)
@@ -157,6 +157,9 @@ class SessionManager(EntityManager):
 
         # Auto-create location and connections
         self._ensure_location_and_connection(old_location, location)
+
+        # Calculate travel time
+        elapsed_hours = self._calculate_travel_time(old_location, location)
 
         campaign['player_position']['previous_location'] = old_location
         campaign['player_position']['current_location'] = location
@@ -181,13 +184,99 @@ class SessionManager(EntityManager):
                     char_data['current_location'] = location
                     self.json_ops.save_json(str(char_file), char_data)
 
+        # Apply travel time
+        if elapsed_hours > 0:
+            self._apply_travel_time(elapsed_hours)
+
         result = {
             "previous_location": old_location,
-            "current_location": location
+            "current_location": location,
+            "travel_hours": elapsed_hours
         }
 
         print(f"[SUCCESS] Party moved from {old_location} to {location}")
+        if elapsed_hours > 0:
+            minutes = int(elapsed_hours * 60)
+            print(f"[TIME] Travel time: {minutes} minutes ({elapsed_hours:.2f} hours)")
+
         return result
+
+    def _calculate_travel_time(self, from_location: str, to_location: str) -> float:
+        """
+        Calculate travel time based on distance_meters in connection
+        Returns hours (0.0 if no distance found)
+        """
+        locations = self.json_ops.load_json("locations.json") or {}
+
+        if from_location not in locations:
+            return 0.0
+
+        # Find connection to destination
+        connections = locations[from_location].get('connections', [])
+        distance_meters = 0
+
+        for conn in connections:
+            if conn.get('to') == to_location:
+                distance_meters = conn.get('distance_meters', 0)
+                break
+
+        if distance_meters == 0:
+            return 0.0
+
+        # Get character speed (default 4 km/h)
+        speed_kmh = 4.0
+
+        if self.character_file.exists():
+            char_data = self.json_ops.load_json("character.json")
+            speed_kmh = char_data.get('speed_kmh', 4.0)
+
+        # Calculate time: distance(m) / 1000 / speed(km/h) = hours
+        distance_km = distance_meters / 1000.0
+        travel_hours = distance_km / speed_kmh
+
+        return travel_hours
+
+    def _apply_travel_time(self, elapsed_hours: float):
+        """
+        Apply time passage by calling time_manager
+        """
+        from time_manager import TimeManager
+
+        time_mgr = TimeManager(str(self.campaign_dir.parent.parent))
+
+        # Get current time
+        campaign = self.json_ops.load_json(self.campaign_file)
+        time_of_day = campaign.get('time_of_day', 'Unknown')
+        current_date = campaign.get('current_date', 'Unknown')
+
+        # Calculate new precise_time
+        precise_time = campaign.get('precise_time')
+        if precise_time:
+            from datetime import datetime, timedelta
+            try:
+                current_time = datetime.strptime(precise_time, "%H:%M")
+                new_time = current_time + timedelta(hours=elapsed_hours)
+                new_precise = new_time.strftime("%H:%M")
+
+                # Update time_of_day based on new time
+                hour = new_time.hour
+                if 5 <= hour < 12:
+                    time_of_day = "Morning"
+                elif 12 <= hour < 17:
+                    time_of_day = "Day"
+                elif 17 <= hour < 21:
+                    time_of_day = "Evening"
+                else:
+                    time_of_day = "Night"
+
+                # Call time manager with elapsed hours (DON'T pass precise_time to avoid recalculation)
+                time_mgr.update_time(time_of_day, current_date, elapsed_hours=elapsed_hours, precise_time=new_precise)
+            except:
+                # Fallback: just apply elapsed
+                time_mgr.update_time(time_of_day, current_date, elapsed_hours=elapsed_hours)
+        else:
+            # No precise time, just apply elapsed
+            time_mgr.update_time(time_of_day, current_date, elapsed_hours=elapsed_hours)
 
     # ==================== Save System ====================
 

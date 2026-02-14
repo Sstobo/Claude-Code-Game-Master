@@ -42,8 +42,8 @@ class PlayerManager(EntityManager):
         355000,  # Level 20
     ]
 
-    def __init__(self, world_state_dir: str = None):
-        super().__init__(world_state_dir)
+    def __init__(self, world_state_dir: str = None, require_active_campaign: bool = True):
+        super().__init__(world_state_dir, require_active_campaign)
 
         # Additional paths specific to player management
         self.world_state_dir = self.campaign_dir  # Alias for compatibility
@@ -131,8 +131,22 @@ class PlayerManager(EntityManager):
 
         return char
 
-    def get_player(self, name: str) -> Optional[Dict]:
-        """Get full player character data"""
+    def _get_active_character_name(self) -> Optional[str]:
+        """Get active character name from campaign overview"""
+        campaign = self.json_ops.load_json(self.campaign_file)
+        return campaign.get('current_character')
+
+    def get_player(self, name: str = None) -> Optional[Dict]:
+        """
+        Get full player character data
+        If name is None, uses active character from campaign
+        """
+        if name is None:
+            name = self._get_active_character_name()
+            if not name:
+                print(f"[ERROR] No active character in campaign")
+                return None
+
         char = self._load_character(name)
         if not char:
             print(f"[ERROR] Character '{name}' not found")
@@ -310,11 +324,18 @@ class PlayerManager(EntityManager):
             'xp_remaining': remaining
         }
 
-    def modify_hp(self, name: str, amount: int) -> Dict[str, Any]:
+    def modify_hp(self, name: str = None, amount: int = 0) -> Dict[str, Any]:
         """
         Modify character HP (positive = heal, negative = damage)
+        If name is None, uses active character
         Returns dict with HP status info
         """
+        if name is None:
+            name = self._get_active_character_name()
+            if not name:
+                print(f"[ERROR] No active character in campaign")
+                return {'success': False}
+
         char = self._load_character(name)
         if not char:
             print(f"[ERROR] Character '{name}' not found")
@@ -357,11 +378,18 @@ class PlayerManager(EntityManager):
             'bloodied': 0 < new_hp <= max_hp // 4
         }
 
-    def modify_gold(self, name: str, amount: Optional[int] = None) -> Dict[str, Any]:
+    def modify_gold(self, name: str = None, amount: Optional[int] = None) -> Dict[str, Any]:
         """
         Modify character gold or show current gold if no amount given
+        If name is None, uses active character
         Returns dict with gold status info
         """
+        if name is None:
+            name = self._get_active_character_name()
+            if not name:
+                print(f"[ERROR] No active character in campaign")
+                return {'success': False}
+
         char = self._load_character(name)
         if not char:
             print(f"[ERROR] Character '{name}' not found")
@@ -596,6 +624,106 @@ class PlayerManager(EntityManager):
             print(f"[ERROR] Unknown condition action: {action}")
             return {'success': False}
 
+    def get_custom_stat(self, name: str = None, stat: str = None) -> Optional[Dict]:
+        """
+        Get custom stat value
+        If name is None, uses active character
+        """
+        if name is None:
+            name = self._get_active_character_name()
+            if not name:
+                print(f"[ERROR] No active character in campaign")
+                return None
+
+        char = self._load_character(name)
+        if not char:
+            print(f"[ERROR] Character '{name}' not found")
+            return None
+
+        custom_stats = char.get('custom_stats', {})
+        if stat not in custom_stats:
+            print(f"[ERROR] Custom stat '{stat}' not found")
+            return None
+
+        return custom_stats[stat]
+
+    def modify_custom_stat(self, name: str = None, stat: str = None, amount: int = 0) -> Dict[str, Any]:
+        """
+        Modify custom stat (+/-)
+        If name is None, uses active character
+        Returns dict with change info
+        """
+        if name is None:
+            name = self._get_active_character_name()
+            if not name:
+                print(f"[ERROR] No active character in campaign")
+                return {'success': False}
+
+        char = self._load_character(name)
+        if not char:
+            print(f"[ERROR] Character '{name}' not found")
+            return {'success': False}
+
+        if 'custom_stats' not in char:
+            char['custom_stats'] = {}
+
+        if stat not in char['custom_stats']:
+            print(f"[ERROR] Custom stat '{stat}' not found on character")
+            return {'success': False}
+
+        stat_data = char['custom_stats'][stat]
+        old_value = stat_data['current']
+        new_value = old_value + amount
+
+        # Clamp to min/max
+        min_val = stat_data.get('min', 0)
+        max_val = stat_data.get('max')
+
+        if max_val is not None:
+            new_value = max(min_val, min(new_value, max_val))
+        else:
+            new_value = max(min_val, new_value)
+
+        char['custom_stats'][stat]['current'] = new_value
+
+        if not self._save_character(name, char):
+            return {'success': False}
+
+        char_name = char.get('name', name)
+        print(f"CUSTOM_STAT {char_name}: {stat} {old_value} → {new_value} ({amount:+d})")
+
+        return {
+            'success': True,
+            'stat': stat,
+            'old_value': old_value,
+            'new_value': new_value,
+            'change': amount
+        }
+
+    def list_custom_stats(self, name: str) -> Dict[str, Any]:
+        """Show all custom stats"""
+        char = self._load_character(name)
+        if not char:
+            print(f"[ERROR] Character '{name}' not found")
+            return {'success': False}
+
+        custom_stats = char.get('custom_stats', {})
+
+        if not custom_stats:
+            print(f"{char.get('name', name)}: No custom stats")
+            return {'success': True, 'stats': {}}
+
+        print(f"{char.get('name', name)} Custom Stats:")
+        for stat, data in custom_stats.items():
+            current = data['current']
+            max_val = data.get('max')
+            if max_val is not None:
+                print(f"  {stat}: {current}/{max_val}")
+            else:
+                print(f"  {stat}: {current}")
+
+        return {'success': True, 'stats': custom_stats}
+
 
 def main():
     """CLI interface for player management"""
@@ -655,6 +783,16 @@ def main():
     cond_parser.add_argument('name', help='Character name')
     cond_parser.add_argument('cond_action', choices=['add', 'remove', 'list'], help='Action to perform')
     cond_parser.add_argument('condition', nargs='?', help='Condition name (required for add/remove)')
+
+    # Manage custom stats
+    custom_parser = subparsers.add_parser('custom-stat', help='Manage custom stats')
+    custom_parser.add_argument('name', help='Character name')
+    custom_parser.add_argument('stat', help='Stat name (hunger, thirst, radiation, etc.)')
+    custom_parser.add_argument('amount', nargs='?', help='Change amount (+10, -5). Omit to show current.')
+
+    # List all custom stats
+    custom_list_parser = subparsers.add_parser('custom-stats-list', help='List all custom stats')
+    custom_list_parser.add_argument('name', help='Character name')
 
     args = parser.parse_args()
 
@@ -758,6 +896,37 @@ def main():
 
     elif args.action == 'condition':
         result = manager.modify_condition(args.name, args.cond_action, args.condition)
+        if not result.get('success'):
+            sys.exit(1)
+
+    elif args.action == 'custom-stat':
+        if args.amount:
+            # Modify custom stat
+            amount_str = args.amount.replace('+', '')
+            try:
+                amount = int(amount_str)
+            except ValueError:
+                print(f"[ERROR] Invalid amount: {args.amount}")
+                sys.exit(1)
+
+            result = manager.modify_custom_stat(args.name, args.stat, amount)
+            if not result.get('success'):
+                sys.exit(1)
+        else:
+            # Show custom stat
+            stat_data = manager.get_custom_stat(args.name, args.stat)
+            if stat_data:
+                current = stat_data['current']
+                max_val = stat_data.get('max')
+                if max_val is not None:
+                    print(f"{args.stat}: {current}/{max_val}")
+                else:
+                    print(f"{args.stat}: {current}")
+            else:
+                sys.exit(1)
+
+    elif args.action == 'custom-stats-list':
+        result = manager.list_custom_stats(args.name)
         if not result.get('success'):
             sys.exit(1)
 

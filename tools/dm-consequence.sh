@@ -27,11 +27,28 @@ shift
 case "$ACTION" in
     add)
         if [ "$#" -lt 2 ]; then
-            echo "Usage: dm-consequence.sh add <description> <trigger>"
-            echo "Triggers: immediate, next visit, 2 days, next session, etc."
+            echo "Usage: dm-consequence.sh add <description> <trigger> [--hours N]"
+            echo ""
+            echo "Triggers:"
+            echo "  Event-based: 'on meeting', 'after quest', 'immediate'"
+            echo "  Time-based:  'in 2 hours', 'in 3 days' + --hours <number>"
+            echo ""
+            echo "Examples:"
+            echo "  dm-consequence.sh add \"NPC arrives\" \"in 24 hours\" --hours 24"
+            echo "  dm-consequence.sh add \"Quest expires\" \"on meeting\""
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/consequence_manager.py" add "$1" "$2"
+
+        DESC="$1"
+        TRIGGER="$2"
+        shift 2
+
+        HOURS_ARG=""
+        if [ "$1" = "--hours" ]; then
+            HOURS_ARG="--hours $2"
+        fi
+
+        $PYTHON_CMD "$LIB_DIR/consequence_manager.py" add "$DESC" "$TRIGGER" $HOURS_ARG
         ;;
 
     check)

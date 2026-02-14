@@ -59,13 +59,26 @@ case "$ACTION" in
         ;;
 
     "hp")
-        if [ -z "$1" ] || [ -z "$2" ]; then
-            echo "Usage: dm-player.sh hp <character_name> <+/-amount>"
-            echo "Example: dm-player.sh hp conan -3  (take 3 damage)"
-            echo "Example: dm-player.sh hp conan +5  (heal 5 HP)"
+        if [ -z "$1" ]; then
+            echo "Usage: dm-player.sh hp [character_name] <+/-amount>"
+            echo "If character_name omitted, uses active character"
+            echo "Example: dm-player.sh hp -3      (active char takes 3 damage)"
+            echo "Example: dm-player.sh hp +5      (active char heals 5 HP)"
+            echo "Example: dm-player.sh hp conan -3  (conan takes 3 damage)"
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" hp "$1" "$2"
+        # Check if first arg is a number (amount) or name
+        if [[ "$1" =~ ^[+-][0-9]+$ ]]; then
+            # First arg is amount, no name provided
+            $PYTHON_CMD "$LIB_DIR/player_manager.py" hp "" "$1"
+        else
+            # First arg is name
+            if [ -z "$2" ]; then
+                echo "[ERROR] Amount required after character name"
+                exit 1
+            fi
+            $PYTHON_CMD "$LIB_DIR/player_manager.py" hp "$1" "$2"
+        fi
         ;;
 
     "get")
@@ -154,6 +167,36 @@ case "$ACTION" in
         fi
         ;;
 
+    "custom-stat")
+        if [ -z "$1" ]; then
+            echo "Usage: dm-player.sh custom-stat <stat_name> [+/-amount]"
+            echo "Uses active character automatically"
+            echo ""
+            echo "Examples:"
+            echo "  dm-player.sh custom-stat hunger -5     # Decrease hunger"
+            echo "  dm-player.sh custom-stat thirst +10    # Increase thirst"
+            echo "  dm-player.sh custom-stat radiation     # Show current value"
+            exit 1
+        fi
+
+        STAT_NAME="$1"
+        AMOUNT="$2"
+
+        if [ -z "$AMOUNT" ]; then
+            $PYTHON_CMD "$LIB_DIR/player_manager.py" custom-stat "" "$STAT_NAME"
+        else
+            $PYTHON_CMD "$LIB_DIR/player_manager.py" custom-stat "" "$STAT_NAME" "$AMOUNT"
+        fi
+        ;;
+
+    "custom-stats-list")
+        if [ -z "$1" ]; then
+            echo "Usage: dm-player.sh custom-stats-list <character_name>"
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" custom-stats-list "$1"
+        ;;
+
     *)
         echo "D&D Player Character Manager"
         echo "Usage: dm-player.sh <action> [args]"
@@ -171,6 +214,8 @@ case "$ACTION" in
         echo "  loot <name> --gold X --items - Batch add items + gold at once"
         echo "  level-check <name>           - Check XP and level status"
         echo "  save-json '<json>'           - Save complete character from JSON"
+        echo "  custom-stat <name> <stat> [amount] - Manage custom stats (hunger, thirst, etc.)"
+        echo "  custom-stats-list <name>     - List all custom stats"
         echo ""
         echo "Note: Character is stored in the active campaign's character.json"
         ;;
