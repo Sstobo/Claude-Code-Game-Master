@@ -17,8 +17,8 @@ from entity_manager import EntityManager
 class LocationManager(EntityManager):
     """Manage location operations. Inherits from EntityManager for common functionality."""
 
-    def __init__(self, world_state_dir: str = None):
-        super().__init__(world_state_dir)
+    def __init__(self, world_state_dir: str = None, require_active_campaign: bool = True):
+        super().__init__(world_state_dir, require_active_campaign)
         self.locations_file = "locations.json"
 
     def add_location(self, name: str, position: str) -> bool:

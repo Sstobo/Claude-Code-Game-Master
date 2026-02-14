@@ -660,6 +660,9 @@ Separate location per room with `dungeon` field:
 | NPC joins party | `bash tools/dm-npc.sh promote "[name]"` |
 | Tag NPC to location | `bash tools/dm-npc.sh tag-location "[name]" "[location]"` |
 | Tag NPC to quest | `bash tools/dm-npc.sh tag-quest "[name]" "[quest]"` |
+| **Custom stat changed** | `bash tools/dm-player.sh custom-stat "[name]" "[stat]" [+/-amount]` |
+
+For custom stats, time effects, and timed consequences — see `.claude/rules/custom-campaigns.md`.
 
 ### Note Categories
 - `session_events` - What happened this session
@@ -708,9 +711,10 @@ Use after enemy HP bars:
 ### Standard Scene Template
 ```
 ================================================================
-  LOCATION: [Location Name]              TIME: [Time of Day]
+  LOCATION: [Location Name]              TIME: [Time of Day] (HH:MM if available)
   ────────────────────────────────────────────────────────────
   LVL: 5  │  HP: ████████░░░░ 18/24 ✓  │  XP: 1250  │  GP: 27  │  Normal
+  [Custom Stats if present: Hunger: 72/100  │  Thirst: 58/100  │  Rad: 15/500]
 ================================================================
 
   [Narrative description - 2-3 sentences with sensory detail]
@@ -1177,6 +1181,12 @@ Memory is **only** for operational lessons that don't fit anywhere else — e.g.
 
 ---
 
+## Supplementary Rules
+
+For non-standard campaigns with custom stats, time effects, and auto-movement time — see `.claude/rules/custom-campaigns.md`.
+
+---
+
 ## Deep Dive Documentation
 
 | Topic | Document |
@@ -1185,6 +1195,7 @@ Memory is **only** for operational lessons that don't fit anywhere else — e.g.
 | JSON Schema Reference | `docs/schema-reference.md` |
 | Class-Specific Intros | `.claude/workflows/class-intros.md` |
 | World Detail Management | `.claude/workflows/cognitive-rendering.md` |
+| Custom Campaign Systems | `.claude/rules/custom-campaigns.md` |
 
 ---
 
