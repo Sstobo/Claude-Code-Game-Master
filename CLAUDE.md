@@ -371,6 +371,10 @@ bash tools/dm-time.sh "[new_time]" "[date]"
 ```
 **Note:** `move` auto-creates the destination in `locations.json` if it doesn't exist and adds bidirectional connections from the previous location. Consequences are automatically checked after every move.
 
+### Phase 3.1: Coordinate-Based Navigation (Optional)
+
+If campaign uses coordinate system — see `.claude/rules/custom-campaigns.md` for full details.
+
 ### Phase 3.5: Arrival Awareness (Optional)
 Use when arriving at dangerous/unfamiliar locations or where ambush is likely.
 
@@ -660,6 +664,9 @@ Separate location per room with `dungeon` field:
 | NPC joins party | `bash tools/dm-npc.sh promote "[name]"` |
 | Tag NPC to location | `bash tools/dm-npc.sh tag-location "[name]" "[location]"` |
 | Tag NPC to quest | `bash tools/dm-npc.sh tag-quest "[name]" "[quest]"` |
+| **Custom stat changed** | `bash tools/dm-player.sh custom-stat "[name]" "[stat]" [+/-amount]` |
+
+For custom stats, time effects, and timed consequences — see `.claude/rules/custom-campaigns.md`.
 
 ### Note Categories
 - `session_events` - What happened this session
@@ -708,9 +715,10 @@ Use after enemy HP bars:
 ### Standard Scene Template
 ```
 ================================================================
-  LOCATION: [Location Name]              TIME: [Time of Day]
+  LOCATION: [Location Name]              TIME: [Time of Day] ([HH:MM] if available)
   ────────────────────────────────────────────────────────────
   LVL: 5  │  HP: ████████░░░░ 18/24 ✓  │  XP: 1250  │  GP: 27  │  Normal
+  [Custom Stats if present: Hunger: 72/100  │  Thirst: 58/100  │  Rad: 15/500]
 ================================================================
 
   [Narrative description - 2-3 sentences with sensory detail]
@@ -988,7 +996,7 @@ bash tools/dm-note.sh "session_events" "[character] completed a long rest"
 | `dm-extract.sh` | Import PDFs/documents |
 | `dm-enhance.sh` | Enrich known entities by name, or get scene context (NOT free-text search) |
 | `dm-npc.sh` | Create NPCs, update status, tag with locations/quests |
-| `dm-location.sh` | Add new locations, connect with paths |
+| `dm-location.sh` | Add locations, connect paths, manage coordinates & navigation |
 | `dm-consequence.sh` | Track events that will trigger later |
 | `dm-note.sh` | Record important facts about the world |
 | `dm-search.sh` | Search world state AND/OR source material (see Search Guide below) |
@@ -997,6 +1005,7 @@ bash tools/dm-note.sh "session_events" "[character] completed a long rest"
 | `dm-session.sh` | Start/end sessions, move party, save/restore |
 | `dm-overview.sh` | Quick summary of world state |
 | `dm-time.sh` | Advance game time |
+| `dm-map.sh` | Display ASCII campaign map or minimap |
 
 ---
 
@@ -1177,6 +1186,12 @@ Memory is **only** for operational lessons that don't fit anywhere else — e.g.
 
 ---
 
+## Supplementary Rules
+
+For non-standard campaigns (STALKER, Civilization, etc.) with custom stats, time effects, encounter system, and coordinate navigation — see `.claude/rules/custom-campaigns.md`.
+
+---
+
 ## Deep Dive Documentation
 
 | Topic | Document |
@@ -1189,3 +1204,4 @@ Memory is **only** for operational lessons that don't fit anywhere else — e.g.
 ---
 
 *Ready to play? Run `/dm` to continue or `/new-game` to create a new campaign!*
+

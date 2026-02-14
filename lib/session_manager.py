@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
+from path_manager import PathManager
+from encounter_manager import EncounterManager
 
 
 class SessionManager(EntityManager):
@@ -36,6 +38,26 @@ class SessionManager(EntityManager):
 
         # Legacy characters dir (for backwards compatibility)
         self.characters_dir = self.campaign_dir / "characters"
+
+        # Path manager for intelligent navigation
+        self.path_manager = PathManager(str(self.campaign_dir))
+
+        # Encounter manager for random events (lazy init)
+        self._encounter_manager = None
+
+    @property
+    def encounter_manager(self):
+        """Lazy init encounter manager"""
+        if self._encounter_manager is None:
+            try:
+                self._encounter_manager = EncounterManager(str(self.campaign_dir))
+            except:
+                # Fallback: create minimal manager
+                self._encounter_manager = type('obj', (object,), {
+                    'is_enabled': lambda self: False,
+                    'is_waypoint': lambda self, x: False
+                })()
+        return self._encounter_manager
 
     def get_timestamp(self) -> str:
         """Get formatted timestamp"""
@@ -145,7 +167,7 @@ class SessionManager(EntityManager):
 
     def move_party(self, location: str) -> Dict[str, str]:
         """
-        Move party to new location
+        Move party to new location with automatic time calculation + encounter checks
         Returns dict with previous and current location
         """
         campaign = self.json_ops.load_json(self.campaign_file)
@@ -155,39 +177,357 @@ class SessionManager(EntityManager):
 
         old_location = campaign['player_position'].get('current_location', 'Unknown')
 
-        # Auto-create location and connections
+        # STEP 1: Check if leaving from waypoint
+        if self.encounter_manager.is_waypoint(old_location):
+            result = self._handle_waypoint_movement(old_location, location)
+            return result
+
+        # STEP 2: Auto-create location and connections
         self._ensure_location_and_connection(old_location, location)
 
+        # STEP 3: Get route info (distance, terrain)
+        route_info = self._get_route_info(old_location, location)
+        distance_meters = route_info.get('distance_meters', 0)
+        terrain = route_info.get('terrain', 'open')
+
+        if distance_meters == 0:
+            # No distance found, just move without time/encounters
+            return self._simple_move(old_location, location)
+
+        # STEP 4: Check for encounters (if enabled)
+        if self.encounter_manager.is_enabled() and distance_meters > 0:
+            # Get character speed
+            char_speed = self._get_character_speed()
+
+            # Check journey for encounters
+            journey = self.encounter_manager.check_journey(
+                from_loc=old_location,
+                to_loc=location,
+                distance_meters=distance_meters,
+                terrain=terrain,
+                speed_kmh=char_speed
+            )
+
+            # Process each waypoint
+            for waypoint in journey.get('waypoints', []):
+                if waypoint.get('encounter'):
+                    # Encounter occurred!
+                    enc_category = waypoint['encounter']['category']
+
+                    # Display encounter info
+                    print("\n" + "="*70)
+                    print(f"  ENCOUNTER (Segment {waypoint['segment']}/{waypoint['check']['total_segments']})")
+                    print("="*70)
+                    print(f"Progress: {waypoint['distance_traveled_m']}m / {journey['total_distance_m']}m")
+                    print(f"Time: {waypoint['current_time']}")
+                    print(f"\n🎲 Encounter Nature: {waypoint['encounter']['roll']} → {enc_category}")
+                    print("\nDM: What type of encounter?")
+                    print("  1) Combat (creates waypoint)")
+                    print("  2) Social (creates waypoint)")
+                    print("  3) Hazard (creates waypoint)")
+                    print("  4) Loot (auto-resolve)")
+                    print("  5) Flavor (auto-resolve)")
+                    print("")
+
+                    enc_type = input("Type [1-5]: ").strip()
+
+                    if enc_type in ['1', '2', '3']:
+                        # WAYPOINT REQUIRED
+                        waypoint_name = self.encounter_manager.create_waypoint_location(
+                            from_loc=old_location,
+                            to_loc=location,
+                            waypoint_data=waypoint,
+                            journey=journey
+                        )
+
+                        # Move player to waypoint
+                        campaign['player_position']['previous_location'] = old_location
+                        campaign['player_position']['current_location'] = waypoint_name
+                        self.json_ops.save_json(self.campaign_file, campaign)
+
+                        # Apply time up to this point
+                        elapsed_hours = waypoint['time_elapsed_min'] / 60
+                        if elapsed_hours > 0:
+                            self._apply_travel_time(elapsed_hours)
+
+                        print(f"\n[WAYPOINT] Created: {waypoint_name}")
+                        print(f"You can: [F]orward to {location}, [B]ack to {old_location}")
+                        print("="*70 + "\n")
+
+                        return {
+                            "status": "waypoint",
+                            "previous_location": old_location,
+                            "current_location": waypoint_name,
+                            "waypoint": True,
+                            "options": {
+                                "forward": location,
+                                "back": old_location
+                            }
+                        }
+
+                    else:
+                        # AUTO-RESOLVE (loot/flavor)
+                        description = input("DM: Describe what happens: ").strip()
+                        print(f"\n[AUTO-RESOLVED] {description}")
+
+                        if enc_type == '4':  # Loot
+                            print("(Add loot with: dm-player.sh inventory add <item>)")
+
+                        # Continue journey
+                        print("")
+
+            # No waypoint interruption — full journey complete
+            elapsed_hours = journey['total_time_min'] / 60
+        else:
+            # Encounters disabled or no distance
+            elapsed_hours = self._calculate_travel_time(old_location, location)
+
+        # STEP 5: Arrive at destination
         campaign['player_position']['previous_location'] = old_location
         campaign['player_position']['current_location'] = location
         campaign['player_position']['arrival_time'] = self.get_timestamp()
 
         self.json_ops.save_json(self.campaign_file, campaign)
 
-        # Update character's location if exists
-        # Try new single character.json first, fall back to legacy characters/ dir
+        # Update character location
         if self.character_file.exists():
             char_data = self.json_ops.load_json("character.json")
             char_data['current_location'] = location
             self.json_ops.save_json("character.json", char_data)
-        else:
-            # Legacy: check characters/ directory
-            active_char = campaign.get('current_character', '')
-            if active_char:
-                char_id = active_char.lower().replace(' ', '-')
-                char_file = self.characters_dir / f"{char_id}.json"
-                if char_file.exists():
-                    char_data = self.json_ops.load_json(str(char_file))
-                    char_data['current_location'] = location
-                    self.json_ops.save_json(str(char_file), char_data)
+
+        # Apply time
+        if elapsed_hours > 0:
+            self._apply_travel_time(elapsed_hours)
 
         result = {
             "previous_location": old_location,
-            "current_location": location
+            "current_location": location,
+            "travel_hours": elapsed_hours
         }
 
         print(f"[SUCCESS] Party moved from {old_location} to {location}")
+        if elapsed_hours > 0:
+            minutes = int(elapsed_hours * 60)
+            print(f"[TIME] Travel time: {minutes} minutes ({elapsed_hours:.2f} hours)")
+
         return result
+
+    def _handle_waypoint_movement(self, waypoint_name: str, destination: str) -> dict:
+        """Handle movement from a waypoint (forward or back only)"""
+        options = self.encounter_manager.get_waypoint_options(waypoint_name)
+
+        if not options:
+            print(f"[ERROR] {waypoint_name} is not a valid waypoint")
+            return {"status": "error"}
+
+        # Check if destination is allowed
+        forward_dest = options['forward']['to']
+        back_dest = options['back']['to']
+
+        if destination not in [forward_dest, back_dest]:
+            print(f"[ERROR] Cannot travel to {destination} from waypoint")
+            print(f"         You can only go: Forward ({forward_dest}) or Back ({back_dest})")
+            return {
+                "status": "error",
+                "message": "Invalid destination from waypoint"
+            }
+
+        # Cleanup waypoint
+        self.encounter_manager.cleanup_waypoint(waypoint_name)
+
+        # Continue journey normally
+        print(f"[CONTINUE] Leaving waypoint, heading to {destination}...")
+
+        # Recursive call (now from non-waypoint)
+        return self.move_party(destination)
+
+    def _simple_move(self, from_loc: str, to_loc: str) -> dict:
+        """Simple movement without time/encounters"""
+        campaign = self.json_ops.load_json(self.campaign_file)
+
+        campaign['player_position']['previous_location'] = from_loc
+        campaign['player_position']['current_location'] = to_loc
+        self.json_ops.save_json(self.campaign_file, campaign)
+
+        if self.character_file.exists():
+            char_data = self.json_ops.load_json("character.json")
+            char_data['current_location'] = to_loc
+            self.json_ops.save_json("character.json", char_data)
+
+        print(f"[SUCCESS] Party moved from {from_loc} to {to_loc}")
+
+        return {
+            "previous_location": from_loc,
+            "current_location": to_loc,
+            "travel_hours": 0
+        }
+
+    def _get_route_info(self, from_loc: str, to_loc: str) -> dict:
+        """Get distance and terrain for route"""
+        suggestion = self.path_manager.suggest_navigation(from_loc, to_loc)
+        distance_meters = 0
+        terrain = 'open'
+
+        if suggestion.get("method") == "direct":
+            distance_meters = suggestion.get("distance", 0)
+            # Get terrain from direct connection
+            locations = self.json_ops.load_json("locations.json") or {}
+            if from_loc in locations:
+                for conn in locations[from_loc].get('connections', []):
+                    if conn.get('to') == to_loc:
+                        terrain = conn.get('terrain', 'open')
+                        break
+
+        elif suggestion.get("method") == "needs_decision":
+            # Decision needed, but we can use direct distance for encounter calc
+            if suggestion.get('options', {}).get('direct', {}).get('distance'):
+                distance_meters = suggestion['options']['direct']['distance']
+                # Get terrain from connection
+                locations = self.json_ops.load_json("locations.json") or {}
+                if from_loc in locations:
+                    for conn in locations[from_loc].get('connections', []):
+                        if conn.get('to') == to_loc:
+                            terrain = conn.get('terrain', 'open')
+                            break
+
+        elif suggestion.get("method") == "route":
+            # For routes, use first segment's terrain
+            route = suggestion.get("route", [])
+            if len(route) > 1:
+                locations = self.json_ops.load_json("locations.json") or {}
+                first_from = route[0]
+                first_to = route[1]
+
+                if first_from in locations:
+                    for conn in locations[first_from].get('connections', []):
+                        if conn.get('to') == first_to:
+                            terrain = conn.get('terrain', 'open')
+                            distance_meters += conn.get('distance_meters', 0)
+
+                # Add remaining segments
+                for i in range(1, len(route) - 1):
+                    seg_from = route[i]
+                    seg_to = route[i + 1]
+                    if seg_from in locations:
+                        for conn in locations[seg_from].get('connections', []):
+                            if conn.get('to') == seg_to:
+                                distance_meters += conn.get('distance_meters', 0)
+                                break
+
+        return {
+            'distance_meters': distance_meters,
+            'terrain': terrain
+        }
+
+    def _get_character_speed(self) -> float:
+        """Get character speed in km/h"""
+        if self.character_file.exists():
+            char_data = self.json_ops.load_json("character.json")
+            return char_data.get('speed_kmh', 4.0)
+        return 4.0
+
+    def _calculate_travel_time(self, from_location: str, to_location: str) -> float:
+        """
+        Calculate travel time using intelligent pathfinding
+        Considers cached decisions, existing routes, and direct paths
+        Returns 0 if no route available or error occurs
+        """
+        # Get navigation suggestion from path manager
+        suggestion = self.path_manager.suggest_navigation(from_location, to_location)
+
+        distance_meters = 0
+
+        if suggestion.get("method") == "direct":
+            # Use direct path distance
+            distance_meters = suggestion.get("distance", 0)
+
+        elif suggestion.get("method") == "route":
+            # Calculate total distance along route
+            route = suggestion.get("route", [])
+            if len(route) > 1:
+                locations = self.json_ops.load_json("locations.json")
+                for i in range(len(route) - 1):
+                    from_loc = route[i]
+                    to_loc = route[i + 1]
+
+                    # Find connection distance
+                    if from_loc in locations:
+                        for conn in locations[from_loc].get('connections', []):
+                            if conn.get('to') == to_loc:
+                                distance_meters += conn.get('distance_meters', 0)
+                                break
+
+        elif suggestion.get("method") == "needs_decision":
+            # DM needs to decide - output error message for bash script to catch
+            print(f"[ERROR] Path decision needed: {from_location} -> {to_location}", file=sys.stderr)
+            print(f"[ERROR] Run: dm-location.sh decide \"{from_location}\" \"{to_location}\"", file=sys.stderr)
+            return 0.0
+
+        elif suggestion.get("method") == "blocked":
+            print(f"[ERROR] {suggestion.get('message')}", file=sys.stderr)
+            return 0.0
+
+        elif suggestion.get("method") == "error":
+            print(f"[ERROR] {suggestion.get('message')}", file=sys.stderr)
+            return 0.0
+
+        if distance_meters == 0:
+            return 0.0
+
+        # Get character speed (default 4 km/h)
+        speed_kmh = 4.0
+
+        if self.character_file.exists():
+            char_data = self.json_ops.load_json("character.json")
+            speed_kmh = char_data.get('speed_kmh', 4.0)
+
+        # Calculate time: distance(m) / 1000 / speed(km/h) = hours
+        distance_km = distance_meters / 1000.0
+        travel_hours = distance_km / speed_kmh
+
+        return travel_hours
+
+    def _apply_travel_time(self, elapsed_hours: float):
+        """
+        Apply time passage by calling time_manager
+        """
+        from time_manager import TimeManager
+
+        time_mgr = TimeManager(str(self.campaign_dir.parent.parent))
+
+        # Get current time
+        campaign = self.json_ops.load_json(self.campaign_file)
+        time_of_day = campaign.get('time_of_day', 'Unknown')
+        current_date = campaign.get('current_date', 'Unknown')
+
+        # Calculate new precise_time
+        precise_time = campaign.get('precise_time')
+        if precise_time:
+            from datetime import datetime, timedelta
+            try:
+                current_time = datetime.strptime(precise_time, "%H:%M")
+                new_time = current_time + timedelta(hours=elapsed_hours)
+                new_precise = new_time.strftime("%H:%M")
+
+                # Update time_of_day based on new time
+                hour = new_time.hour
+                if 5 <= hour < 12:
+                    time_of_day = "Morning"
+                elif 12 <= hour < 17:
+                    time_of_day = "Day"
+                elif 17 <= hour < 21:
+                    time_of_day = "Evening"
+                else:
+                    time_of_day = "Night"
+
+                # Call time manager with elapsed hours
+                time_mgr.update_time(time_of_day, current_date, elapsed_hours=int(elapsed_hours * 60) / 60, precise_time=new_precise)
+            except:
+                # Fallback: just apply elapsed
+                time_mgr.update_time(time_of_day, current_date, elapsed_hours=int(elapsed_hours * 60) / 60)
+        else:
+            # No precise time, just apply elapsed
+            time_mgr.update_time(time_of_day, current_date, elapsed_hours=int(elapsed_hours * 60) / 60)
 
     # ==================== Save System ====================
 
