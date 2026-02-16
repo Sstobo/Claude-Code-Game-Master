@@ -24,9 +24,6 @@ All notable changes to DM System will be documented in this file.
 - `ensure_ascii=False` added to all `json.dumps()` calls across 15+ files — Russian text no longer escaped as `\uXXXX`
 - Duplicate custom stats output in `time_manager._print_time_report()`
 
-### Migrated
-- 62 duplicate connection pairs removed across 4 campaigns (nostromo, quest-for-the-holy-ale, stalker-zone, test-fantasy)
-
 ### Technical
 - `canonical_pair(a, b)` — alphabetical ordering determines storage location
 - `get_connections(loc, data)` — returns forward + reverse edges with auto-flipped bearing
