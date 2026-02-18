@@ -7,10 +7,11 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: dm-consequence.sh <action> [args]"
     echo ""
     echo "Actions:"
-    echo "  add <description> <trigger> [--hours N] - Add consequence (--hours requires survival-stats module)"
-    echo "  check                                   - Check pending consequences"
-    echo "  resolve <id>                            - Resolve a consequence"
-    echo "  list-resolved                           - List resolved consequences"
+    echo "  add <description> <trigger>  - Add consequence"
+    echo "  check                        - Check pending consequences"
+    echo "  resolve <id>                 - Resolve a consequence"
+    echo "  list-resolved                - List resolved consequences"
+    dispatch_middleware_help "dm-consequence.sh"
     exit 1
 fi
 
@@ -22,7 +23,7 @@ shift
 case "$ACTION" in
     add)
         if [ "$#" -lt 2 ]; then
-            echo "Usage: dm-consequence.sh add <description> <trigger> [--hours N]"
+            echo "Usage: dm-consequence.sh add <description> <trigger>"
             exit 1
         fi
         dispatch_middleware "dm-consequence.sh" add "$@" || \

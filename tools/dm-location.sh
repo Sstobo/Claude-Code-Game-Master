@@ -7,30 +7,17 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: dm-location.sh <action> [args]"
     echo ""
     echo "Actions:"
-    echo "  add <name> <position>                - Add new location"
-    echo "  add <name> <position> --from <loc> --bearing <deg> --distance <m> [--terrain <type>]"
-    echo "                                       - Add with coordinates (requires coordinate-navigation module)"
-    echo "  connect <from> <to> [path]           - Connect two locations"
-    echo "  connect <from> <to> [path] --terrain <type> --distance <m>"
-    echo "                                       - Connect with metadata (requires coordinate-navigation module)"
-    echo "  describe <name> <description>        - Set location description"
-    echo "  get <name>                           - Get location info"
-    echo "  list                                 - List all locations"
-    echo "  connections <name>                   - Show location connections"
-    echo ""
-    echo "Navigation (requires coordinate-navigation module):"
-    echo "  decide <from> <to>                   - Decide route between locations"
-    echo "  routes <from> <to>                   - Show all possible routes"
-    echo "  block <location> <from_deg> <to_deg> <reason> - Block direction range"
-    echo "  unblock <location> <from_deg> <to_deg>        - Unblock direction range"
+    echo "  add <name> <position>        - Add new location"
+    echo "  connect <from> <to> [path]   - Connect two locations"
+    echo "  describe <name> <desc>       - Set location description"
+    echo "  get <name>                   - Get location info"
+    echo "  list                         - List all locations"
+    echo "  connections <name>           - Show location connections"
+    dispatch_middleware_help "dm-location.sh"
     echo ""
     echo "Examples:"
     echo "  dm-location.sh add \"Volcano Temple\" \"north of village\""
-    echo "  dm-location.sh add \"Temple\" \"1km north\" --from \"Village\" --bearing 0 --distance 1000"
     echo "  dm-location.sh connect \"Village\" \"Volcano Temple\" \"rocky path\""
-    echo "  dm-location.sh describe \"Volcano Temple\" \"Ancient obsidian structure\""
-    echo "  dm-location.sh decide \"Village\" \"Temple\""
-    echo "  dm-location.sh block \"Village\" 160 200 \"Steep cliff\""
     exit 1
 fi
 
@@ -88,15 +75,9 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/location_manager.py" connections "$1"
         ;;
 
-    decide|routes|block|unblock)
-        echo "[ERROR] '$ACTION' requires the coordinate-navigation module"
-        echo "  Module not found at: .claude/modules/coordinate-navigation"
-        exit 1
-        ;;
-
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: add, connect, describe, get, list, connections, decide, routes, block, unblock"
+        echo "Valid actions: add, connect, describe, get, list, connections"
         exit 1
         ;;
 esac

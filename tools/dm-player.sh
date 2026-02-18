@@ -109,7 +109,7 @@ case "$ACTION" in
         echo ""
         echo "Actions: show, get, list, set, xp, hp, gold, inventory, loot, condition,"
         echo "         level-check, save-json"
-        echo "Module actions (require survival-stats): custom-stat, custom-stats-list"
+        dispatch_middleware_help "dm-player.sh"
         ;;
 esac
 

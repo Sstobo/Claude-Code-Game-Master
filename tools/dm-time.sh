@@ -8,8 +8,7 @@ if [ -z "$1" ] || [ -z "$2" ]; then
     echo ""
     echo "Examples:"
     echo "  dm-time.sh \"Evening\" \"3rd day of Spring\""
-    echo "  dm-time.sh \"Dawn\" \"5th day\" --elapsed 8 --sleeping  (requires survival-stats module)"
-    echo "  dm-time.sh \"Noon\" \"April 15th\" --precise-time \"12:30\"  (requires survival-stats module)"
+    dispatch_middleware_help "dm-time.sh"
     exit 1
 fi
 

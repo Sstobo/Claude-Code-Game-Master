@@ -5,6 +5,11 @@
 MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_ROOT="$(cd "$MODULE_DIR/../../../.." && pwd)"
 
+if [ "$1" = "--help" ]; then
+    echo "  add <description> <trigger> --hours <N>  Add timed consequence"
+    exit 1
+fi
+
 ACTION="$1"
 
 [ "$ACTION" != "add" ] && exit 1

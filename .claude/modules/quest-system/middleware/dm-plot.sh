@@ -5,7 +5,11 @@
 
 MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Only handle 'add' action in this module
+if [ "$1" = "--help" ]; then
+    echo "  add <name> <desc> [--type X] [--npcs A B] [--locations A B] [--objectives A B] [--rewards X]"
+    exit 1
+fi
+
 if [ "$1" = "add" ]; then
     shift  # remove 'add'
     exec bash "$MODULE_DIR/tools/dm-quest.sh" add "$@"

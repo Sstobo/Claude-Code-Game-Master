@@ -210,7 +210,7 @@ check_env() {
 dispatch_middleware() {
     local tool="$1"
     shift
-    for mw in "$PROJECT_ROOT/.claude/modules"/*/middleware/"$tool".sh; do
+    for mw in "$PROJECT_ROOT"/.claude/modules/*/middleware/"$tool"; do
         [ -f "$mw" ] || continue
         bash "$mw" "$@"
         local rc=$?
@@ -219,6 +219,17 @@ dispatch_middleware() {
         fi
     done
     return 1
+}
+
+# Print help additions from all middleware for a tool
+# Usage: dispatch_middleware_help <tool-name>
+# Each middleware prints its help lines when called with --help, exits 1 to continue
+dispatch_middleware_help() {
+    local tool="$1"
+    for mw in "$PROJECT_ROOT"/.claude/modules/*/middleware/"$tool"; do
+        [ -f "$mw" ] || continue
+        bash "$mw" --help 2>/dev/null || true
+    done
 }
 
 # Load .env file if it exists

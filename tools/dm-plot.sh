@@ -40,17 +40,15 @@ require_active_campaign
 ACTION="$1"
 shift  # Remove action from arguments
 
-# Delegate to Python module or middleware based on action
 case "$ACTION" in
     add)
         if [ "$#" -lt 2 ]; then
-            echo "Usage: dm-plot.sh add <name> <description> [--type X] [--npcs A B] [--locations A B] [--objectives A B] [--rewards X] [--consequences X]"
+            echo "Usage: dm-plot.sh add <name> <description>"
+            dispatch_middleware_help "dm-plot.sh"
             exit 1
         fi
-        # Try middleware dispatch first
         dispatch_middleware "dm-plot.sh" "$ACTION" "$@" || {
             echo "[ERROR] dm-plot.sh add requires the quest-system module"
-            echo "  Module not found at: .claude/modules/quest-system"
             exit 1
         }
         ;;
