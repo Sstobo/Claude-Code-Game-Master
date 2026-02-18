@@ -91,7 +91,12 @@ case "$ACTION" in
         echo "Moving Party"
         echo "============"
         echo ""
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" move "$@"
+        NAV="$PROJECT_ROOT/.claude/modules/coordinate-navigation"
+        if [ -d "$NAV" ]; then
+            bash "$NAV/tools/dm-navigation.sh" move "$@"
+        else
+            $PYTHON_CMD "$LIB_DIR/session_manager.py" move "$@"
+        fi
         RESULT=$?
         if [ $RESULT -ne 0 ]; then exit $RESULT; fi
 

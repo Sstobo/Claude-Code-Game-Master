@@ -11,8 +11,7 @@
       "activation": "per-campaign (locations have 'coordinates' field)",
       "dependencies": {
         "core": [
-          "lib/json_ops.py",
-          "lib/connection_utils.py"
+          "lib/json_ops.py"
         ]
       },
       "provides": {
@@ -176,6 +175,66 @@
         "Resource scarcity (forced detours, supply finds)"
       ],
       "architecture": "DM-as-Glue: Session manager only moves party. DM calls dm-encounter.sh separately when travel occurs. No tight coupling to CORE.",
+      "_status": "Active"
+    },
+    "inventory-system": {
+      "id": "inventory-system",
+      "name": "Inventory System",
+      "version": "1.0.0",
+      "description": "Unified inventory manager with atomic transactions, stackable items, and unique item tracking",
+      "category": "character-mechanics",
+      "tags": ["inventory", "items", "gold", "loot", "transactions"],
+      "dependencies": [],
+      "soft_dependencies": [],
+      "incompatible_with": [],
+      "enabled_by_default": true,
+      "features": [
+        "Atomic multi-change transactions (gold + items + stats in one call)",
+        "Stackable items with quantities (medkit x3, ammo x60)",
+        "Unique items (weapons, armor, quest items)",
+        "Test mode (--test flag for dry runs)",
+        "Auto-migration from legacy equipment array format"
+      ],
+      "activation": {
+        "type": "always",
+        "condition": "module directory exists"
+      },
+      "adds_to_core": {
+        "tools": ["dm-inventory.sh"],
+        "commands": {
+          "dm-inventory.sh show [name]": "Display full inventory",
+          "dm-inventory.sh update [name] --gold X --hp X --xp X --add Item qty ...": "Atomic update"
+        }
+      },
+      "_status": "Active"
+    },
+    "quest-system": {
+      "id": "quest-system",
+      "name": "Quest System",
+      "version": "1.0.0",
+      "description": "Plot/quest creation with full metadata (NPCs, locations, objectives, rewards)",
+      "category": "narrative",
+      "tags": ["quests", "plots", "hooks", "objectives"],
+      "dependencies": [],
+      "soft_dependencies": [],
+      "incompatible_with": [],
+      "enabled_by_default": true,
+      "features": [
+        "Create plots with type, NPCs, locations, objectives",
+        "Rewards and consequences tracking",
+        "Integrates with CORE plot_manager.py for storage"
+      ],
+      "activation": {
+        "type": "always",
+        "condition": "module directory exists"
+      },
+      "adds_to_core": {
+        "tools": ["dm-quest.sh"],
+        "commands": {
+          "dm-quest.sh add <name> <desc> [OPTIONS]": "Create new plot/quest",
+          "dm-plot.sh add ...": "Delegates to this module"
+        }
+      },
       "_status": "Active"
     },
     "survival-stats": {

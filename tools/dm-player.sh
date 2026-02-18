@@ -168,33 +168,25 @@ case "$ACTION" in
         ;;
 
     "custom-stat")
-        if [ -z "$1" ]; then
-            echo "Usage: dm-player.sh custom-stat <stat_name> [+/-amount]"
-            echo "Uses active character automatically"
-            echo ""
-            echo "Examples:"
-            echo "  dm-player.sh custom-stat hunger -5     # Decrease hunger"
-            echo "  dm-player.sh custom-stat thirst +10    # Increase thirst"
-            echo "  dm-player.sh custom-stat radiation     # Show current value"
-            exit 1
-        fi
-
-        STAT_NAME="$1"
-        AMOUNT="$2"
-
-        if [ -z "$AMOUNT" ]; then
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" custom-stat "" "$STAT_NAME"
+        SURV="$PROJECT_ROOT/.claude/modules/survival-stats"
+        if [ -d "$SURV" ]; then
+            bash "$SURV/tools/dm-survival.sh" custom-stat "$@"
         else
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" custom-stat "" "$STAT_NAME" "$AMOUNT"
+            echo "[ERROR] custom-stat requires the survival-stats module"
+            echo "  Module not found at: .claude/modules/survival-stats"
+            exit 1
         fi
         ;;
 
     "custom-stats-list")
-        if [ -z "$1" ]; then
-            echo "Usage: dm-player.sh custom-stats-list <character_name>"
+        SURV="$PROJECT_ROOT/.claude/modules/survival-stats"
+        if [ -d "$SURV" ]; then
+            bash "$SURV/tools/dm-survival.sh" custom-stats-list "$@"
+        else
+            echo "[ERROR] custom-stats-list requires the survival-stats module"
+            echo "  Module not found at: .claude/modules/survival-stats"
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" custom-stats-list "$1"
         ;;
 
     *)

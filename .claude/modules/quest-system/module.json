@@ -1,0 +1,8 @@
+{
+  "name": "quest-system",
+  "version": "1.0.0",
+  "description": "Quest/plot creation and management",
+  "author": "DM System",
+  "tools": ["dm-quest.sh"],
+  "requires_campaign_rules": false
+}

@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from json_ops import JsonOperations
 from campaign_manager import CampaignManager
-from connection_utils import get_connections as cu_get_connections
 
 
 class WorldSearcher:
@@ -289,11 +288,8 @@ class WorldSearcher:
                 print(f"  - {name}: {loc.get('position', '')}")
                 if loc.get('description'):
                     print(f"    {self._format_text(loc['description'], full=full, limit=260)}")
-                locations_data = self.json_ops.load_json('locations.json')
-                if locations_data:
-                    conns = cu_get_connections(name, locations_data)
-                    if conns:
-                        print(f"    Connections: {len(conns)}")
+                if loc.get('connections'):
+                    print(f"    Connections: {len(loc['connections'])}")
 
         if results.get('consequences'):
             print("\nCONSEQUENCES:")

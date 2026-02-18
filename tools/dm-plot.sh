@@ -47,7 +47,14 @@ case "$ACTION" in
             echo "Usage: dm-plot.sh add <name> <description> [--type X] [--npcs A B] [--locations A B] [--objectives A B] [--rewards X] [--consequences X]"
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/plot_manager.py" add "$@"
+        QUEST="$PROJECT_ROOT/.claude/modules/quest-system"
+        if [ -d "$QUEST" ]; then
+            bash "$QUEST/tools/dm-quest.sh" add "$@"
+        else
+            echo "[ERROR] dm-plot.sh add requires the quest-system module"
+            echo "  Module not found at: .claude/modules/quest-system"
+            exit 1
+        fi
         ;;
 
     list)

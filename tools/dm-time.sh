@@ -10,12 +10,14 @@ if [ -z "$1" ] || [ -z "$2" ]; then
     echo "  dm-time.sh \"Evening\" \"3rd day of Spring\""
     echo "  dm-time.sh \"Midnight\" \"4th day\" --elapsed 8"
     echo "  dm-time.sh \"Noon\" \"April 15th\" --precise-time \"12:30\""
+    echo "  dm-time.sh \"Dawn\" \"5th day\" --elapsed 8 --sleeping"
     echo ""
     echo "Options:"
-    echo "  --elapsed HOURS           Hours that passed (manual)"
-    echo "  --precise-time HH:MM      Exact time (auto-calculates elapsed)"
+    echo "  --elapsed HOURS           Hours that passed (manual) → requires survival-stats module"
+    echo "  --precise-time HH:MM      Exact time (auto-calculates elapsed) → requires survival-stats module"
+    echo "  --sleeping                Mark as rest period (stat drain paused) → requires survival-stats module"
     echo ""
-    echo "Note: If both are given, --precise-time takes priority"
+    echo "Note: --elapsed, --precise-time, --sleeping delegate to survival-stats module"
     exit 1
 fi
 
@@ -25,26 +27,25 @@ TIME_OF_DAY="$1"
 DATE="$2"
 shift 2
 
-# Build arguments for Python
-ARGS=("$TIME_OF_DAY" "$DATE")
-
-# Parse optional parameters
-while [ "$#" -gt 0 ]; do
-    case "$1" in
-        --elapsed)
-            ARGS+=("--elapsed" "$2")
-            shift 2
-            ;;
-        --precise-time)
-            ARGS+=("--precise-time" "$2")
-            shift 2
-            ;;
-        *)
-            echo "Unknown option: $1"
-            exit 1
-            ;;
-    esac
+# Check if any survival-stats flags are present
+HAS_SURVIVAL_FLAGS=false
+for arg in "$@"; do
+    if [ "$arg" = "--elapsed" ] || [ "$arg" = "--precise-time" ] || [ "$arg" = "--sleeping" ]; then
+        HAS_SURVIVAL_FLAGS=true
+        break
+    fi
 done
 
-$PYTHON_CMD -m lib.time_manager update "${ARGS[@]}"
+if [ "$HAS_SURVIVAL_FLAGS" = true ]; then
+    SURV="$PROJECT_ROOT/.claude/modules/survival-stats"
+    if [ -d "$SURV" ]; then
+        bash "$SURV/tools/dm-survival.sh" time "$TIME_OF_DAY" "$DATE" "$@"
+    else
+        echo "[ERROR] --elapsed/--precise-time/--sleeping require the survival-stats module"
+        echo "  Module not found at: .claude/modules/survival-stats"
+        exit 1
+    fi
+else
+    $PYTHON_CMD "$LIB_DIR/time_manager.py" update "$TIME_OF_DAY" "$DATE"
+fi
 exit $?

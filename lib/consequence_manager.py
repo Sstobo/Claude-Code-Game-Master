@@ -30,17 +30,10 @@ class ConsequenceManager(EntityManager):
             data = {'active': [], 'resolved': []}
             self.json_ops.save_json(self.consequences_file, data)
 
-    def add_consequence(self, description: str, trigger: str, trigger_hours: Optional[int] = None) -> str:
+    def add_consequence(self, description: str, trigger: str) -> str:
         """
-        Add a new consequence with optional automatic triggering.
-
-        Args:
-            description: What happens
-            trigger: Human-readable trigger description
-            trigger_hours: Hours until trigger (None = event-based)
-
-        Returns:
-            Consequence ID
+        Add a new consequence
+        Returns the consequence ID
         """
         data = self.json_ops.load_json(self.consequences_file)
 
@@ -49,8 +42,6 @@ class ConsequenceManager(EntityManager):
             'id': consequence_id,
             'consequence': description,
             'trigger': trigger,
-            'trigger_hours': trigger_hours,
-            'hours_elapsed': 0 if trigger_hours is not None else None,
             'created': self.json_ops.get_timestamp()
         }
 
@@ -59,10 +50,7 @@ class ConsequenceManager(EntityManager):
         data['active'].append(consequence)
 
         if self.json_ops.save_json(self.consequences_file, data):
-            if trigger_hours is not None:
-                print(f"[SUCCESS] Added timed consequence [{consequence_id}]: {description} (triggers in {trigger_hours}h)")
-            else:
-                print(f"[SUCCESS] Added event consequence [{consequence_id}]: {description} (triggers: {trigger})")
+            print(f"[SUCCESS] Added consequence [{consequence_id}]: {description} (triggers: {trigger})")
             return consequence_id
         return ""
 
@@ -121,8 +109,7 @@ def main():
     # Add consequence
     add_parser = subparsers.add_parser('add', help='Add new consequence')
     add_parser.add_argument('description', help='Consequence description')
-    add_parser.add_argument('trigger', help='Trigger condition or time description')
-    add_parser.add_argument('--hours', type=int, default=None, help='Hours until trigger (for automatic)')
+    add_parser.add_argument('trigger', help='Trigger condition')
 
     # Check pending
     subparsers.add_parser('check', help='Check pending consequences')
@@ -143,7 +130,7 @@ def main():
     manager = ConsequenceManager()
 
     if args.action == 'add':
-        if not manager.add_consequence(args.description, args.trigger, args.hours):
+        if not manager.add_consequence(args.description, args.trigger):
             sys.exit(1)
 
     elif args.action == 'check':
@@ -153,21 +140,7 @@ def main():
         else:
             print(f"{len(pending)} pending consequences:")
             for c in pending:
-                time_info = c['trigger']
-                th = c.get('trigger_hours')
-                he = c.get('hours_elapsed')
-                if th is not None and he is not None:
-                    remaining = th - he
-                    if remaining <= 0:
-                        time_info = "IMMINENT!"
-                    elif remaining < 1:
-                        time_info = f"{int(remaining * 60)}min left"
-                    elif remaining < 24:
-                        time_info = f"{remaining:.1f}h left"
-                    else:
-                        days = remaining / 24
-                        time_info = f"{days:.1f}d left ({remaining:.0f}h)"
-                print(f"  [{c['id']}] {c['consequence']} ({time_info})")
+                print(f"  [{c['id']}] {c['consequence']} (triggers: {c['trigger']})")
 
     elif args.action == 'resolve':
         if not manager.resolve(args.id):

@@ -275,6 +275,150 @@ class SurvivalEngine:
         if not stat_changes and not stat_consequences:
             print("[OK] No survival effects triggered")
 
+    def _get_active_character_name(self) -> str:
+        """Get active character name from campaign overview."""
+        campaign = self.json_ops.load_json("campaign-overview.json")
+        char_name = campaign.get('current_character')
+        if not char_name:
+            raise RuntimeError("No active character in campaign")
+        return char_name
+
+    def get_custom_stat(self, name: str = None, stat: str = None) -> dict:
+        """Get custom stat value. If name is None, uses active character."""
+        if name is None:
+            name = self._get_active_character_name()
+
+        char = self.player_mgr.get_player(name)
+        if not char:
+            raise RuntimeError(f"Character '{name}' not found")
+
+        custom_stats = char.get('custom_stats', {})
+        if stat and stat not in custom_stats:
+            raise RuntimeError(f"Custom stat '{stat}' not found for {name}")
+
+        if stat:
+            return {stat: custom_stats[stat]}
+        return custom_stats
+
+    def modify_custom_stat(self, name: str = None, stat: str = None, amount: float = 0) -> dict:
+        """Modify custom stat. Clamp to min/max. If name is None, uses active character."""
+        if name is None:
+            name = self._get_active_character_name()
+
+        result = self.player_mgr.modify_custom_stat(name=name, stat=stat, amount=amount)
+        if not result or not result.get('success'):
+            raise RuntimeError(f"Failed to modify custom stat '{stat}' for {name}")
+
+        return result
+
+    def list_custom_stats(self, name: str = None) -> dict:
+        """List all custom stats for character."""
+        if name is None:
+            name = self._get_active_character_name()
+
+        char = self.player_mgr.get_player(name)
+        if not char:
+            raise RuntimeError(f"Character '{name}' not found")
+
+        return char.get('custom_stats', {})
+
+    def advance_time(self, time_of_day: str, date: str, elapsed_hours: float = 0,
+                     precise_time: str = None, sleeping: bool = False) -> bool:
+        """
+        Full time advance with survival mechanics.
+
+        1. If precise_time given, auto-calculate elapsed from previous precise_time
+        2. Update campaign-overview.json with time_of_day, date, precise_time
+        3. If elapsed_hours > 0, call self.tick(elapsed_hours, sleeping) for stat effects
+        4. Check timed consequences (_check_time_consequences)
+        5. Print report
+        """
+        campaign = self.json_ops.load_json("campaign-overview.json")
+
+        auto_elapsed = 0
+        if precise_time:
+            previous_time = campaign.get('time', {}).get('precise_time')
+            previous_date = campaign.get('time', {}).get('date')
+            if previous_time and previous_date:
+                auto_elapsed = self._calculate_elapsed_hours(previous_time, precise_time, previous_date, date)
+            elapsed_hours = auto_elapsed
+
+        campaign.setdefault('time', {})
+        campaign['time']['time_of_day'] = time_of_day
+        campaign['time']['date'] = date
+        if precise_time:
+            campaign['time']['precise_time'] = precise_time
+
+        self.json_ops.save_json("campaign-overview.json", campaign)
+
+        stat_changes = []
+        stat_consequences = []
+        timed_consequences = []
+
+        if elapsed_hours > 0:
+            result = self.tick(elapsed_hours, sleeping=sleeping)
+            stat_changes = result['stat_changes']
+            stat_consequences = result['stat_consequences']
+
+            timed_consequences = self._check_time_consequences(elapsed_hours)
+
+        print(f"\n[SUCCESS] Time updated to: {time_of_day} ({precise_time or 'no precise time'}), {date}")
+        if elapsed_hours > 0:
+            print(f"Elapsed: {elapsed_hours:.2f} hours")
+
+        if timed_consequences:
+            print("\nTriggered Events:")
+            for tc in timed_consequences:
+                print(f"  ⚠️ {tc['event']}")
+
+        return True
+
+    def _calculate_elapsed_hours(self, prev_time: str, new_time: str, prev_date: str, new_date: str) -> float:
+        """Calculate elapsed hours between two precise times and dates."""
+        def parse_time(t: str) -> float:
+            parts = t.split(':')
+            return float(parts[0]) + float(parts[1]) / 60
+
+        prev_hours = parse_time(prev_time)
+        new_hours = parse_time(new_time)
+
+        date_diff = 0
+        if new_date != prev_date:
+            try:
+                prev_day = int(prev_date.split()[0].rstrip('stndrdth'))
+                new_day = int(new_date.split()[0].rstrip('stndrdth'))
+                date_diff = (new_day - prev_day) * 24
+            except (ValueError, IndexError):
+                date_diff = 0
+
+        return date_diff + (new_hours - prev_hours)
+
+    def _check_time_consequences(self, elapsed_hours: float) -> list:
+        """Check and trigger time-based consequences (trigger_hours field)."""
+        consequences = self.json_ops.load_json("consequences.json")
+        triggered = []
+
+        for consequence in consequences.get('active', []):
+            trigger_hours = consequence.get('trigger_hours')
+            if trigger_hours is None:
+                continue
+
+            hours_elapsed = consequence.get('hours_elapsed', 0)
+            hours_elapsed += elapsed_hours
+            consequence['hours_elapsed'] = hours_elapsed
+
+            if hours_elapsed >= trigger_hours:
+                triggered.append(consequence)
+                consequences.setdefault('resolved', []).append({
+                    **consequence,
+                    'resolution': f"Auto-triggered after {hours_elapsed:.1f} hours"
+                })
+
+        consequences['active'] = [c for c in consequences.get('active', []) if c not in triggered]
+        self.json_ops.save_json("consequences.json", consequences)
+
+        return triggered
+
 
 def main():
     parser = argparse.ArgumentParser(description='Survival Stats Module')
@@ -285,6 +429,21 @@ def main():
     tick_parser.add_argument('--sleeping', action='store_true', help='Character is sleeping')
 
     subparsers.add_parser('status', help='Show current custom stats')
+
+    custom_stat_parser = subparsers.add_parser('custom-stat', help='Get or modify custom stat')
+    custom_stat_parser.add_argument('name', nargs='?', help='Character name (optional, auto-detects)')
+    custom_stat_parser.add_argument('stat', help='Stat name')
+    custom_stat_parser.add_argument('amount', nargs='?', help='Amount to modify (+/- prefix)')
+
+    list_parser = subparsers.add_parser('custom-stats-list', help='List all custom stats')
+    list_parser.add_argument('name', nargs='?', help='Character name (optional, auto-detects)')
+
+    time_parser = subparsers.add_parser('time', help='Advance time with survival effects')
+    time_parser.add_argument('time_of_day', help='Time of day label (Morning, Afternoon, etc.)')
+    time_parser.add_argument('date', help='Date string')
+    time_parser.add_argument('--elapsed', type=float, default=0, help='Hours elapsed')
+    time_parser.add_argument('--precise-time', help='HH:MM format for auto-elapsed calculation')
+    time_parser.add_argument('--sleeping', action='store_true', help='Character is sleeping')
 
     args = parser.parse_args()
 
@@ -299,6 +458,63 @@ def main():
             engine.tick(args.elapsed, sleeping=args.sleeping)
         elif args.action == 'status':
             engine.status()
+        elif args.action == 'custom-stat':
+            if not args.stat:
+                name = None
+                stat = args.name
+                amount_str = None
+            elif not args.amount:
+                if args.stat and (args.stat.startswith('+') or args.stat.startswith('-') or args.stat.replace('.', '', 1).replace('-', '', 1).isdigit()):
+                    name = None
+                    stat = args.name
+                    amount_str = args.stat
+                else:
+                    name = args.name
+                    stat = args.stat
+                    amount_str = None
+            else:
+                name = args.name
+                stat = args.stat
+                amount_str = args.amount
+
+            if amount_str:
+                try:
+                    amount = float(amount_str)
+                    result = engine.modify_custom_stat(name=name, stat=stat, amount=amount)
+                    print(f"[SUCCESS] {stat}: {result['old_value']} → {result['new_value']} ({amount:+.1f})")
+                except ValueError:
+                    print(f"[ERROR] Invalid amount: {amount_str}")
+                    sys.exit(1)
+            else:
+                result = engine.get_custom_stat(name=name, stat=stat)
+                stat_data = result[stat]
+                current = stat_data['current']
+                max_val = stat_data.get('max')
+                if max_val is not None:
+                    print(f"{stat}: {current}/{max_val}")
+                else:
+                    print(f"{stat}: {current}")
+
+        elif args.action == 'custom-stats-list':
+            stats = engine.list_custom_stats(name=args.name)
+            char_name = args.name or engine._get_active_character_name()
+            print(f"Custom Stats for {char_name}:")
+            for stat_name, stat_data in stats.items():
+                current = stat_data['current']
+                max_val = stat_data.get('max')
+                if max_val is not None:
+                    print(f"  {stat_name}: {current}/{max_val}")
+                else:
+                    print(f"  {stat_name}: {current}")
+
+        elif args.action == 'time':
+            engine.advance_time(
+                time_of_day=args.time_of_day,
+                date=args.date,
+                elapsed_hours=args.elapsed,
+                precise_time=args.precise_time,
+                sleeping=args.sleeping
+            )
 
     except RuntimeError as e:
         print(f"[ERROR] {e}")

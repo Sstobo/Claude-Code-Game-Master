@@ -1,0 +1,8 @@
+{
+  "name": "inventory-system",
+  "version": "1.0.0",
+  "description": "Unified inventory manager with atomic transactions, stackable/unique items",
+  "author": "DM System",
+  "tools": ["dm-inventory.sh"],
+  "requires_campaign_rules": false
+}

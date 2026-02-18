@@ -13,6 +13,9 @@ if [ "$#" -lt 1 ]; then
     echo "Actions:"
     echo "  add <name> <position> --from <loc> --bearing <deg> --distance <m> [--terrain <type>]"
     echo "                                            - Add location with coordinates"
+    echo "  move <location> [--speed-multiplier X]     - Move party with distance-based time calc"
+    echo "  connect <from> <to> <path> [--terrain <type>] [--distance <m>]"
+    echo "                                            - Create connection with metadata"
     echo "  decide <from> <to>                        - Interactive route decision"
     echo "  routes <from> <to>                        - Show all possible routes"
     echo "  block <location> <from_deg> <to_deg> <reason> - Block direction range"
@@ -20,6 +23,8 @@ if [ "$#" -lt 1 ]; then
     echo ""
     echo "Examples:"
     echo "  dm-navigation.sh add \"Temple\" \"1km north\" --from \"Village\" --bearing 0 --distance 1000"
+    echo "  dm-navigation.sh move \"Temple\" --speed-multiplier 1.5"
+    echo "  dm-navigation.sh connect \"Village\" \"Temple\" \"Overgrown path\" --terrain forest --distance 1000"
     echo "  dm-navigation.sh decide \"Village\" \"Temple\""
     echo "  dm-navigation.sh routes \"Village\" \"Temple\""
     echo "  dm-navigation.sh block \"Village\" 160 200 \"Steep cliff\""
@@ -40,6 +45,22 @@ case "$ACTION" in
             exit 1
         fi
         $PYTHON_CMD "$MODULE_DIR/lib/navigation_manager.py" add "$CAMPAIGN_DIR" "$@"
+        ;;
+
+    move)
+        if [ "$#" -lt 1 ]; then
+            echo "Usage: dm-navigation.sh move <location> [--speed-multiplier X]"
+            exit 1
+        fi
+        $PYTHON_CMD "$MODULE_DIR/lib/navigation_manager.py" move "$CAMPAIGN_DIR" "$@"
+        ;;
+
+    connect)
+        if [ "$#" -lt 3 ]; then
+            echo "Usage: dm-navigation.sh connect <from> <to> <path> [--terrain <type>] [--distance <m>]"
+            exit 1
+        fi
+        $PYTHON_CMD "$MODULE_DIR/lib/navigation_manager.py" connect "$CAMPAIGN_DIR" "$@"
         ;;
 
     decide)
@@ -76,7 +97,7 @@ case "$ACTION" in
 
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: add, decide, routes, block, unblock"
+        echo "Valid actions: add, move, connect, decide, routes, block, unblock"
         exit 1
         ;;
 esac

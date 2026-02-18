@@ -22,6 +22,8 @@ from lib.connection_utils import (
     add_canonical_connection,
     remove_canonical_connection
 )
+from lib.session_manager import SessionManager
+from lib.campaign_manager import CampaignManager
 
 MODULE_DIR = Path(__file__).parent
 sys.path.insert(0, str(MODULE_DIR))
@@ -295,6 +297,135 @@ class NavigationManager:
         print("=" * 60)
         return True
 
+    def move_with_navigation(self, location: str, speed_multiplier: float = 1.0) -> Dict:
+        """
+        Move party with distance-based time calculation.
+
+        1. Load locations, find connection between current location and destination
+        2. Get distance_meters from connection
+        3. Get character speed (from character.json, default 4.0 km/h)
+        4. Calculate elapsed_hours = (distance_meters / 1000) / (speed_kmh * speed_multiplier)
+        5. Try to advance clock via survival-stats module (if present), else print elapsed time
+        6. Call CORE session_manager.move_party(location) for the actual move
+        7. Return result dict
+        """
+        import subprocess
+        from pathlib import Path
+
+        campaign_overview = self.json_ops.load_json("campaign-overview.json")
+        character_data = self.json_ops.load_json("character.json")
+        locations = self.json_ops.load_json("locations.json")
+
+        if not campaign_overview:
+            return {"success": False, "error": "No campaign overview found"}
+
+        current_location = campaign_overview.get("current_location")
+        if not current_location:
+            return {"success": False, "error": "No current location set"}
+
+        if location not in locations:
+            return {"success": False, "error": f"Location '{location}' not found"}
+
+        if current_location == location:
+            return {"success": False, "error": "Already at that location"}
+
+        connection = get_connection_between(current_location, location, locations)
+        if not connection:
+            return {"success": False, "error": f"No connection between '{current_location}' and '{location}'"}
+
+        distance_meters = connection.get("distance_meters")
+        if not distance_meters:
+            print("[WARNING] No distance_meters in connection — skipping time calculation")
+            elapsed_hours = 0
+        else:
+            speed_kmh = character_data.get("speed_kmh", 4.0)
+            elapsed_hours = (distance_meters / 1000.0) / (speed_kmh * speed_multiplier)
+
+        project_root = Path(__file__).parent.parent.parent.parent
+        survival_stats_script = project_root / ".claude" / "modules" / "survival-stats" / "tools" / "dm-survival.sh"
+
+        if elapsed_hours > 0:
+            if survival_stats_script.exists():
+                try:
+                    result = subprocess.run(
+                        ["bash", str(survival_stats_script), "time", str(elapsed_hours)],
+                        capture_output=True,
+                        text=True,
+                        check=False
+                    )
+                    if result.returncode == 0:
+                        print(result.stdout.strip())
+                    else:
+                        print(f"[WARNING] survival-stats time advance failed: {result.stderr.strip()}")
+                except Exception as e:
+                    print(f"[WARNING] Could not call survival-stats module: {e}")
+            else:
+                print(f"[INFO] Travel time: {elapsed_hours:.2f} hours ({distance_meters}m)")
+
+        session_mgr = SessionManager(str(self.json_ops.campaign_dir))
+        move_result = session_mgr.move_party(location)
+
+        if move_result.get("success"):
+            return {
+                "success": True,
+                "location": location,
+                "distance_meters": distance_meters,
+                "elapsed_hours": elapsed_hours
+            }
+        else:
+            return {"success": False, "error": move_result.get("message", "Move failed")}
+
+    def connect_with_metadata(
+        self,
+        from_loc: str,
+        to_loc: str,
+        path: str,
+        terrain: str = None,
+        distance: float = None
+    ) -> bool:
+        """
+        Create canonical bidirectional connection with terrain/distance/bearing.
+        Uses add_canonical_connection from connection_utils.
+        """
+        locations = self.json_ops.load_json("locations.json")
+
+        if from_loc not in locations:
+            print(f"[ERROR] Location '{from_loc}' not found")
+            return False
+        if to_loc not in locations:
+            print(f"[ERROR] Location '{to_loc}' not found")
+            return False
+
+        existing = get_connection_between(from_loc, to_loc, locations)
+        if existing:
+            print(f"[ERROR] Connection already exists between '{from_loc}' and '{to_loc}'")
+            return False
+
+        kwargs = {"path": path}
+        if terrain:
+            kwargs["terrain"] = terrain
+        if distance is not None:
+            kwargs["distance_meters"] = int(distance)
+
+        from_coords = locations[from_loc].get("coordinates")
+        to_coords = locations[to_loc].get("coordinates")
+        if from_coords and to_coords:
+            bearing = self.pf.calculate_bearing(from_coords, to_coords)
+            kwargs["bearing"] = bearing
+
+        add_canonical_connection(from_loc, to_loc, locations, **kwargs)
+
+        if self.json_ops.save_json("locations.json", locations):
+            print(f"[SUCCESS] Connected '{from_loc}' ↔ '{to_loc}'")
+            if terrain:
+                print(f"  Terrain: {terrain}")
+            if distance:
+                print(f"  Distance: {distance}m")
+            if "bearing" in kwargs:
+                print(f"  Bearing: {kwargs['bearing']}°")
+            return True
+        return False
+
 
 if __name__ == "__main__":
     import argparse
@@ -333,6 +464,19 @@ if __name__ == "__main__":
     unblock_parser.add_argument('location', help='Location name')
     unblock_parser.add_argument('from_deg', type=float, help='From bearing (degrees)')
     unblock_parser.add_argument('to_deg', type=float, help='To bearing (degrees)')
+
+    move_parser = subparsers.add_parser('move', help='Move party with navigation')
+    move_parser.add_argument('campaign_dir', help='Campaign directory path')
+    move_parser.add_argument('location', help='Destination location')
+    move_parser.add_argument('--speed-multiplier', type=float, default=1.0, help='Speed multiplier (default 1.0)')
+
+    connect_parser = subparsers.add_parser('connect', help='Create connection with metadata')
+    connect_parser.add_argument('campaign_dir', help='Campaign directory path')
+    connect_parser.add_argument('from_loc', help='From location')
+    connect_parser.add_argument('to_loc', help='To location')
+    connect_parser.add_argument('path', help='Path description')
+    connect_parser.add_argument('--terrain', help='Terrain type')
+    connect_parser.add_argument('--distance', type=float, help='Distance in meters')
 
     args = parser.parse_args()
 
@@ -379,4 +523,22 @@ if __name__ == "__main__":
 
     elif args.action == 'unblock':
         if not manager.unblock_direction(args.location, args.from_deg, args.to_deg):
+            sys.exit(1)
+
+    elif args.action == 'move':
+        result = manager.move_with_navigation(args.location, args.speed_multiplier)
+        if not result.get("success"):
+            print(f"[ERROR] {result.get('error')}")
+            sys.exit(1)
+        print(f"[SUCCESS] Moved to: {result['location']}")
+        if result.get('distance_meters'):
+            print(f"  Distance: {result['distance_meters']}m")
+        if result.get('elapsed_hours'):
+            print(f"  Travel time: {result['elapsed_hours']:.2f} hours")
+
+    elif args.action == 'connect':
+        if not manager.connect_with_metadata(
+            args.from_loc, args.to_loc, args.path,
+            terrain=args.terrain, distance=args.distance
+        ):
             sys.exit(1)

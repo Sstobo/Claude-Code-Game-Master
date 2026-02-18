@@ -64,7 +64,25 @@ case "$ACTION" in
             echo "Usage: dm-location.sh connect <from> <to> [path] [--terrain <type>] [--distance <meters>]"
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/location_manager.py" connect "$@"
+        # Check if --terrain or --distance flags are present → delegate to navigation module
+        HAS_NAV_FLAGS=false
+        for arg in "$@"; do
+            if [ "$arg" = "--terrain" ] || [ "$arg" = "--distance" ]; then
+                HAS_NAV_FLAGS=true
+                break
+            fi
+        done
+        if [ "$HAS_NAV_FLAGS" = true ]; then
+            NAV="$PROJECT_ROOT/.claude/modules/coordinate-navigation"
+            if [ -d "$NAV" ]; then
+                bash "$NAV/tools/dm-navigation.sh" connect "$@"
+            else
+                echo "[ERROR] --terrain/--distance require the coordinate-navigation module"
+                exit 1
+            fi
+        else
+            $PYTHON_CMD "$LIB_DIR/location_manager.py" connect "$@"
+        fi
         ;;
 
     describe)

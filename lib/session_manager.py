@@ -14,7 +14,6 @@ from datetime import datetime, timezone
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
-from connection_utils import get_connection_between, get_connections as cu_get_connections
 
 
 class SessionManager(EntityManager):
@@ -107,15 +106,15 @@ class SessionManager(EntityManager):
 
     # ==================== Party Movement ====================
 
-    def _ensure_location_and_connection(self, old_location: str, new_location: str) -> bool:
+    def _ensure_location_and_connection(self, old_location: str, new_location: str) -> None:
         """
-        Check that destination exists and path exists.
-        Auto-creates destination if missing, but does NOT auto-create connections.
-        Returns True if move is allowed, False if blocked (no path).
+        Auto-create destination location if missing and add bidirectional
+        connection between old and new location if one doesn't exist.
         """
         locations = self.json_ops.load_json("locations.json") or {}
         changed = False
 
+        # Create destination if it doesn't exist
         if new_location not in locations:
             locations[new_location] = {
                 "position": "unknown",
@@ -124,26 +123,30 @@ class SessionManager(EntityManager):
                 "discovered": self.get_timestamp()
             }
             changed = True
-            if changed:
-                self.json_ops.save_json("locations.json", locations)
 
+        # Add bidirectional connection if old location is valid and known
         if old_location and old_location != "Unknown" and old_location in locations:
-            conn = get_connection_between(old_location, new_location, locations)
-            if conn is None:
-                print(f'[ERROR] No path between "{old_location}" and "{new_location}"')
-                print(f'Create one first: bash tools/dm-location.sh connect "{old_location}" "{new_location}" --terrain <type> --distance <meters>')
-                return False
+            # Check if connection from old -> new exists
+            old_connections = locations[old_location].get("connections", [])
+            if not any(c.get("to") == new_location for c in old_connections):
+                old_connections.append({"to": new_location, "path": "traveled"})
+                locations[old_location]["connections"] = old_connections
+                changed = True
 
-        return True
+            # Check if connection from new -> old exists
+            new_connections = locations[new_location].get("connections", [])
+            if not any(c.get("to") == old_location for c in new_connections):
+                new_connections.append({"to": old_location, "path": "traveled"})
+                locations[new_location]["connections"] = new_connections
+                changed = True
 
-    def move_party(self, location: str, speed_multiplier: float = 1.0) -> Dict[str, str]:
+        if changed:
+            self.json_ops.save_json("locations.json", locations)
+
+    def move_party(self, location: str) -> Dict[str, str]:
         """
-        Move party to new location with automatic time calculation
+        Move party to new location
         Returns dict with previous and current location
-
-        NOTE: Encounter checks removed from session manager.
-        DM should call dm-encounter.sh separately when needed.
-        See .claude/modules/encounter-system/rules.md for details.
         """
         campaign = self.json_ops.load_json(self.campaign_file)
 
@@ -152,119 +155,39 @@ class SessionManager(EntityManager):
 
         old_location = campaign['player_position'].get('current_location', 'Unknown')
 
-        # STEP 1: Check location and path exist
-        if not self._ensure_location_and_connection(old_location, location):
-            return {"status": "error", "message": f"No path between {old_location} and {location}"}
+        # Auto-create location and connections
+        self._ensure_location_and_connection(old_location, location)
 
-        # STEP 2: Get travel info from direct connection
-        distance_meters, terrain = self._get_travel_info(old_location, location)
-
-        if distance_meters == 0:
-            return self._simple_move(old_location, location)
-
-        # STEP 3: Calculate travel time
-        char_speed = self._get_character_speed() * speed_multiplier
-        elapsed_hours = (distance_meters / 1000.0) / char_speed
-
-        # STEP 5: Arrive at destination
         campaign['player_position']['previous_location'] = old_location
         campaign['player_position']['current_location'] = location
         campaign['player_position']['arrival_time'] = self.get_timestamp()
 
         self.json_ops.save_json(self.campaign_file, campaign)
 
-        # Update character location
+        # Update character's location if exists
+        # Try new single character.json first, fall back to legacy characters/ dir
         if self.character_file.exists():
             char_data = self.json_ops.load_json("character.json")
             char_data['current_location'] = location
             self.json_ops.save_json("character.json", char_data)
-
-        if elapsed_hours > 0:
-            self._advance_clock(elapsed_hours)
+        else:
+            # Legacy: check characters/ directory
+            active_char = campaign.get('current_character', '')
+            if active_char:
+                char_id = active_char.lower().replace(' ', '-')
+                char_file = self.characters_dir / f"{char_id}.json"
+                if char_file.exists():
+                    char_data = self.json_ops.load_json(str(char_file))
+                    char_data['current_location'] = location
+                    self.json_ops.save_json(str(char_file), char_data)
 
         result = {
             "previous_location": old_location,
-            "current_location": location,
-            "travel_hours": elapsed_hours
+            "current_location": location
         }
 
         print(f"[SUCCESS] Party moved from {old_location} to {location}")
-        if elapsed_hours > 0:
-            minutes = int(elapsed_hours * 60)
-            print(f"[TIME] Travel time: {minutes} minutes ({elapsed_hours:.2f} hours)")
-
         return result
-
-
-    def _simple_move(self, from_loc: str, to_loc: str) -> dict:
-        """Simple movement without time/encounters"""
-        campaign = self.json_ops.load_json(self.campaign_file)
-
-        campaign['player_position']['previous_location'] = from_loc
-        campaign['player_position']['current_location'] = to_loc
-        self.json_ops.save_json(self.campaign_file, campaign)
-
-        if self.character_file.exists():
-            char_data = self.json_ops.load_json("character.json")
-            char_data['current_location'] = to_loc
-            self.json_ops.save_json("character.json", char_data)
-
-        print(f"[SUCCESS] Party moved from {from_loc} to {to_loc}")
-
-        return {
-            "previous_location": from_loc,
-            "current_location": to_loc,
-            "travel_hours": 0
-        }
-
-    def _get_travel_info(self, from_loc: str, to_loc: str) -> tuple:
-        """Get distance and terrain from direct connection between locations."""
-        locations = self.json_ops.load_json("locations.json") or {}
-        conn = get_connection_between(from_loc, to_loc, locations)
-        if not conn:
-            return 0, 'open'
-        return conn.get('distance_meters', 0), conn.get('terrain', 'open')
-
-    def _get_character_speed(self) -> float:
-        """Get character speed in km/h"""
-        if self.character_file.exists():
-            char_data = self.json_ops.load_json("character.json")
-            return char_data.get('speed_kmh', 4.0)
-        return 4.0
-
-    def _advance_clock(self, elapsed_hours: float):
-        """Advance campaign clock and print [ELAPSED] for DM to pick up."""
-        from lib.time_manager import TimeManager
-
-        time_mgr = TimeManager(str(self.campaign_dir.parent.parent))
-
-        campaign = self.json_ops.load_json(self.campaign_file)
-        time_of_day = campaign.get('time_of_day', 'Unknown')
-        current_date = campaign.get('current_date', 'Unknown')
-
-        precise_time = campaign.get('precise_time')
-        if precise_time:
-            from datetime import datetime, timedelta
-            try:
-                current_time = datetime.strptime(precise_time, "%H:%M")
-                new_time = current_time + timedelta(hours=elapsed_hours)
-                new_precise = new_time.strftime("%H:%M")
-
-                hour = new_time.hour
-                if 5 <= hour < 12:
-                    time_of_day = "Morning"
-                elif 12 <= hour < 17:
-                    time_of_day = "Day"
-                elif 17 <= hour < 21:
-                    time_of_day = "Evening"
-                else:
-                    time_of_day = "Night"
-
-                time_mgr.update_time(time_of_day, current_date, elapsed_hours=elapsed_hours, precise_time=new_precise)
-            except Exception:
-                time_mgr.update_time(time_of_day, current_date, elapsed_hours=elapsed_hours)
-        else:
-            time_mgr.update_time(time_of_day, current_date, elapsed_hours=elapsed_hours)
 
     # ==================== Save System ====================
 
@@ -662,7 +585,6 @@ def main():
     # Move party
     move_parser = subparsers.add_parser('move', help='Move party to location')
     move_parser.add_argument('location', nargs='+', help='Location name')
-    move_parser.add_argument('--speed-multiplier', type=float, default=1.0, help='Speed modifier (0.5=stealth, 2.0=mount)')
 
     # Save
     save_parser = subparsers.add_parser('save', help='Create save point')
@@ -709,7 +631,7 @@ def main():
 
     elif args.action == 'move':
         location = ' '.join(args.location)
-        result = manager.move_party(location, speed_multiplier=args.speed_multiplier)
+        result = manager.move_party(location)
         print(json.dumps(result, indent=2, ensure_ascii=False))
 
     elif args.action == 'save':

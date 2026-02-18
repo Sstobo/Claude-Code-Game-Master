@@ -102,35 +102,6 @@ class PlotManager(EntityManager):
 
         return results
 
-    def add_plot(self, name: str, plot_type: str = "side", description: str = "",
-                 npcs: List[str] = None, locations: List[str] = None,
-                 objectives: List[str] = None, rewards: str = "",
-                 consequences: str = "") -> bool:
-        plots = self._load_entities(self.plots_file)
-
-        if name in plots:
-            print(f"[ERROR] Plot '{name}' already exists")
-            return False
-
-        plots[name] = {
-            "type": plot_type,
-            "status": "active",
-            "description": description,
-            "npcs": npcs or [],
-            "locations": locations or [],
-            "objectives": objectives or [],
-            "rewards": rewards,
-            "consequences": consequences,
-            "events": [],
-            "completed_at": None,
-            "failed_at": None
-        }
-
-        if self._save_entities(self.plots_file, plots):
-            print(f"[SUCCESS] Added plot: {name} ({plot_type})")
-            return True
-        return False
-
     def update_plot(self, name: str, event: str) -> bool:
         """
         Add a progress event to a plot's history
@@ -488,17 +459,6 @@ def main():
     parser = argparse.ArgumentParser(description='Plot management')
     subparsers = parser.add_subparsers(dest='action', help='Action to perform')
 
-    # Add plot
-    add_parser = subparsers.add_parser('add', help='Add a new plot')
-    add_parser.add_argument('name', help='Plot name')
-    add_parser.add_argument('description', help='Plot description')
-    add_parser.add_argument('--type', default='side', help='Plot type (main, side, mystery, threat)')
-    add_parser.add_argument('--npcs', nargs='*', default=[], help='NPCs involved')
-    add_parser.add_argument('--locations', nargs='*', default=[], help='Locations involved')
-    add_parser.add_argument('--objectives', nargs='*', default=[], help='Quest objectives')
-    add_parser.add_argument('--rewards', default='', help='Rewards description')
-    add_parser.add_argument('--consequences', default='', help='Consequences description')
-
     # List plots
     list_parser = subparsers.add_parser('list', help='List plots')
     list_parser.add_argument('--type', help='Filter by type (main, side, mystery, threat)')
@@ -541,15 +501,7 @@ def main():
 
     manager = PlotManager()
 
-    if args.action == 'add':
-        if not manager.add_plot(
-            args.name, plot_type=args.type, description=args.description,
-            npcs=args.npcs, locations=args.locations, objectives=args.objectives,
-            rewards=args.rewards, consequences=args.consequences
-        ):
-            sys.exit(1)
-
-    elif args.action == 'list':
+    if args.action == 'list':
         plots = manager.list_plots(args.type, args.status)
         print(manager.format_plot_list(plots))
 
