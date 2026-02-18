@@ -1,17 +1,12 @@
 #!/bin/bash
 # dm-plot.sh - Manage plot hooks and storylines
-# Uses Python modules for validation and data operations
 
-# Source common utilities
 source "$(dirname "$0")/common.sh"
-
-# Usage: dm-plot.sh <action> [args]
 
 if [ "$#" -lt 1 ]; then
     echo "Usage: dm-plot.sh <action> [args]"
     echo ""
     echo "=== Plot Management ==="
-    echo "  add <name> <desc> [OPTIONS]      Add a new plot/quest"
     echo "  list [--type X] [--status Y]     List plots (filter by type/status)"
     echo "  show <name>                      Show full plot details"
     echo "  search <query>                   Search plots by name, NPCs, locations"
@@ -20,6 +15,7 @@ if [ "$#" -lt 1 ]; then
     echo "  fail <name> [reason]             Mark plot as failed"
     echo "  threads                          Active story threads (DM dashboard)"
     echo "  counts                           Show plot statistics"
+    dispatch_middleware_help "dm-plot.sh"
     echo ""
     echo "Types: main, side, mystery, threat"
     echo "Status: active, completed, failed, dormant"
@@ -29,7 +25,6 @@ if [ "$#" -lt 1 ]; then
     echo "  dm-plot.sh list --type main --status active  # Active main plots only"
     echo "  dm-plot.sh show \"The Eight Day Countdown\"    # Full plot details"
     echo "  dm-plot.sh search \"Mordecai\"                 # Find plots with Mordecai"
-    echo "  dm-plot.sh add \"Hunt\" \"Kill 3 boars\" --type side --npcs Barkeep --rewards \"600g\""
     echo "  dm-plot.sh update \"Murder Mystery\" \"Found first clue at docks\""
     echo "  dm-plot.sh complete \"Side Quest\" \"Rescued the merchant\""
     exit 1
@@ -38,21 +33,11 @@ fi
 require_active_campaign
 
 ACTION="$1"
-shift  # Remove action from arguments
+shift
+
+dispatch_middleware "dm-plot.sh" "$ACTION" "$@" && exit $?
 
 case "$ACTION" in
-    add)
-        if [ "$#" -lt 2 ]; then
-            echo "Usage: dm-plot.sh add <name> <description>"
-            dispatch_middleware_help "dm-plot.sh"
-            exit 1
-        fi
-        dispatch_middleware "dm-plot.sh" "$ACTION" "$@" || {
-            echo "[ERROR] dm-plot.sh add requires the quest-system module"
-            exit 1
-        }
-        ;;
-
     list)
         $PYTHON_CMD "$LIB_DIR/plot_manager.py" list "$@"
         ;;
@@ -124,5 +109,4 @@ case "$ACTION" in
         ;;
 esac
 
-# Exit with the same status as the Python command
 exit $?

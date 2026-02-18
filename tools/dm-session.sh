@@ -10,7 +10,8 @@ if [ "$#" -lt 1 ]; then
     echo "  start                    - Begin new session, show world state"
     echo "  end <summary>            - End session with summary"
     echo "  status                   - Show current campaign status"
-    echo "  move <location> [--speed-multiplier X]  - Move party (0.5=stealth, 2.0=mount)"
+    echo "  move <location>          - Move party to new location"
+    dispatch_middleware_help "dm-session.sh"
     echo "  context                  - Full session context (character, party, consequences, rules)"
     echo ""
     echo "Save System (JSON snapshots):"
@@ -85,7 +86,7 @@ case "$ACTION" in
 
     move)
         if [ "$#" -lt 1 ]; then
-            echo "Usage: dm-session.sh move <location> [--speed-multiplier X]"
+            echo "Usage: dm-session.sh move <location>"
             exit 1
         fi
         echo "Moving Party"
