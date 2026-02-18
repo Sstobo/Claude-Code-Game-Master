@@ -1433,9 +1433,48 @@ When creating new campaigns with specialized mechanics, use pre-built templates 
 
 ## Modules
 
-At session start, if campaign has `campaign_rules.time_effects.enabled = true`, load `.claude/modules/survival-stats/rules.md` and follow its instructions throughout the session.
+### Module Rules
 
-Available modules: `bash tools/dm-module.sh list`
+All active module rules are injected automatically when `/dm` starts — you already have them in context. Use them throughout the session.
+
+### Enabling Modules for a New Campaign
+
+When creating a new campaign, **always scan available modules and present them to the player as optional mods to enable.**
+
+**Step 1: Scan modules**
+```bash
+bash tools/dm-module.sh list
+```
+Read each module's `description` from the output. Present them to the player as a numbered menu with the description as a one-liner.
+
+**Step 2: Present menu**
+```
+================================================================
+  OPTIONAL MODS
+  ────────────────────────────────────────────────────────────
+  [1] Module Name — short description from module.json
+  [2] Module Name — short description from module.json
+  ...
+  [A] Enable ALL
+  [N] None — standard D&D only
+================================================================
+  Which mods do you want? (e.g. "1 3" or "A"):
+```
+
+**Step 3: For each selected module — read its `module.json`**
+```bash
+cat .claude/modules/<name>/module.json
+```
+Look at `adds_to_core.data_fields` — it contains exactly what needs to be merged:
+- `campaign_rules` section → merge into `campaign-overview.json` under `campaign_rules`
+- `character.json` section → merge into `character.json`
+
+Apply the patches manually using Python or by editing the JSON files directly.
+
+**Step 4: Verify**
+```bash
+bash tools/dm-session.sh context
+```
 
 ---
 

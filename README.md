@@ -2,7 +2,7 @@
 
 # DM Claude — Enhanced Fork
 
-> **Fork of [Sstobo/Claude-Code-Game-Master](https://github.com/Sstobo/Claude-Code-Game-Master)** with custom character stats, time effects, random encounters, coordinate navigation, and ASCII/GUI maps.
+> **Fork of [Sstobo/Claude-Code-Game-Master](https://github.com/Sstobo/Claude-Code-Game-Master)** with a modular architecture — toggle optional systems (survival stats, firearms, encounters, navigation) per campaign like game mods.
 
 **Drop any book into it. Play inside the story.** Got a favorite fantasy novel? A STALKER fanfic? A weird sci-fi book from the 70s? Drop the PDF in, and DM Claude extracts every character, location, item, and plot thread, then drops you into that world as whoever you want to be.
 
@@ -11,6 +11,27 @@ D&D 5e rules give the story stakes and consequences. You don't need to know D&D 
 ---
 
 ## What's New in This Fork
+
+### 🧩 Module System — Campaign Mods
+When creating a new campaign, `/dm` scans all available modules and presents them as optional mods. Pick what you want, the DM enables them and patches the campaign config automatically.
+
+```
+================================================================
+  OPTIONAL MODS
+  ────────────────────────────────────────────────────────────
+  [1] Survival Stats       — hunger, thirst, radiation decay over time
+  [2] Encounter System     — random events during travel
+  [3] Coordinate Navigation — spatial map, distances, travel time
+  [4] Firearms Combat      — modern weapons, fire modes, PEN/PROT
+  [A] Enable ALL
+  [N] None — standard D&D only
+================================================================
+```
+
+Each module is self-contained: own tools, rules, and config patches. Add community modules by dropping a folder into `.claude/modules/`.
+
+### 🔀 Middleware Architecture
+CORE tools (`dm-time.sh`, `dm-player.sh`, `dm-session.sh`, etc.) are vanilla upstream. Modules hook in via middleware — no CORE modifications needed. `/dm` automatically injects all active module rules into context.
 
 ### 🎯 Unified Inventory Manager
 Atomic transaction system for character state — apply multiple changes at once or none at all. Stackable items (consumables with quantities) and unique items (weapons, armor, quest items) with automatic validation and rollback.
@@ -239,7 +260,6 @@ Specialist agents spin up on the fly — monster stats, spell mechanics, loot ta
 
 Features planned for future releases:
 
-- **Module System** — modular architecture for community expansion packs. Toggle mechanics (firearms, survival, coordinates, magic crafting, economic sim) during campaign creation. Mix & match features. Enable community to build and share modules. [See design in TODO.md](TODO.md)
 - **Nested Sub-Maps** — locations can contain their own internal maps. Enter a castle and explore its floors. Board a spaceship and navigate its decks. Dive into a cave system with branching tunnels. Each sub-map connects back to the parent world map seamlessly.
 - **Multi-Floor Dungeons** — vertical dungeon navigation with stairs, elevators, ladders between floors. Each floor is its own sub-map with independent room states.
 - **Vehicle Interiors** — ships, airships, space stations as explorable sub-maps that move on the world map. The vehicle travels between locations while you explore inside it.

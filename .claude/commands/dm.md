@@ -1,5 +1,15 @@
 # /dm - Your AI Dungeon Master
 
+!`cat .claude/rules/dm-rules.md`
+
+---
+
+## ACTIVE MODULES
+
+!`bash tools/dm-module.sh list 2>/dev/null || echo "No modules found"`
+
+!`for f in .claude/modules/*/rules.md; do echo ""; echo "---"; echo "# MODULE: $(basename $(dirname $f))"; cat "$f"; done`
+
 One command. Instant immersion.
 
 ---

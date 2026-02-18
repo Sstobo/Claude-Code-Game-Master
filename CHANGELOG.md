@@ -2,6 +2,22 @@
 
 All notable changes to DM System will be documented in this file.
 
+## [1.6.0] - 2026-02-18
+
+### Added
+- **Module mod selection at campaign creation** — DM scans available modules via `dm-module.sh list` and presents a numbered menu to the player; reads `adds_to_core.data_fields` from each `module.json` and patches `campaign-overview.json` / `character.json` automatically
+- **Module rules auto-injection** — `/dm` now injects all module `rules.md` files into context at startup via `!cat` in `dm.md`; DM knows all module mechanics from turn one
+- **Separate dev/game context** — `CLAUDE.md` contains dev rules only; game rules live in `.claude/rules/dm-rules.md` and are loaded exclusively via `/dm` skill
+- **Middleware help text** — all module middlewares support `--help` flag and expose their actions dynamically; CORE tool `--help` outputs are now module-aware
+
+### Changed
+- `CLAUDE_game.md` moved to `.claude/rules/dm-rules.md`; `CLAUDE.md` reset to minimal dev rules
+- `dm.md` skill injects `dm-rules.md` + all module `rules.md` via `!cat` at startup
+- Module creation checklist in `dm-rules.md` now instructs DM to scan modules dynamically instead of hardcoding a fixed list
+
+### Removed
+- Hardcoded module list from `dm-rules.md` (replaced with dynamic scan instruction)
+
 ## [1.5.0] - 2026-02-17
 
 ### Added
