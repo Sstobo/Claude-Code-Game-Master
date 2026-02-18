@@ -20,6 +20,10 @@ if [ "$#" -lt 1 ]; then
     echo "  routes <from> <to>                        - Show all possible routes"
     echo "  block <location> <from_deg> <to_deg> <reason> - Block direction range"
     echo "  unblock <location> <from_deg> <to_deg>         - Unblock direction range"
+    echo "  path check <from> <to>                    - Check if path intersects other locations"
+    echo "  path route <from> <to>                    - Find route with waypoints"
+    echo "  path analyze                              - Analyze all connections for intersections"
+    echo "  migrate [--apply] [--campaign NAME]       - Migrate connections to canonical storage"
     echo ""
     echo "Examples:"
     echo "  dm-navigation.sh add \"Temple\" \"1km north\" --from \"Village\" --bearing 0 --distance 1000"
@@ -27,8 +31,8 @@ if [ "$#" -lt 1 ]; then
     echo "  dm-navigation.sh connect \"Village\" \"Temple\" \"Overgrown path\" --terrain forest --distance 1000"
     echo "  dm-navigation.sh decide \"Village\" \"Temple\""
     echo "  dm-navigation.sh routes \"Village\" \"Temple\""
-    echo "  dm-navigation.sh block \"Village\" 160 200 \"Steep cliff\""
-    echo "  dm-navigation.sh unblock \"Village\" 160 200"
+    echo "  dm-navigation.sh path check \"Village\" \"Temple\""
+    echo "  dm-navigation.sh migrate --apply"
     exit 1
 fi
 
@@ -95,9 +99,87 @@ case "$ACTION" in
         $PYTHON_CMD "$MODULE_DIR/lib/navigation_manager.py" unblock "$CAMPAIGN_DIR" "$1" "$2" "$3"
         ;;
 
+    path)
+        SUBCMD="${1:-}"
+        shift || true
+        case "$SUBCMD" in
+            check)
+                if [ "$#" -lt 2 ]; then
+                    echo "Usage: dm-navigation.sh path check <from> <to>"
+                    exit 1
+                fi
+                $PYTHON_CMD -c "
+import json, sys
+sys.path.insert(0, '$MODULE_DIR/lib')
+from path_intersect import check_path_intersection
+with open('$CAMPAIGN_DIR/locations.json') as f:
+    locs = json.load(f)
+hits = check_path_intersection('$1', '$2', locs)
+if hits:
+    print('Path intersects:')
+    for loc in hits:
+        print(f'  • {loc}')
+    print()
+    print('Suggested: $1 → ' + ' → '.join(hits) + ' → $2')
+else:
+    print('✓ Direct path is clear')
+"
+                ;;
+            route)
+                if [ "$#" -lt 2 ]; then
+                    echo "Usage: dm-navigation.sh path route <from> <to>"
+                    exit 1
+                fi
+                $PYTHON_CMD -c "
+import json, sys
+sys.path.insert(0, '$MODULE_DIR/lib')
+from path_intersect import find_route_with_waypoints
+with open('$CAMPAIGN_DIR/locations.json') as f:
+    locs = json.load(f)
+route = find_route_with_waypoints('$1', '$2', locs)
+print('Route: ' + ' → '.join(route))
+if len(route) > 2:
+    print('Via:')
+    for wp in route[1:-1]:
+        print(f'  • {wp}')
+"
+                ;;
+            analyze)
+                $PYTHON_CMD -c "
+import json, sys
+sys.path.insert(0, '$MODULE_DIR/lib')
+from path_intersect import check_path_intersection
+with open('$CAMPAIGN_DIR/locations.json') as f:
+    locs = json.load(f)
+found = False
+for loc_name, loc_data in locs.items():
+    for conn in loc_data.get('connections', []):
+        to_loc = conn.get('to')
+        if not to_loc or to_loc not in locs:
+            continue
+        hits = check_path_intersection(loc_name, to_loc, locs)
+        if hits:
+            found = True
+            print(f'{loc_name} → {to_loc}: intersects {hits}')
+if not found:
+    print('✓ No path intersections detected')
+"
+                ;;
+            *)
+                echo "Unknown path subcommand: $SUBCMD"
+                echo "Valid: check, route, analyze"
+                exit 1
+                ;;
+        esac
+        ;;
+
+    migrate)
+        $PYTHON_CMD "$MODULE_DIR/tools/migrate-connections.py" "$@"
+        ;;
+
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: add, move, connect, decide, routes, block, unblock"
+        echo "Valid actions: add, move, connect, decide, routes, block, unblock, path, migrate"
         exit 1
         ;;
 esac
