@@ -73,6 +73,8 @@ class NavigationManager:
             'blocked_ranges': []
         }
 
+        locations[name] = location_data
+
         add_canonical_connection(
             from_location, name, locations,
             path=f"{distance}m на {bearing}°",

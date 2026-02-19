@@ -38,6 +38,49 @@ bash tools/dm-campaign.sh switch "<CAMPAIGN_NAME>"
 
 ---
 
+## PHASE 1.5: MODULE SELECTION
+
+Run after campaign is created and switched (so modules persist to campaign-overview.json).
+
+### 1. List available modules
+```bash
+bash tools/dm-module.sh list-verbose
+```
+
+### 2. Display module menu
+
+```
+================================================================
+  ╔═══════════════════════════════════════════════════════════╗
+  ║              CONFIGURE MODULES                            ║
+  ╚═══════════════════════════════════════════════════════════╝
+================================================================
+
+  [1] ✅ <id>  — <description, 5 words max>  ← default
+  [2] ❌ <id>  — <description, 5 words max>
+  ...
+
+  ────────────────────────────────────────────────────────────
+  Type numbers to toggle (e.g. "1 2") or ENTER to keep current.
+
+================================================================
+```
+
+### 3. Apply selection
+```bash
+bash tools/dm-module.sh activate <module-name>    # for each enabled
+bash tools/dm-module.sh deactivate <module-name>  # for each disabled
+```
+
+### 4. Load module rules into context
+```bash
+bash tools/dm-active-modules-rules.sh
+```
+
+Rules are now in context — use them for all world-building that follows.
+
+---
+
 ## PHASE 2: TONE
 
 ```

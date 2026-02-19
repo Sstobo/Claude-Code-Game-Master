@@ -150,7 +150,7 @@ def save_character(character_data):
 
     try:
         with open(file_path, 'w') as f:
-            json.dump(character, f, indent=2)
+            json.dump(character, f, indent=2, ensure_ascii=False)
 
         return {
             "success": True,
@@ -182,16 +182,16 @@ def main():
         character_data = json.loads(character_json)
         result = save_character(character_data)
         
-        print(json.dumps(result, indent=2))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
         
         if "error" in result:
             sys.exit(1)
             
     except json.JSONDecodeError as e:
-        print(json.dumps({"error": f"Invalid JSON: {str(e)}"}, indent=2))
+        print(json.dumps({"error": f"Invalid JSON: {str(e)}"}, indent=2, ensure_ascii=False))
         sys.exit(1)
     except Exception as e:
-        print(json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2))
+        print(json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2, ensure_ascii=False))
         sys.exit(1)
 
 if __name__ == "__main__":

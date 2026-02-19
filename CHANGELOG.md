@@ -2,6 +2,42 @@
 
 All notable changes to DM System will be documented in this file.
 
+## [1.9.0] - 2026-02-19
+
+### Added
+- **Vehicle system in `world-travel`** — dual-map transport: global anchor location + internal rooms on local map. Works for ships, cities, trains, dungeons — anything with an "inside".
+  - `dm-vehicle.sh` — CLI: `create`, `add-room`, `board`, `exit`, `move`, `status`, `map`, `list`
+  - `lib/vehicle_manager.py` — `VehicleManager` class with full API
+  - `stationary` flag on vehicle — prevents accidental `move` (use for cities, buildings)
+  - Internal movement via `dm-session.sh move` — middleware intercepts when `map_context=local`, no encounter/time tick
+  - Vehicle movement rebuilds external connections by proximity radius (terrain="docking")
+  - Player inside vehicle travels with it; player outside gets `player_status: "outside"` warning
+  - Boarding another vehicle (ship-to-ship transfer) supported via `exit` → `move` to anchor → `board`
+- **`_find_project_root()`** in `vehicle_manager.py` and tests — walks up to `pyproject.toml` instead of fragile `parent.parent.parent...` chains
+
+### Changed
+- **`world-travel` middleware `dm-session.sh`** — vehicle check injected before navigation: if player is in `local` map context and destination is a vehicle room, routes to `move-internal` instead of navigation
+- **`world-travel/rules.md`** — Part 3 added: full vehicle system docs in English (create, board, exit, move, city/stationary, ship switching, data schema)
+
+## [1.8.0] - 2026-02-19
+
+### Fixed
+- **`world-travel`: connections not created on `dm-location.sh add`** — `add_canonical_connection()` silently returned if the new location wasn't yet in `locations_data`. Fixed by inserting the location stub into the dict before calling `add_canonical_connection`, so both endpoints exist at the time of connection creation.
+
+### Added
+- **`dm-module.sh list-verbose`** — detailed module listing with status, description, genre tags, and top-3 use cases. Used by `/new-game` module selection menu.
+- **Module selection phase in `/new-game`** (Phase 1.5) — after campaign creation, DM presents a numbered toggle menu of all available modules; activates/deactivates per player choice; loads rules into context before world-building continues.
+- **Slot-based rules system** (`tools/dm-active-modules-rules.sh` rewrite) — game rules are now loaded from `.claude/dm/slots/*.md` in alphabetical order. Modules declare `"replaces": ["slot-name"]` in `module.json` to override a core slot with their own rules; addon modules (no `replaces`) are appended after all slots. Conflict detection included.
+- **`replaces` field** in all `module.json` manifests — `world-travel` replaces `movement` slot; others have empty `replaces: []`.
+- **`post_middleware` field** in `registry.json`** for `custom-stats` — documents that `dm-time.sh.post` fires after CORE time advance (already wired, now formally in registry).
+
+### Changed
+- **`/dm` command** — stripped down to campaign selection menu only; no longer loads rules or narrates. Rules load happens in `/dm-continue` after campaign switch.
+- **`dm-campaign.sh switch`** — now calls `dm-active-modules-rules.sh` automatically after switching, so module rules are always fresh in context.
+- **`module.json` formatting** — all modules: arrays expanded to multiline JSON for readability; trailing newline added.
+- **`ensure_ascii=False`** added to all remaining `json.dump()` calls in `lib/campaign_manager.py`, `lib/session_manager.py`, `features/character-creation/save_character.py` — Cyrillic names no longer get `\uXXXX`-escaped in saved files.
+- **`registry.json`** — `custom-stats` middleware list updated: `dm-time.sh` removed (was pre-hook), `dm-time.sh.post` added to `post_middleware`.
+
 ## [1.7.0] - 2026-02-19
 
 ### Added

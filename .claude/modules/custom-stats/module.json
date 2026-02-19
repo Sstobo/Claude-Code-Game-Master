@@ -5,8 +5,19 @@
   "author": "DM System Core",
   "description": "Any custom character stats with automatic time-based changes and conditional effects. Not limited to survival — use for mana, sanity, reputation, fatigue, anything.",
   "category": "character-mechanics",
-  "genre_tags": ["fantasy", "survival", "horror", "scifi", "modern"],
-  "tags": ["custom-stats", "time-effects", "conditions", "mechanics"],
+  "genre_tags": [
+    "fantasy",
+    "survival",
+    "horror",
+    "scifi",
+    "modern"
+  ],
+  "tags": [
+    "custom-stats",
+    "time-effects",
+    "conditions",
+    "mechanics"
+  ],
   "enabled_by_default": false,
   "dependencies": [],
   "incompatible_with": [],
@@ -27,7 +38,9 @@
     "Auto-tick during travel and time advancement"
   ],
   "adds_to_core": {
-    "tools": ["dm-survival.sh"],
+    "tools": [
+      "dm-survival.sh"
+    ],
     "commands": {
       "dm-survival.sh tick --elapsed <hours>": "Apply time effects to all custom stats",
       "dm-survival.sh tick --elapsed <hours> --sleeping": "Apply effects in sleep mode",
@@ -38,7 +51,11 @@
     "data_fields": {
       "character.json": {
         "custom_stats": {
-          "<any_stat_name>": {"current": 100, "min": 0, "max": 100}
+          "<any_stat_name>": {
+            "current": 100,
+            "min": 0,
+            "max": 100
+          }
         }
       },
       "campaign_rules": {
@@ -61,5 +78,6 @@
     "Social: reputation with factions, trust",
     "Any stat that changes over time or has thresholds"
   ],
-  "architecture": "Middleware hooks into dm-player.sh (show custom stats), dm-consequence.sh (threshold effects). Post-hook on dm-time.sh reads --elapsed and ticks stats after CORE updates time. Zero hardcoded stat names — all defined in campaign_rules.time_effects."
+  "architecture": "Middleware hooks into dm-player.sh (show custom stats), dm-consequence.sh (threshold effects). Post-hook on dm-time.sh reads --elapsed and ticks stats after CORE updates time. Zero hardcoded stat names — all defined in campaign_rules.time_effects.",
+  "replaces": []
 }

@@ -301,31 +301,31 @@ class CampaignManager:
                 "modules": default_modules
             }
             with open(overview_path, 'w', encoding='utf-8') as f:
-                json.dump(overview, f, indent=2)
+                json.dump(overview, f, indent=2, ensure_ascii=False)
 
         # npcs.json
         npcs_path = campaign_path / "npcs.json"
         if not preserve_existing or not npcs_path.exists():
             with open(npcs_path, 'w', encoding='utf-8') as f:
-                json.dump({}, f, indent=2)
+                json.dump({}, f, indent=2, ensure_ascii=False)
 
         # locations.json
         locations_path = campaign_path / "locations.json"
         if not preserve_existing or not locations_path.exists():
             with open(locations_path, 'w', encoding='utf-8') as f:
-                json.dump({}, f, indent=2)
+                json.dump({}, f, indent=2, ensure_ascii=False)
 
         # facts.json
         facts_path = campaign_path / "facts.json"
         if not preserve_existing or not facts_path.exists():
             with open(facts_path, 'w', encoding='utf-8') as f:
-                json.dump({}, f, indent=2)
+                json.dump({}, f, indent=2, ensure_ascii=False)
 
         # consequences.json
         consequences_path = campaign_path / "consequences.json"
         if not preserve_existing or not consequences_path.exists():
             with open(consequences_path, 'w', encoding='utf-8') as f:
-                json.dump({"active": [], "resolved": []}, f, indent=2)
+                json.dump({"active": [], "resolved": []}, f, indent=2, ensure_ascii=False)
 
         # session-log.md - ALWAYS preserve if exists (append only)
         session_log_path = campaign_path / "session-log.md"

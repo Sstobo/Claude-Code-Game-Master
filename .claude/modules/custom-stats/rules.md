@@ -9,7 +9,7 @@
 If the move output contains `[ELAPSED]` with hours:
 
 ```bash
-bash .claude/modules/survival-stats/tools/dm-survival.sh tick --elapsed <hours>
+bash .claude/modules/custom-stats/tools/dm-survival.sh tick --elapsed <hours>
 ```
 
 ### After every `dm-time.sh` with elapsed hours
@@ -17,13 +17,13 @@ bash .claude/modules/survival-stats/tools/dm-survival.sh tick --elapsed <hours>
 If time was advanced and `--elapsed` was specified:
 
 ```bash
-bash .claude/modules/survival-stats/tools/dm-survival.sh tick --elapsed <hours>
+bash .claude/modules/custom-stats/tools/dm-survival.sh tick --elapsed <hours>
 ```
 
 ### During sleep/long rest
 
 ```bash
-bash .claude/modules/survival-stats/tools/dm-survival.sh tick --elapsed 8 --sleeping
+bash .claude/modules/custom-stats/tools/dm-survival.sh tick --elapsed 8 --sleeping
 ```
 
 The `--sleeping` flag reverses drain for stats that have `sleep_restore_per_hour` configured (e.g., sleep stat restores instead of draining).
@@ -38,7 +38,7 @@ The `--sleeping` flag reverses drain for stats that have `sleep_restore_per_hour
 To show the player's current custom stats:
 
 ```bash
-bash .claude/modules/survival-stats/tools/dm-survival.sh status
+bash .claude/modules/custom-stats/tools/dm-survival.sh status
 ```
 
 ## Display in Scene Header

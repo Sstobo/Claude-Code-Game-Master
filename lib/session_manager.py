@@ -535,7 +535,7 @@ class SessionManager(EntityManager):
         if 'character' in characters and len(characters) == 1:
             # New format: restore to character.json
             with open(self.character_file, 'w', encoding='utf-8') as f:
-                json.dump(characters['character'], f, indent=2)
+                json.dump(characters['character'], f, indent=2, ensure_ascii=False)
         else:
             # Legacy format: restore to characters/ directory
             self.characters_dir.mkdir(parents=True, exist_ok=True)

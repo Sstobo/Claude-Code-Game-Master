@@ -5,12 +5,28 @@
   "author": "DM System Core",
   "description": "Unified travel system: coordinate navigation, pathfinding, maps, and automatic random encounter checks during overland travel",
   "category": "travel-mechanics",
-  "genre_tags": ["fantasy", "survival", "scifi", "horror", "modern"],
-  "tags": ["navigation", "maps", "coordinates", "pathfinding", "encounters", "travel"],
+  "genre_tags": [
+    "fantasy",
+    "survival",
+    "scifi",
+    "horror",
+    "modern"
+  ],
+  "tags": [
+    "navigation",
+    "maps",
+    "coordinates",
+    "pathfinding",
+    "encounters",
+    "travel"
+  ],
   "enabled_by_default": false,
   "dependencies": [],
   "incompatible_with": [],
-  "middleware": ["dm-location.sh", "dm-session.sh"],
+  "middleware": [
+    "dm-location.sh",
+    "dm-session.sh"
+  ],
   "features": [
     "Coordinate system for locations (x, y)",
     "Bearing-based location creation with auto distance calc",
@@ -23,10 +39,17 @@
     "Encounter nature categories (Dangerous, Neutral, Beneficial, Special)",
     "Waypoint creation for Combat/Social/Hazard encounters",
     "Auto-resolve for Loot/Flavor encounters",
-    "Automatic encounter check after every move"
+    "Automatic encounter check after every move",
+    "Vehicle system: ships/transports with dual-map (global anchor + internal rooms)",
+    "Board/exit vehicles, move between rooms, move vehicle with connection rebuild"
   ],
   "adds_to_core": {
-    "tools": ["dm-navigation.sh", "dm-map.sh", "dm-encounter.sh"],
+    "tools": [
+      "dm-navigation.sh",
+      "dm-map.sh",
+      "dm-encounter.sh",
+      "dm-vehicle.sh"
+    ],
     "commands": {
       "dm-navigation.sh move <location>": "Move party with distance/time calc + auto encounter",
       "dm-navigation.sh route <from> <to>": "Calculate route and distance",
@@ -44,9 +67,25 @@
     "data_fields": {
       "locations.json": {
         "LocationName": {
-          "coordinates": {"x": 0, "y": 0},
-          "connections": [{"to": "Other", "distance_meters": 1000, "bearing": 90, "terrain": "open"}],
-          "blocked_ranges": [{"from_bearing": 160, "to_bearing": 200, "reason": "cliff"}]
+          "coordinates": {
+            "x": 0,
+            "y": 0
+          },
+          "connections": [
+            {
+              "to": "Other",
+              "distance_meters": 1000,
+              "bearing": 90,
+              "terrain": "open"
+            }
+          ],
+          "blocked_ranges": [
+            {
+              "from_bearing": 160,
+              "to_bearing": 200,
+              "reason": "cliff"
+            }
+          ]
         }
       },
       "campaign-overview.json": {
@@ -58,10 +97,18 @@
             "base_dc": 16,
             "distance_modifier": 2,
             "stat_to_use": "stealth",
-            "time_dc_modifiers": {"Morning": 0, "Day": 0, "Evening": 2, "Night": 4}
+            "time_dc_modifiers": {
+              "Morning": 0,
+              "Day": 0,
+              "Evening": 2,
+              "Night": 4
+            }
           }
         }
-      }
+      },
+      "locations.json._vehicle": "vehicle metadata (vehicle_id, is_vehicle_anchor, vehicle_type, dock_room, proximity_radius_meters)",
+      "campaign-overview.json.player_position.map_context": "global|local — absent = global (backward compat)",
+      "campaign-overview.json.player_position.vehicle_id": "string|null — active vehicle if inside"
     }
   },
   "use_cases": [
@@ -71,5 +118,8 @@
     "Realistic travel time + encounter simulation",
     "Visual map for DM and players"
   ],
-  "architecture": "Middleware intercepts dm-session.sh move: runs navigation (distance/time), then auto-triggers encounter check. dm-location.sh middleware handles coordinate-based location creation. All travel logic in one module."
+  "architecture": "Middleware intercepts dm-session.sh move: runs navigation (distance/time), then auto-triggers encounter check. dm-location.sh middleware handles coordinate-based location creation. All travel logic in one module.",
+  "replaces": [
+    "movement"
+  ]
 }

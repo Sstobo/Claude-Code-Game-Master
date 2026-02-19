@@ -26,8 +26,10 @@
       "incompatible_with": [],
       "middleware": [
         "dm-player.sh",
-        "dm-time.sh",
         "dm-consequence.sh"
+      ],
+      "post_middleware": [
+        "dm-time.sh.post"
       ],
       "features": [
         "Define ANY custom stats — hunger, mana, sanity, reputation, fatigue, oxygen, fuel, stress...",
@@ -79,7 +81,8 @@
         "Social: reputation with factions, trust",
         "Any stat that changes over time or has thresholds"
       ],
-      "architecture": "Middleware hooks into dm-player.sh (show custom stats), dm-time.sh (auto-tick on time advance), dm-consequence.sh (threshold effects). Zero hardcoded stat names — all defined in campaign_rules.time_effects."
+      "architecture": "Middleware hooks into dm-player.sh (show custom stats), dm-consequence.sh (threshold effects). Post-hook on dm-time.sh reads --elapsed and ticks stats after CORE updates time. Zero hardcoded stat names — all defined in campaign_rules.time_effects.",
+      "replaces": []
     },
     "world-travel": {
       "id": "world-travel",
@@ -195,7 +198,10 @@
         "Realistic travel time + encounter simulation",
         "Visual map for DM and players"
       ],
-      "architecture": "Middleware intercepts dm-session.sh move: runs navigation (distance/time), then auto-triggers encounter check. dm-location.sh middleware handles coordinate-based location creation. All travel logic in one module."
+      "architecture": "Middleware intercepts dm-session.sh move: runs navigation (distance/time), then auto-triggers encounter check. dm-location.sh middleware handles coordinate-based location creation. All travel logic in one module.",
+      "replaces": [
+        "movement"
+      ]
     },
     "inventory-system": {
       "id": "inventory-system",
@@ -253,7 +259,8 @@
         "Trading and economy systems",
         "Party shared inventory"
       ],
-      "architecture": "Middleware intercepts dm-inventory.sh CORE calls and handles all item operations. No dependency on other modules."
+      "architecture": "Middleware intercepts dm-inventory.sh CORE calls and handles all item operations. No dependency on other modules.",
+      "replaces": []
     },
     "firearms-combat": {
       "id": "firearms-combat",
@@ -323,7 +330,8 @@
         "Cyberpunk gunfights",
         "Zombie apocalypse firearms survival"
       ],
-      "architecture": "Standalone tool. DM calls dm-combat.sh resolve when firearms combat occurs. No middleware — does not intercept CORE tools."
+      "architecture": "Standalone tool. DM calls dm-combat.sh resolve when firearms combat occurs. No middleware — does not intercept CORE tools.",
+      "replaces": []
     }
   }
 }

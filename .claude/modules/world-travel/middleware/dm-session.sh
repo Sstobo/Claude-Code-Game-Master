@@ -15,6 +15,23 @@ fi
 shift  # remove 'move'
 DESTINATION="$1"
 
+# Vehicle system: if player is inside a vehicle, intercept internal room movement
+VEHICLE_PY="$MODULE_DIR/lib/vehicle_manager.py"
+if [ -f "$VEHICLE_PY" ]; then
+    CONTEXT=$(uv run python "$VEHICLE_PY" player-context 2>/dev/null)
+    MAP_CTX=$(echo "$CONTEXT" | uv run python -c "import sys,json; d=json.load(sys.stdin); print(d.get('map_context','global'))" 2>/dev/null)
+    if [ "$MAP_CTX" = "local" ]; then
+        VEHICLE_ID=$(echo "$CONTEXT" | uv run python -c "import sys,json; d=json.load(sys.stdin); print(d.get('vehicle_id',''))" 2>/dev/null)
+        if [ -n "$VEHICLE_ID" ]; then
+            IS_ROOM=$(uv run python "$VEHICLE_PY" is-room "$VEHICLE_ID" "$DESTINATION" 2>/dev/null)
+            if [ "$IS_ROOM" = "true" ]; then
+                uv run python "$VEHICLE_PY" move-internal "$DESTINATION"
+                exit $?
+            fi
+        fi
+    fi
+fi
+
 # Run navigation move (calculates distance/time, moves party)
 # Capture output and exit code
 NAV_OUTPUT=$(bash "$MODULE_DIR/tools/dm-navigation.sh" move "$@" 2>&1)

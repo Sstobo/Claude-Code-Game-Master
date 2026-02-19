@@ -4,6 +4,36 @@ Unified rules for coordinate navigation and automatic encounter checks during ov
 
 ---
 
+## ⚠️ MANDATORY: Location Creation Protocol
+
+**EVERY time you add a location, you MUST use `--from/--bearing/--distance` flags.**
+**NO EXCEPTIONS. Never call `dm-location.sh add` without coordinates.**
+
+### Starting location (origin only)
+The very first location of a campaign has no `--from`. Set coordinates manually in JSON:
+```json
+{"coordinates": {"x": 0, "y": 0}}
+```
+
+### Every subsequent location — ALWAYS use flags:
+```bash
+bash tools/dm-location.sh add "Location Name" "short description" \
+  --from "Existing Location" \
+  --bearing <0-359> \
+  --distance <meters> \
+  --terrain <space|road|asteroid|nebula|station|void>
+```
+
+**If you skip `--from/--bearing/--distance` → coordinates won't be set → map breaks → you failed.**
+
+### Bearings reference
+- 0° = north / up on map
+- 90° = east / right
+- 180° = south / down
+- 270° = west / left
+
+---
+
 ## Part 1: Navigation
 
 ### Coordinate System
@@ -183,6 +213,152 @@ bash .claude/modules/world-travel/tools/dm-encounter.sh status
 - Teleportation or instant travel
 - Movement within same building/area
 - Do NOT duplicate encounter check if middleware already ran it
+
+---
+
+## Part 3: Vehicle System (Ships, Cities, Transports)
+
+Vehicles are **dual-map locations**: an anchor on the global map + internal rooms on the local map.
+Works for ships, cities, trains, dungeons — anything with an "inside".
+
+### Creating a vehicle
+
+```bash
+# 1. Anchor location must already exist as a regular location
+# 2. Register vehicle on it
+bash .claude/modules/world-travel/tools/dm-vehicle.sh create "Indomitable" "starship" "Sigma Spaceport"
+#   args: <vehicle_id> <vehicle_type> <anchor_location>
+
+# 3. Add rooms (--from = anchor or another room)
+bash .claude/modules/world-travel/tools/dm-vehicle.sh add-room indomitable "Bridge" --from "Indomitable" --bearing 0 --distance 50
+bash .claude/modules/world-travel/tools/dm-vehicle.sh add-room indomitable "Engine Room" --from "Bridge" --bearing 180 --distance 80
+bash .claude/modules/world-travel/tools/dm-vehicle.sh add-room indomitable "Quarters" --from "Bridge" --bearing 90 --distance 30
+```
+
+### Cities and stationary locations
+
+A city is the same vehicle — it just doesn't move. Add `stationary: true` to `_vehicle` in locations.json:
+
+```json
+"Novosibirsk": {
+  "coordinates": {"x": 0, "y": 0},
+  "_vehicle": {
+    "vehicle_id": "novosibirsk",
+    "is_vehicle_anchor": true,
+    "vehicle_type": "city",
+    "dock_room": "Central Market",
+    "proximity_radius_meters": 500,
+    "stationary": true
+  }
+}
+```
+
+`stationary: true` — `move` returns an error, can't accidentally relocate a city.
+
+```bash
+bash .claude/modules/world-travel/tools/dm-vehicle.sh create "Novosibirsk" "city" "Steppe Road"
+# then manually add "stationary": true to locations.json
+```
+
+### Boarding / entering a location
+
+```bash
+bash .claude/modules/world-travel/tools/dm-vehicle.sh board indomitable             # → dock_room
+bash .claude/modules/world-travel/tools/dm-vehicle.sh board indomitable --room "Engine Room"  # → specific room
+```
+
+After boarding: `player_position.map_context = "local"`, `vehicle_id = "indomitable"`.
+
+### Moving between rooms
+
+When player is inside, regular move is intercepted automatically:
+
+```bash
+bash tools/dm-session.sh move "Engine Room"   # middleware sees local context → move-internal
+```
+
+**Encounters and time do NOT tick** for internal movement — it's a room transition, not travel.
+
+### Exiting to global map
+
+```bash
+bash .claude/modules/world-travel/tools/dm-vehicle.sh exit
+# → player_position.current_location = anchor, map_context = "global"
+```
+
+### Moving the vehicle
+
+```bash
+# To an existing location (copies its coordinates)
+bash .claude/modules/world-travel/tools/dm-vehicle.sh move indomitable "Mantisk-7 Station"
+
+# To arbitrary coordinates
+bash .claude/modules/world-travel/tools/dm-vehicle.sh move indomitable --x 5000 --y 3200
+```
+
+**What happens on move:**
+1. Anchor gets new coordinates
+2. All rooms shift by the same delta
+3. Old external connections removed
+4. New ones built by proximity_radius (terrain="docking")
+5. Player inside → travels with ship (`player_status: "inside"`)
+6. Player outside → stays put (`player_status: "outside"`, warn the player)
+
+### Switching between vehicles
+
+```bash
+bash .claude/modules/world-travel/tools/dm-vehicle.sh exit        # exit ship A
+bash tools/dm-session.sh move "Ship B"                            # walk to ship B anchor
+bash .claude/modules/world-travel/tools/dm-vehicle.sh board shipb # board ship B
+bash .claude/modules/world-travel/tools/dm-vehicle.sh move shipb "Alpha Centauri"  # fly on B
+```
+
+### Status and map
+
+```bash
+bash .claude/modules/world-travel/tools/dm-vehicle.sh status indomitable  # specific vehicle
+bash .claude/modules/world-travel/tools/dm-vehicle.sh status              # all vehicles
+bash .claude/modules/world-travel/tools/dm-vehicle.sh list                # list
+bash .claude/modules/world-travel/tools/dm-vehicle.sh map indomitable     # ASCII internal map
+```
+
+### Data schema
+
+**locations.json — anchor:**
+```json
+"Indomitable": {
+  "coordinates": {"x": 1500, "y": 3200},
+  "connections": [],
+  "_vehicle": {
+    "vehicle_id": "indomitable",
+    "is_vehicle_anchor": true,
+    "vehicle_type": "starship",
+    "dock_room": "Bridge",
+    "proximity_radius_meters": 5000,
+    "stationary": false
+  }
+}
+```
+
+**locations.json — room:**
+```json
+"Bridge": {
+  "coordinates": {"x": 0, "y": 30},
+  "connections": [{"to": "Engine Room", "distance_meters": 80, "bearing": 180, "terrain": "internal"}],
+  "_vehicle": {"vehicle_id": "indomitable", "is_vehicle_anchor": false, "map_context": "local"}
+}
+```
+
+**campaign-overview.json — player position:**
+```json
+"player_position": {
+  "current_location": "Bridge",
+  "map_context": "local",
+  "vehicle_id": "indomitable"
+}
+```
+
+---
 
 ### campaign-overview.json Schema
 
