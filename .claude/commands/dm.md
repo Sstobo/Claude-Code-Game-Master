@@ -1,14 +1,29 @@
 # /dm - Your AI Dungeon Master
 
-!`cat .claude/rules/dm-rules.md`
+!`cat .claude/dm/rules.md`
 
 ---
 
 ## ACTIVE MODULES
 
-!`bash tools/dm-module.sh list 2>/dev/null || echo "No modules found"`
+!`uv run python -c "
+import json, os
+f = 'world-state/active-campaign.txt'
+if os.path.exists(f):
+    name = open(f).read().strip()
+    ov = f'world-state/campaigns/{name}/campaign-overview.json'
+    if os.path.exists(ov):
+        d = json.load(open(ov))
+        mods = d.get('active_modules', [])
+        print('Active modules for campaign:', name)
+        for m in mods: print(' •', m)
+    else:
+        print('No campaign overview found')
+else:
+    print('No active campaign')
+" 2>/dev/null || echo "No active campaign"`
 
-!`for f in .claude/modules/*/rules.md; do echo ""; echo "---"; echo "# MODULE: $(basename $(dirname $f))"; cat "$f"; done`
+!`bash tools/dm-active-modules-rules.sh 2>/dev/null`
 
 One command. Instant immersion.
 
@@ -107,9 +122,66 @@ Display:
 ================================================================
 ```
 
-- If CREATE WORLD → Run `/new-game`
-- If IMPORT DOCUMENT → Run `/import`
-- If ONE-SHOT → Go to ONE-SHOT ADVENTURE
+After type selection → Go to MODULE SELECTION, then route to chosen type.
+
+---
+
+## MODULE SELECTION
+
+**Run before creating any new campaign (CREATE WORLD, IMPORT, or ONE-SHOT).**
+
+### 1. List available modules
+```bash
+bash tools/dm-module.sh list
+```
+
+### 2. Display module menu
+
+```
+================================================================
+  ╔═══════════════════════════════════════════════════════════╗
+  ║              CONFIGURE MODULES                            ║
+  ╚═══════════════════════════════════════════════════════════╝
+================================================================
+
+  Choose which modules to enable for this campaign.
+  Each module adds optional mechanics — disable what you don't need.
+
+  [1] ✅ coordinate-navigation  — Coordinate maps & pathfinding
+  [2] ✅ encounter-system       — Random encounters during travel
+  [3] ✅ firearms-combat        — Firearms & modern weapons
+  [4] ✅ inventory-system       — Inventory management
+  [5] ✅ quest-system           — Quest tracking
+  [6] ✅ survival-stats         — Hunger / thirst / radiation
+
+  ────────────────────────────────────────────────────────────
+  Type numbers to toggle (e.g. "3 6" to disable firearms & survival)
+  Or press ENTER to keep all enabled
+
+================================================================
+```
+
+### 3. Apply selection
+For each module the user wants to **disable**:
+```bash
+bash tools/dm-module.sh deactivate <module-name>
+```
+For each module to **enable** (if it was off):
+```bash
+bash tools/dm-module.sh activate <module-name>
+```
+
+### 4. Confirm active modules
+Module status is stored in each module's `module.json` and read live — no need to persist separately.
+```bash
+bash tools/dm-module.sh list
+```
+
+### 5. Confirm and continue
+Display summary of enabled modules, then route to the originally chosen campaign type:
+- CREATE WORLD → Run `/new-game`
+- IMPORT DOCUMENT → Run `/import`
+- ONE-SHOT → Go to ONE-SHOT ADVENTURE
 
 ---
 

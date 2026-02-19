@@ -5,12 +5,12 @@
   "author": "DM System Core",
   "description": "Automated firearms combat resolver with penetration mechanics, RPM simulation, and fire mode support for modern/STALKER campaigns",
   "category": "combat",
+  "genre_tags": ["survival", "modern", "scifi", "horror"],
   "tags": ["firearms", "combat", "ballistics", "stalker", "modern"],
-  "dependencies": [],
-  "soft_dependencies": [],
-  "incompatible_with": [],
   "enabled_by_default": false,
-
+  "dependencies": [],
+  "incompatible_with": [],
+  "middleware": [],
   "features": [
     "Full-auto fire mode with RPM-based shot calculation",
     "Penetration vs Protection damage scaling",
@@ -20,12 +20,6 @@
     "Auto XP tracking",
     "Test mode for dry runs"
   ],
-
-  "activation": {
-    "type": "field-based",
-    "condition": "campaign_rules.firearms_system exists in campaign-overview.json"
-  },
-
   "adds_to_core": {
     "tools": ["dm-combat.sh"],
     "commands": {
@@ -52,7 +46,6 @@
       }
     }
   },
-
   "use_cases": [
     "STALKER campaigns with Svoboda/Долговцы firefights",
     "Fallout-style wasteland combat",
@@ -60,6 +53,5 @@
     "Cyberpunk gunfights",
     "Zombie apocalypse firearms survival"
   ],
-
-  "_status": "Active"
+  "architecture": "Standalone tool. DM calls dm-combat.sh resolve when firearms combat occurs. No middleware — does not intercept CORE tools."
 }

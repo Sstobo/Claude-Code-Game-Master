@@ -97,7 +97,7 @@ def make_engine(ws_path):
             self.player_mgr = PlayerManager(str(ws))
 
     # Import the real class methods
-    sys.path.insert(0, str(PROJECT_ROOT / ".claude" / "modules" / "survival-stats" / "lib"))
+    sys.path.insert(0, str(PROJECT_ROOT / ".claude" / "modules" / "custom-stats" / "lib"))
     from survival_engine import SurvivalEngine
 
     engine = TestSurvivalEngine(ws_path)
@@ -120,7 +120,7 @@ class TestCheckRuleCondition:
         self.char = base_character()
 
     def _check(self, condition):
-        sys.path.insert(0, str(PROJECT_ROOT / ".claude" / "modules" / "survival-stats" / "lib"))
+        sys.path.insert(0, str(PROJECT_ROOT / ".claude" / "modules" / "custom-stats" / "lib"))
         from survival_engine import SurvivalEngine
         return SurvivalEngine._check_rule_condition(None, condition, self.char)
 

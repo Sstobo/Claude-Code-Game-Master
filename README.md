@@ -16,12 +16,10 @@ Optional systems enabled per campaign. At creation `/dm` scans all available mod
 
 | Module | What it does | Good for |
 |--------|-------------|----------|
-| 🍖 **survival-stats** | Hunger, thirst, radiation, sleep decay per hour. Define any custom stat. Conditional effects (artifact heals only when wounded). | STALKER, Fallout, survival horror |
+| 🌍 **world-travel** | Spatial world simulation: real XY coordinates, A* pathfinding, travel time by distance + speed. Auto-runs encounter checks on move. ASCII map, minimap, GUI. Add locations by bearing and distance. | Any campaign with a real map and travel |
+| 🎭 **custom-stats** | Any custom stat — mana, sanity, oxygen, reputation, hunger, radiation, whatever. Per-hour decay/gain, conditional effects (artifact heals only when wounded), per-tick simulation. Zero hardcoded names. | STALKER, Fallout, survival horror, fantasy |
 | ⚔️ **firearms-combat** | Automated combat resolver. RPM → shots per round, fire modes (single/burst/full_auto), PEN vs PROT scaling, subclass bonuses. Pre-built template with AKM/AK-74/M4A1/SVD. | Any modern/military campaign |
-| 🎲 **encounter-system** | Random encounter checks during travel. DC scales with distance and time of day. Encounters create waypoints — fight, talk, or push through. | Open-world, wilderness travel |
-| 🗺️ **coordinate-navigation** | Real XY coordinates on locations. A* pathfinding, travel time from distance + speed. ASCII map, minimap, GUI. Add locations by bearing and distance. | Any campaign with a real map |
 | 📦 **inventory-system** | Atomic multi-change transactions (`--gold --hp --xp --add --remove` in one command). Stackable items with quantities. Unique items (weapons, armor). `--test` mode. | All campaigns (recommended always) |
-| 📜 **quest-system** | Full quest metadata — objectives, NPCs, locations, rewards, state tracking. | Story-heavy campaigns |
 
 Each module is self-contained: own `tools/`, `lib/`, `rules.md`, `module.json`. Drop a folder into `.claude/modules/` to install a community module.
 
@@ -36,10 +34,10 @@ When creating a new campaign, `/dm` scans all available modules and presents the
 ================================================================
   OPTIONAL MODS
   ────────────────────────────────────────────────────────────
-  [1] Survival Stats       — hunger, thirst, radiation decay over time
-  [2] Encounter System     — random events during travel
-  [3] Coordinate Navigation — spatial map, distances, travel time
-  [4] Firearms Combat      — modern weapons, fire modes, PEN/PROT
+  [1] World Travel         — spatial map, distances, travel time + encounters
+  [2] Custom Stats         — any stat (hunger, sanity, mana) decay over time
+  [3] Firearms Combat      — modern weapons, fire modes, PEN/PROT
+  [4] Inventory System     — atomic transactions, stackable/unique items
   [A] Enable ALL
   [N] None — standard D&D only
 ================================================================
@@ -49,6 +47,33 @@ Each module is self-contained: own tools, rules, and config patches. Add communi
 
 ### 🔀 Middleware Architecture
 CORE tools (`dm-time.sh`, `dm-player.sh`, `dm-session.sh`, etc.) are vanilla upstream. Modules hook in via middleware — no CORE modifications needed. `/dm` automatically injects all active module rules into context.
+
+### 🌍 World Travel Module
+`coordinate-navigation` and `encounter-system` merged into a single `world-travel` module. Install one module, get everything: spatial coordinates, A* pathfinding, travel time calculation, and automatic encounter checks on every move.
+
+```bash
+bash tools/dm-session.sh move "Ruins"
+# Auto: calculates distance → ticks time → runs encounter check → applies custom stat effects
+```
+
+### ⏱️ Time Tracking & Timed Consequences
+`dm-time.sh` now tracks total elapsed hours across the campaign. Consequences can be set to trigger after a number of hours — `tick` decrements the counter on every time advance, fires when it hits zero.
+
+```bash
+bash tools/dm-time.sh advance 4 --elapsed
+# Stores total_hours_elapsed, auto-ticks all timed consequences
+
+bash tools/dm-consequence.sh add "Trader arrives" "24h" --hours 24
+bash tools/dm-consequence.sh tick 4
+# Shows: "Trader arrives (20.0h)" → ... → "IMMINENT!"
+```
+
+### 📜 Plot Add in CORE
+`add_plot()` promoted from `quest-system` module to vanilla CORE. No module required — `dm-plot.sh add` works in any campaign.
+
+```bash
+bash tools/dm-plot.sh add "The Lost Relic" --type side --description "..."
+```
 
 ### 🎯 Unified Inventory Manager
 Atomic transaction system for character state — apply multiple changes at once or none at all. Stackable items (consumables with quantities) and unique items (weapons, armor, quest items) with automatic validation and rollback.
@@ -126,20 +151,17 @@ bash tools/dm-consequence.sh add "Trader arrives at camp" "in 24 hours" --hours 
 # Shows: "Trader arrives (12.5h left)" or "IMMINENT!"
 ```
 
-### Random Encounter System
-Configurable random encounters during travel — frequency scales with distance, time of day, and character stats. Encounters create waypoints on the map where you can fight, talk, or explore before continuing.
+### World Travel — Encounters + Navigation Combined
+Configurable random encounters during travel — frequency scales with distance, time of day, and character stats. Encounters create waypoints on the map where you can fight, talk, or explore before continuing. Locations have real coordinates, A* pathfinding finds routes, view your world as ASCII maps or a GUI window.
 
 ```bash
-bash .claude/modules/encounter-system/tools/dm-encounter.sh check "Village" "Ruins" 2000 open
-```
+bash tools/dm-session.sh move "Ruins"
+# Auto-runs encounter check, calculates travel time, ticks stats
 
-### Coordinate Navigation & Maps
-Locations have real coordinates. A* pathfinding finds routes. View your world as ASCII maps or a GUI window. **Canonical connection management** — edges stored once, auto-deduplication.
-
-```bash
-bash .claude/modules/coordinate-navigation/tools/dm-map.sh              # Full ASCII map
-bash .claude/modules/coordinate-navigation/tools/dm-map.sh --minimap    # Tactical minimap
-bash .claude/modules/coordinate-navigation/tools/dm-map.sh --gui        # GUI window with terrain colors
+bash .claude/modules/world-travel/tools/dm-encounter.sh check "Village" "Ruins" 2000 open
+bash .claude/modules/world-travel/tools/dm-map.sh              # Full ASCII map
+bash .claude/modules/world-travel/tools/dm-map.sh --minimap    # Tactical minimap
+bash .claude/modules/world-travel/tools/dm-map.sh --gui        # GUI window with terrain colors
 
 # Add locations by bearing and distance
 bash tools/dm-location.sh add "Outpost" "Abandoned outpost" \

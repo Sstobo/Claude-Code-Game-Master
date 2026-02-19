@@ -7,6 +7,8 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: dm-plot.sh <action> [args]"
     echo ""
     echo "=== Plot Management ==="
+    echo "  add <name> <desc> [--type X] [--npcs A B] [--locations A B] [--objectives A B] [--rewards X] [--consequences X]"
+    echo "                                   Create a new plot/quest"
     echo "  list [--type X] [--status Y]     List plots (filter by type/status)"
     echo "  show <name>                      Show full plot details"
     echo "  search <query>                   Search plots by name, NPCs, locations"
@@ -38,6 +40,10 @@ shift
 dispatch_middleware "dm-plot.sh" "$ACTION" "$@" && exit $?
 
 case "$ACTION" in
+    add)
+        $PYTHON_CMD "$LIB_DIR/plot_manager.py" add "$@"
+        ;;
+
     list)
         $PYTHON_CMD "$LIB_DIR/plot_manager.py" list "$@"
         ;;

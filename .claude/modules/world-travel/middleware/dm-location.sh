@@ -1,5 +1,5 @@
 #!/bin/bash
-# coordinate-navigation middleware for dm-location.sh
+# world-travel middleware for dm-location.sh
 # Handles: add --from, connect --terrain/--distance, decide, routes, block, unblock
 
 MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

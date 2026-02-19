@@ -2,6 +2,41 @@
 
 All notable changes to DM System will be documented in this file.
 
+## [1.7.0] - 2026-02-19
+
+### Added
+- **`world-travel` module** — merge of `coordinate-navigation` + `encounter-system` into one module. `dm-session.sh` middleware intercepts `move`, calculates distance, and auto-runs encounter check. Single module to install for spatial world simulation.
+- **`custom-stats` module** (renamed from `survival-stats`) — hardcoded hunger/thirst removed. Now supports any stat: mana, sanity, oxygen, reputation, etc. Zero hardcoded field names.
+- **Module `activate` / `deactivate` commands** (`tools/dm-module.sh`) — enable or disable modules per campaign with dependency checking (can't activate if dependency is off; can't deactivate if dependents exist).
+- **`_module_enabled()` helper** in `tools/common.sh` — reads `campaign-overview.json["modules"]` as single source of truth.
+- **`dispatch_middleware_post()` helper** in `tools/common.sh` — post-hook pattern: called after CORE completes, not instead of it.
+- **`--elapsed <hours>` flag** for `lib/time_manager.py` — stores `total_hours_elapsed` in campaign-overview. Advance time auto-ticks timed consequences.
+- **Timed consequences** in `lib/consequence_manager.py` — `add --hours <N>` numeric trigger, `tick <hours>` counts down and fires at ≤ 0. `check` now shows `(in 3.0h)` for timed events.
+- **`dm-time.sh --elapsed` flag** and post-hook wiring.
+- **`dm-consequence.sh tick` command** and `--hours` flag.
+- **`add_plot()` in CORE** (`lib/plot_manager.py`) — moved from quest-system module. `dm-plot.sh add` is now vanilla CORE, no module required.
+- **`README.md` in each module** (`custom-stats`, `firearms-combat`, `inventory-system`, `world-travel`) — human-readable docs with CORE vs module tables, command examples, configuration reference.
+
+### Changed
+- **`lib/module_loader.py` rewritten** — single source of truth: `campaign-overview.json["modules"]`. `activate`/`deactivate` with full dependency graph validation.
+- **`lib/campaign_manager.py`** — campaign creation initializes `modules` dict from module defaults.
+- **`module.json` standardized** across all modules — removed junk fields, added `genre_tags`, `middleware`, `features`, `adds_to_core`, `use_cases`, `architecture`, `post_middleware`.
+- **`custom-stats` middleware** switched to post-hook pattern (`dm-time.sh.post`) — called after CORE, reads `--elapsed` from args, ticks custom stats. No duplication, no direct CORE calls from middleware.
+- **`features/character-creation/save_character.py`** — stat normalization: `constitution→con`, `strength→str`, etc.
+- **`tools/dm-player.sh`** — `save-json` now reads from stdin instead of argument (fixes quoting edge cases).
+- **`tests/test_time_effects.py`** — updated for new `update_time()` return type (`dict` instead of `bool`).
+- **`tests/test_survival_engine.py`** — fixed import path (`survival-stats` → `custom-stats`).
+
+### Removed
+- **`quest-system` module** — `add_plot()` promoted to CORE `lib/plot_manager.py`. Quest/plot creation no longer requires a module.
+- **`coordinate-navigation` and `encounter-system` modules** — merged into `world-travel`.
+- **`survival-stats` module** — replaced by `custom-stats` (same engine, no hardcoded stat names).
+
+### Technical
+- 166 tests, all green.
+- `world-travel` middleware uses `dispatch_middleware_post` pattern — CORE move runs first, then encounter check on distance.
+- Module dependency graph: `world-travel` has no deps; `custom-stats` requires nothing; `firearms-combat` and `inventory-system` are standalone.
+
 ## [1.6.0] - 2026-02-18
 
 ### Added

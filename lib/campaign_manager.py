@@ -280,6 +280,8 @@ class CampaignManager:
         # campaign-overview.json
         overview_path = campaign_path / "campaign-overview.json"
         if not preserve_existing or not overview_path.exists():
+            from module_loader import ModuleLoader
+            default_modules = ModuleLoader(Path(__file__).parent.parent).get_default_modules()
             overview = {
                 "campaign_name": campaign_name,
                 "genre": "Fantasy",
@@ -295,7 +297,8 @@ class CampaignManager:
                     "previous_location": None
                 },
                 "current_character": None,
-                "session_count": 0
+                "session_count": 0,
+                "modules": default_modules
             }
             with open(overview_path, 'w', encoding='utf-8') as f:
                 json.dump(overview, f, indent=2)

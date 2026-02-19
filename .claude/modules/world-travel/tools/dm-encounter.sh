@@ -1,7 +1,7 @@
 #!/bin/bash
 # dm-encounter.sh - Encounter system management (module)
 
-# Get MODULE_ROOT (this script is in .claude/modules/encounter-system/tools/)
+# Get MODULE_ROOT (this script is in .claude/modules/world-travel/tools/)
 MODULE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_ROOT="$(cd "$MODULE_ROOT/../../.." && pwd)"
 

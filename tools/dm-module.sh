@@ -11,5 +11,26 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_ROOT"
 
-# Run module loader
-uv run python lib/module_loader.py "$@"
+ACTION="${1:-}"
+
+case "$ACTION" in
+    activate)
+        MODULE="${2:-}"
+        if [ -z "$MODULE" ]; then
+            echo "Usage: dm-module.sh activate <module-id>"
+            exit 1
+        fi
+        uv run python lib/module_loader.py activate --module "$MODULE"
+        ;;
+    deactivate)
+        MODULE="${2:-}"
+        if [ -z "$MODULE" ]; then
+            echo "Usage: dm-module.sh deactivate <module-id>"
+            exit 1
+        fi
+        uv run python lib/module_loader.py deactivate --module "$MODULE"
+        ;;
+    *)
+        uv run python lib/module_loader.py "$@"
+        ;;
+esac

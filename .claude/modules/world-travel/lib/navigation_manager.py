@@ -341,8 +341,7 @@ class NavigationManager:
             speed_kmh = character_data.get("speed_kmh", 4.0)
             elapsed_hours = (distance_meters / 1000.0) / (speed_kmh * speed_multiplier)
 
-        project_root = Path(__file__).parent.parent.parent.parent
-        survival_stats_script = project_root / ".claude" / "modules" / "survival-stats" / "tools" / "dm-survival.sh"
+        survival_stats_script = PROJECT_ROOT / ".claude" / "modules" / "survival-stats" / "tools" / "dm-survival.sh"
 
         if elapsed_hours > 0:
             if survival_stats_script.exists():
@@ -365,15 +364,15 @@ class NavigationManager:
         session_mgr = SessionManager(str(self.json_ops.campaign_dir))
         move_result = session_mgr.move_party(location)
 
-        if move_result.get("success"):
-            return {
-                "success": True,
-                "location": location,
-                "distance_meters": distance_meters,
-                "elapsed_hours": elapsed_hours
-            }
-        else:
+        if not move_result.get("success"):
             return {"success": False, "error": move_result.get("message", "Move failed")}
+
+        return {
+            "success": True,
+            "location": location,
+            "distance_meters": distance_meters,
+            "elapsed_hours": elapsed_hours
+        }
 
     def connect_with_metadata(
         self,

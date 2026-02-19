@@ -204,6 +204,23 @@ check_env() {
     return 0
 }
 
+# Check if a module is enabled for the active campaign
+# Usage: _module_enabled <module-id>
+# Returns 0 if enabled, 1 if disabled
+_module_enabled() {
+    local module_id="$1"
+    uv run python "$PROJECT_ROOT/lib/module_loader.py" info --module "$module_id" > /dev/null 2>&1 || return 1
+    local enabled
+    enabled=$(uv run python -c "
+import sys
+sys.path.insert(0, '$PROJECT_ROOT/lib')
+from module_loader import ModuleLoader
+loader = ModuleLoader()
+print('1' if loader.is_module_enabled('$module_id') else '0')
+" 2>/dev/null)
+    [ "$enabled" = "1" ]
+}
+
 # Dispatch to module middleware
 # Usage: dispatch_middleware <tool-name> [args...]
 # Returns 0 if a middleware handled the call, 1 if CORE should handle
@@ -212,6 +229,13 @@ dispatch_middleware() {
     shift
     for mw in "$PROJECT_ROOT"/.claude/modules/*/middleware/"$tool"; do
         [ -f "$mw" ] || continue
+        # Extract module id from path (.claude/modules/<id>/middleware/tool.sh)
+        local module_id
+        module_id=$(basename "$(dirname "$(dirname "$mw")")")
+        # Skip if disabled in active campaign
+        if ! _module_enabled "$module_id"; then
+            continue
+        fi
         bash "$mw" "$@"
         local rc=$?
         if [ $rc -eq 0 ]; then
@@ -219,6 +243,23 @@ dispatch_middleware() {
         fi
     done
     return 1
+}
+
+# Post-hook: called AFTER CORE runs. All enabled middlewares get a chance.
+# Exit code of middleware is ignored (always continues).
+# Usage: dispatch_middleware_post <tool-name> [args...]
+dispatch_middleware_post() {
+    local tool="$1"
+    shift
+    for mw in "$PROJECT_ROOT"/.claude/modules/*/middleware/"${tool}.post"; do
+        [ -f "$mw" ] || continue
+        local module_id
+        module_id=$(basename "$(dirname "$(dirname "$mw")")")
+        if ! _module_enabled "$module_id"; then
+            continue
+        fi
+        bash "$mw" "$@" || true
+    done
 }
 
 # Print help additions from all middleware for a tool

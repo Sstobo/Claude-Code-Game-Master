@@ -24,7 +24,7 @@ case "$ACTION" in
             echo "Usage: dm-player.sh save-json '<json_data>'"
             exit 1
         fi
-        $PYTHON_CMD "$PROJECT_ROOT/features/character-creation/save_character.py" "$*"
+        echo "$*" | $PYTHON_CMD "$PROJECT_ROOT/features/character-creation/save_character.py" --stdin
         ;;
 
     set)

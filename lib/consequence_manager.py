@@ -30,11 +30,9 @@ class ConsequenceManager(EntityManager):
             data = {'active': [], 'resolved': []}
             self.json_ops.save_json(self.consequences_file, data)
 
-    def add_consequence(self, description: str, trigger: str) -> str:
-        """
-        Add a new consequence
-        Returns the consequence ID
-        """
+    def add_consequence(self, description: str, trigger: str,
+                        hours: Optional[float] = None) -> str:
+        """Add a new consequence. If hours given, stores hours_remaining for auto-tick."""
         data = self.json_ops.load_json(self.consequences_file)
 
         consequence_id = str(uuid.uuid4())[:8]
@@ -44,15 +42,53 @@ class ConsequenceManager(EntityManager):
             'trigger': trigger,
             'created': self.json_ops.get_timestamp()
         }
+        if hours is not None:
+            consequence['hours_remaining'] = float(hours)
 
         if 'active' not in data:
             data['active'] = []
         data['active'].append(consequence)
 
         if self.json_ops.save_json(self.consequences_file, data):
-            print(f"[SUCCESS] Added consequence [{consequence_id}]: {description} (triggers: {trigger})")
+            if hours is not None:
+                print(f"[SUCCESS] Added consequence [{consequence_id}]: {description} (triggers in {hours}h)")
+            else:
+                print(f"[SUCCESS] Added consequence [{consequence_id}]: {description} (triggers: {trigger})")
             return consequence_id
         return ""
+
+    def tick(self, elapsed_hours: float) -> List[Dict[str, Any]]:
+        """Subtract elapsed_hours from all timed consequences. Returns list of triggered ones."""
+        data = self.json_ops.load_json(self.consequences_file)
+        triggered = []
+        remaining = []
+
+        for c in data.get('active', []):
+            if 'hours_remaining' not in c:
+                remaining.append(c)
+                continue
+
+            c['hours_remaining'] = round(c['hours_remaining'] - elapsed_hours, 2)
+            if c['hours_remaining'] <= 0:
+                triggered.append(c)
+                c['triggered_at'] = self.json_ops.get_timestamp()
+                if 'resolved' not in data:
+                    data['resolved'] = []
+                data['resolved'].append(c)
+            else:
+                remaining.append(c)
+
+        if triggered:
+            data['active'] = remaining
+            self.json_ops.save_json(self.consequences_file, data)
+            print(f"[TIME TICK] {elapsed_hours}h elapsed — {len(triggered)} consequence(s) triggered:")
+            for c in triggered:
+                print(f"  ⚡ [{c['id']}] {c['consequence']}")
+        else:
+            data['active'] = remaining
+            self.json_ops.save_json(self.consequences_file, data)
+
+        return triggered
 
     def check_pending(self) -> List[Dict[str, Any]]:
         """
@@ -109,7 +145,13 @@ def main():
     # Add consequence
     add_parser = subparsers.add_parser('add', help='Add new consequence')
     add_parser.add_argument('description', help='Consequence description')
-    add_parser.add_argument('trigger', help='Trigger condition')
+    add_parser.add_argument('trigger', help='Trigger condition (text) or use --hours')
+    add_parser.add_argument('--hours', type=float, default=None,
+                            help='Hours until trigger (enables auto-tick)')
+
+    # Tick time
+    tick_parser = subparsers.add_parser('tick', help='Advance time, trigger timed consequences')
+    tick_parser.add_argument('hours', type=float, help='Hours elapsed')
 
     # Check pending
     subparsers.add_parser('check', help='Check pending consequences')
@@ -130,8 +172,11 @@ def main():
     manager = ConsequenceManager()
 
     if args.action == 'add':
-        if not manager.add_consequence(args.description, args.trigger):
+        if not manager.add_consequence(args.description, args.trigger, args.hours):
             sys.exit(1)
+
+    elif args.action == 'tick':
+        manager.tick(args.hours)
 
     elif args.action == 'check':
         pending = manager.check_pending()
@@ -140,7 +185,10 @@ def main():
         else:
             print(f"{len(pending)} pending consequences:")
             for c in pending:
-                print(f"  [{c['id']}] {c['consequence']} (triggers: {c['trigger']})")
+                if 'hours_remaining' in c:
+                    print(f"  [{c['id']}] {c['consequence']} (in {c['hours_remaining']}h)")
+                else:
+                    print(f"  [{c['id']}] {c['consequence']} (triggers: {c['trigger']})")
 
     elif args.action == 'resolve':
         if not manager.resolve(args.id):

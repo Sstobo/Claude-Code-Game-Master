@@ -1471,7 +1471,30 @@ Look at `adds_to_core.data_fields` — it contains exactly what needs to be merg
 
 Apply the patches manually using Python or by editing the JSON files directly.
 
-**Step 4: Verify**
+**Step 4: Save active_modules list to campaign-overview.json**
+
+After applying all patches, save the list of selected module IDs:
+```bash
+uv run python -c "
+import json
+with open('world-state/campaigns/<NAME>/campaign-overview.json') as f:
+    d = json.load(f)
+d['active_modules'] = ['module-id-1', 'module-id-2']  # replace with actual selected IDs
+with open('world-state/campaigns/<NAME>/campaign-overview.json', 'w') as f:
+    json.dump(d, f, indent=2, ensure_ascii=False)
+"
+```
+
+**Step 5: Load module rules into context**
+
+MANDATORY — read and internalize the rules.md for every selected module:
+```bash
+bash tools/dm-active-modules-rules.sh
+```
+
+This outputs the rules for active modules. Read them now — they define commands, mechanics, and DM behavior for this campaign.
+
+**Step 6: Verify**
 ```bash
 bash tools/dm-session.sh context
 ```
@@ -1497,4 +1520,6 @@ bash tools/dm-session.sh context
 ## PROCESS RULES
 
 - **CHANGELOG / commits**: Never mention private campaign data (campaign names, location names, character names, session counts). Changelogs and commit messages are public — describe only the feature/fix in generic terms.
+
+- **MODULES ARE MANDATORY ON NEW CAMPAIGN**: When creating any new campaign — regardless of how quickly the user wants to proceed — ALWAYS show the module selection menu BEFORE creating the world or character. "По-быстрому", "one-shot", "тест" — не исключения. Без выбора модулей кампания не создаётся. Шаги: (1) `bash tools/dm-module.sh list`, (2) показать меню, (3) дождаться ответа, (4) применить патчи из `module.json` → только потом создавать кампанию.
 
