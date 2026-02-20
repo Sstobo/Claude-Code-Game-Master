@@ -1,137 +1,74 @@
-# Inventory System Module
+# Inventory System — DM Rules
 
-## Purpose
+---
 
-Unified inventory manager with atomic transactions for all character inventory and stats operations.
+## When to Use
 
-## Features
+Use `dm-inventory.sh` for ALL inventory/gold/HP/XP/stat changes — never edit character.json manually.
 
-- **Atomic Transactions**: All changes succeed together or fail together - no partial updates
-- **Stackable Items**: Consumables with quantities (Medkit x3, Ammo 9mm x60, Vodka x2)
-- **Unique Items**: Weapons, armor, quest items - one entry per item, no quantities
-- **Auto-Migration**: Automatically converts old `equipment` array format on first use
-- **Test Mode**: Preview changes without applying them
+---
 
-## Usage
+## Core Commands
 
-### Update Inventory/Stats
+### After combat / loot found
 
 ```bash
-bash .claude/modules/inventory-system/tools/dm-inventory.sh update "[character_name]" \
-  --gold +150 \
-  --hp -10 \
-  --xp +200 \
-  --add "Medkit" 2 "Ammo 9mm" 30 \
-  --remove "Bandage" 1 \
-  --add-unique "Magic Sword (+1)" \
-  --remove-unique "Old Sword" \
-  --stat hunger +20 thirst -15
+bash .claude/modules/inventory-system/tools/dm-inventory.sh loot "[char]" \
+  --gold 250 --xp 150 --items "Medkit:2" "Ammo 5.56mm:60"
 ```
 
-### Test Transaction (Validation Only)
+### Player uses item
 
 ```bash
-bash .claude/modules/inventory-system/tools/dm-inventory.sh update "[character_name]" \
-  --gold -500 \
-  --add-unique "Platemail Armor (AC 18)" \
-  --test
+bash .claude/modules/inventory-system/tools/dm-inventory.sh update "[char]" \
+  --remove "Medkit" 1 --hp +20
 ```
 
-### View Full Inventory
+### Player buys / sells
 
 ```bash
-bash .claude/modules/inventory-system/tools/dm-inventory.sh show "[character_name]"
+bash .claude/modules/inventory-system/tools/dm-inventory.sh update "[char]" \
+  --gold -500 --add-unique "Platemail Armor (AC 18)"
 ```
 
-### Quick Loot Command
+### Player takes damage / gains XP
 
 ```bash
-bash .claude/modules/inventory-system/tools/dm-inventory.sh loot "[character_name]" \
-  --gold 250 \
-  --xp 150 \
-  --items "Medkit:2" "Ammo 5.56mm:60"
+bash .claude/modules/inventory-system/tools/dm-inventory.sh update "[char]" \
+  --hp -10 --xp +200
 ```
+
+### View inventory
+
+```bash
+bash .claude/modules/inventory-system/tools/dm-inventory.sh show "[char]"
+```
+
+---
 
 ## Flags Reference
 
 | Flag | Purpose |
 |------|---------|
-| `--gold` | Add or subtract gold (validates non-negative) |
-| `--hp` | Modify HP (validates within 0 to max_hp) |
-| `--xp` | Add XP (awards only, no subtraction) |
-| `--add` | Add stackable items (creates if new, increments if exists) |
-| `--remove` | Remove stackable items (validates sufficient quantity) |
-| `--set` | Set exact quantity for stackable item |
-| `--add-unique` | Add unique item to unique array |
-| `--remove-unique` | Remove unique item from unique array (fuzzy match) |
-| `--stat` | Modify custom stats (hunger, thirst, radiation, etc.) |
-| `--test` | Validation mode - shows what would happen but doesn't apply |
+| `--gold N` | Add/subtract gold (fails if insufficient) |
+| `--hp N` | Modify HP (clamped to 0–max) |
+| `--xp N` | Add XP |
+| `--add "Item" N` | Add stackable item (merges with existing) |
+| `--remove "Item" N` | Remove stackable item (fails if insufficient) |
+| `--add-unique "Item"` | Add unique item (weapon, armor, quest) |
+| `--remove-unique "Item"` | Remove unique item (fuzzy match) |
+| `--stat name N` | Modify custom stat (hunger, radiation, etc.) |
+| `--test` | Preview only — validate without writing |
 
-## Item Categories
-
-- **Stackable**: Consumables with quantities
-  - Examples: Medkit, Ammo, Food, Bandages, Potions
-  - Format: Quantity counter
-  - Auto-stacks when adding multiples
-
-- **Unique**: One-off items
-  - Examples: Weapons with stats, Armor with AC, Quest items, Artifacts
-  - Format: Full description with stats
-  - No quantity field
-
-## Examples
-
-### Post-Combat Loot
-
-```bash
-bash .claude/modules/inventory-system/tools/dm-inventory.sh update "Grimjaw" \
-  --gold +250 \
-  --xp +150 \
-  --add "Medkit" 2 "Ammo 5.56mm" 60 \
-  --add-unique "M4A1 Carbine (5.56mm, 2d8+2, PEN 3)"
-```
-
-### Use Consumables
-
-```bash
-bash .claude/modules/inventory-system/tools/dm-inventory.sh update "Silara" \
-  --remove "Medkit" 1 \
-  --hp +20
-```
-
-### Validate Before Purchase
-
-```bash
-bash .claude/modules/inventory-system/tools/dm-inventory.sh update "Conan" \
-  --gold -500 \
-  --add-unique "Platemail Armor (AC 18)" \
-  --test
-```
+---
 
 ## Validation
 
-The system automatically validates:
-- Sufficient gold before spending
-- HP stays within [0, max_hp] range
-- Sufficient item quantities before removal
-- Custom stats stay within [min, max] ranges
-- All items exist before removal
+All-or-nothing: if any part fails (not enough gold, item missing, stat out of bounds) — **nothing is written**. Use `--test` to check before committing.
 
-If validation fails, **no changes are applied** and detailed error messages are shown.
+---
 
-## Migration
+## Item Types
 
-On first use, if a campaign has the old `equipment` array format:
-1. Creates `character.json.backup` with timestamp
-2. Parses item quantities from names (e.g., "Medkit ×3")
-3. Categorizes weapons/armor/quest items as unique
-4. Creates new `inventory` structure with `stackable` and `unique` sections
-5. Removes old `equipment` field
-
-No manual intervention needed - migration is automatic and creates backups.
-
-## Integration
-
-This module is a **self-contained feature** and does NOT require `campaign_rules` configuration. It works with any campaign that has a `character.json` file.
-
-For campaigns with custom stats (STALKER, Civilization, etc.), the `--stat` flag can modify those stats directly.
+- **Stackable** — consumables with quantity: Medkit, Ammo, Food, Potions
+- **Unique** — named items with full stats in the name: `"AK-74 (5.56mm, 2d6+2, PEN 3)"`, `"Leather Armor (AC 11)"`

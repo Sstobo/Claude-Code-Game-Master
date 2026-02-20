@@ -61,6 +61,12 @@ bash tools/dm-module.sh list-verbose
   ...
 
   ────────────────────────────────────────────────────────────
+  💡 RECOMMENDED FOR THIS CAMPAIGN:
+  Based on campaign name and tone, suggest which modules make
+  sense. E.g. for survival/STALKER → custom-stats + firearms.
+  For classic D&D → inventory only. For open world → world-travel.
+  Write 1-2 sentences why each suggested module fits the vibe.
+  ────────────────────────────────────────────────────────────
   Type numbers to toggle (e.g. "1 2") or ENTER to keep current.
 
 ================================================================
@@ -78,6 +84,25 @@ bash tools/dm-active-modules-rules.sh
 ```
 
 Rules are now in context — use them for all world-building that follows.
+
+---
+
+## PHASE 1.6: LOAD MODULE CREATION RULES
+
+Load creation-specific instructions from active modules:
+
+```bash
+bash tools/dm-active-modules-creation-rules.sh
+```
+
+These rules tell you HOW to handle world-building for each active module:
+- **custom-stats**: Which stats to propose, how to configure them
+- **world-travel**: How to generate locations with coordinates and encounters
+- **inventory-system**: Starting equipment philosophy and item initialization
+- **firearms-combat**: Weapon presets and firearms system configuration
+
+**The creation rules augment (not replace) the phases below.**
+Follow module-specific instructions when they apply to that phase.
 
 ---
 
@@ -393,3 +418,28 @@ Before transitioning to character creation, verify:
 - [ ] 3+ consequences scheduled
 - [ ] Session log initialized
 - [ ] Campaign overview updated with settings
+- [ ] Module-specific creation steps completed (custom-stats configured, firearms weapons set, etc.)
+
+---
+
+## AFTER /new-game: RECOMMENDED NEXT STEP
+
+Once world creation and character creation are complete, display:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WORLD READY — START PLAYING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Your campaign is set up. To start playing:
+
+  1. Clear this context window  (/clear or Ctrl+C / new chat)
+  2. Run /dm
+
+Why clear context?
+  /new-game loaded creation rules and build instructions.
+  /dm loads only the game rules your campaign needs.
+  Smaller context = faster, more focused sessions.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
