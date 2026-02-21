@@ -1,19 +1,75 @@
-"""Force-directed spring layout for interior node graphs. Returns {node: {x, y}} positions."""
+"""Radial tree layout for interior node graphs. Hub nodes in center, leaves radiate outward. Zero crossings for tree-like graphs."""
 
 import math
-import random
+from collections import deque
 
 _cache: dict = {}
 
-_K_REPEL = 50000
-_K_ATTRACT = 0.01
-_K_ANCHOR = 0.05
-_DAMPING = 0.9
-_MIN_DIST = 10
+_SNAP_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315]
 
 
 def _cache_key(nodes, edges):
     return (frozenset(nodes), frozenset(edges))
+
+
+def _neighbors(node, edges):
+    result = set()
+    for s, d in edges:
+        if s == node:
+            result.add(d)
+        elif d == node:
+            result.add(s)
+    return result
+
+
+def _find_hub(nodes, edges):
+    best = None
+    best_deg = -1
+    for n in nodes:
+        deg = len(_neighbors(n, edges))
+        if deg > best_deg:
+            best_deg = deg
+            best = n
+    return best
+
+
+def _snap_angle(angle_deg):
+    angle_deg = angle_deg % 360
+    best = min(_SNAP_ANGLES, key=lambda a: min(abs(angle_deg - a), 360 - abs(angle_deg - a)))
+    return best
+
+
+def _bfs_tree(root, nodes, edges):
+    node_set = set(nodes)
+    parent_map = {root: None}
+    children_map = {n: [] for n in nodes}
+    order = [root]
+    queue = deque([root])
+    seen = {root}
+
+    while queue:
+        current = queue.popleft()
+        for nb in sorted(_neighbors(current, edges)):
+            if nb not in seen and nb in node_set:
+                seen.add(nb)
+                parent_map[nb] = current
+                children_map[current].append(nb)
+                order.append(nb)
+                queue.append(nb)
+
+    for n in nodes:
+        if n not in seen:
+            order.append(n)
+            parent_map[n] = None
+
+    return parent_map, children_map, order
+
+
+def _subtree_size(node, children_map):
+    count = 1
+    for child in children_map.get(node, []):
+        count += _subtree_size(child, children_map)
+    return count
 
 
 def compute_layout(nodes, edges, entry_points=None, width=800, height=600, iterations=100):
@@ -24,75 +80,101 @@ def compute_layout(nodes, edges, entry_points=None, width=800, height=600, itera
     if key in _cache:
         return _cache[key]
 
-    entry_set = set(entry_points or [])
-    rng = random.Random(42)
-
-    pos = {}
-    for node in nodes:
-        if node in entry_set:
-            side = rng.randint(0, 3)
-            if side == 0:
-                pos[node] = [rng.uniform(0, width), rng.uniform(0, height * 0.1)]
-            elif side == 1:
-                pos[node] = [rng.uniform(0, width), rng.uniform(height * 0.9, height)]
-            elif side == 2:
-                pos[node] = [rng.uniform(0, width * 0.1), rng.uniform(0, height)]
-            else:
-                pos[node] = [rng.uniform(width * 0.9, width), rng.uniform(0, height)]
-        else:
-            pos[node] = [rng.uniform(width * 0.1, width * 0.9), rng.uniform(height * 0.1, height * 0.9)]
-
     node_list = list(nodes)
+    n = len(node_list)
+    entry_set = set(entry_points or [])
 
-    for _ in range(iterations):
-        forces = {node: [0.0, 0.0] for node in node_list}
+    if n == 1:
+        result = {node_list[0]: {"x": width / 2.0, "y": height / 2.0}}
+        _cache[key] = result
+        return result
 
-        for i in range(len(node_list)):
-            for j in range(i + 1, len(node_list)):
-                a = node_list[i]
-                b = node_list[j]
-                dx = pos[a][0] - pos[b][0]
-                dy = pos[a][1] - pos[b][1]
-                dist = max(math.sqrt(dx * dx + dy * dy), _MIN_DIST)
-                f = _K_REPEL / (dist * dist)
-                fx = f * dx / dist
-                fy = f * dy / dist
-                forces[a][0] += fx
-                forces[a][1] += fy
-                forces[b][0] -= fx
-                forces[b][1] -= fy
+    hub = _find_hub(node_list, edges)
+    _, children_map, _ = _bfs_tree(hub, node_list, edges)
 
-        for (src, dst) in edges:
-            if src not in pos or dst not in pos:
-                continue
-            dx = pos[dst][0] - pos[src][0]
-            dy = pos[dst][1] - pos[src][1]
-            dist = max(math.sqrt(dx * dx + dy * dy), _MIN_DIST)
-            f = _K_ATTRACT * dist
-            fx = f * dx / dist
-            fy = f * dy / dist
-            forces[src][0] += fx
-            forces[src][1] += fy
-            forces[dst][0] -= fx
-            forces[dst][1] -= fy
+    cx, cy = width / 2.0, height / 2.0
+    positions = {}
+    positions[hub] = {"x": cx, "y": cy}
 
-        for node in entry_set:
-            if node not in pos:
-                continue
-            x, y = pos[node]
-            nearest_edge_x = min(x, width - x)
-            nearest_edge_y = min(y, height - y)
-            if nearest_edge_x < nearest_edge_y:
-                target_x = 0.0 if x < width / 2 else width
-                forces[node][0] += _K_ANCHOR * (target_x - x)
-            else:
-                target_y = 0.0 if y < height / 2 else height
-                forces[node][1] += _K_ANCHOR * (target_y - y)
+    hub_children = children_map.get(hub, [])
+    if hub_children:
+        sizes = [_subtree_size(c, children_map) for c in hub_children]
+        total = sum(sizes)
 
-        for node in node_list:
-            pos[node][0] = max(0.0, min(width, pos[node][0] + forces[node][0] * _DAMPING))
-            pos[node][1] = max(0.0, min(height, pos[node][1] + forces[node][1] * _DAMPING))
+        base_angle = 0
+        for ep in entry_set:
+            if ep in hub_children:
+                idx = hub_children.index(ep)
+                base_angle = 270 - int(360 * sum(sizes[:idx]) / total + 360 * sizes[idx] / (2 * total))
+                break
 
-    result = {node: {"x": pos[node][0], "y": pos[node][1]} for node in node_list}
-    _cache[key] = result
-    return result
+        ring_radius = min(width, height) * 0.3
+
+        current_angle = base_angle
+        for i, child in enumerate(hub_children):
+            wedge = 360.0 * sizes[i] / total
+            angle_deg = current_angle + wedge / 2.0
+            angle_deg = _snap_angle(angle_deg)
+            angle_rad = math.radians(angle_deg)
+
+            child_x = cx + ring_radius * math.cos(angle_rad)
+            child_y = cy - ring_radius * math.sin(angle_rad)
+            positions[child] = {"x": child_x, "y": child_y}
+
+            _layout_subtree(child, angle_deg, ring_radius, children_map, positions, cx, cy, width, height)
+
+            current_angle += wedge
+
+    for nd in node_list:
+        if nd not in positions:
+            positions[nd] = {"x": cx, "y": cy}
+
+    margin = 40
+    all_x = [p["x"] for p in positions.values()]
+    all_y = [p["y"] for p in positions.values()]
+    min_x, max_x = min(all_x), max(all_x)
+    min_y, max_y = min(all_y), max(all_y)
+    range_x = max_x - min_x if max_x > min_x else 1
+    range_y = max_y - min_y if max_y > min_y else 1
+
+    for nd in positions:
+        positions[nd]["x"] = margin + (positions[nd]["x"] - min_x) / range_x * (width - 2 * margin)
+        positions[nd]["y"] = margin + (positions[nd]["y"] - min_y) / range_y * (height - 2 * margin)
+
+    _cache[key] = positions
+    return positions
+
+
+def _layout_subtree(node, parent_angle, parent_radius, children_map, positions, cx, cy, width, height):
+    kids = children_map.get(node, [])
+    if not kids:
+        return
+
+    step_radius = min(width, height) * 0.2
+    node_radius = parent_radius + step_radius
+
+    if len(kids) == 1:
+        angle_deg = _snap_angle(parent_angle)
+        angle_rad = math.radians(angle_deg)
+        child_x = cx + node_radius * math.cos(angle_rad)
+        child_y = cy - node_radius * math.sin(angle_rad)
+        positions[kids[0]] = {"x": child_x, "y": child_y}
+        _layout_subtree(kids[0], angle_deg, node_radius, children_map, positions, cx, cy, width, height)
+        return
+
+    sizes = [_subtree_size(k, children_map) for k in kids]
+    total = sum(sizes)
+    spread = min(90, 30 * len(kids))
+    start_angle = parent_angle - spread / 2
+
+    current_angle = start_angle
+    for i, kid in enumerate(kids):
+        wedge = spread * sizes[i] / total
+        angle_deg = current_angle + wedge / 2.0
+        angle_deg = _snap_angle(angle_deg)
+        angle_rad = math.radians(angle_deg)
+        child_x = cx + node_radius * math.cos(angle_rad)
+        child_y = cy - node_radius * math.sin(angle_rad)
+        positions[kid] = {"x": child_x, "y": child_y}
+        _layout_subtree(kid, angle_deg, node_radius, children_map, positions, cx, cy, width, height)
+        current_angle += wedge

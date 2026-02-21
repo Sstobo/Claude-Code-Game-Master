@@ -276,6 +276,34 @@ class HierarchyManager:
 
         return {"valid": len(errors) == 0, "errors": errors}
 
+    def resolve_player_position(self) -> Dict[str, Any]:
+        overview = self.ops.load_json("campaign-overview.json")
+        pp = overview.get("player_position", {})
+        current = pp.get("current_location")
+        if not current:
+            return {"success": False, "error": "No current location"}
+
+        locations = self.ops.load_json("locations.json")
+        loc_data = locations.get(current, {})
+
+        if loc_data.get("type") != "compound":
+            return {"success": True, "location": current, "resolved": False}
+
+        eps = loc_data.get("entry_points", [])
+        if not eps:
+            children = loc_data.get("children", [])
+            if children:
+                target = children[0]
+            else:
+                return {"success": True, "location": current, "resolved": False}
+        else:
+            target = eps[0]
+
+        stack = self.get_ancestors(target)
+        self._update_player_position(target, stack)
+        return {"success": True, "location": target, "resolved": True,
+                "previous": current, "location_stack": stack}
+
     def _build_tree_node(self, name: str, locations: Dict) -> Dict[str, Any]:
         data = locations.get(name, {})
         node: Dict[str, Any] = {
@@ -376,6 +404,7 @@ if __name__ == "__main__":
     p.add_argument("name")
 
     sub.add_parser("validate")
+    sub.add_parser("resolve")
 
     args = parser.parse_args()
 
@@ -427,6 +456,10 @@ if __name__ == "__main__":
 
     elif args.cmd == "validate":
         result = hm.validate_hierarchy()
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+
+    elif args.cmd == "resolve":
+        result = hm.resolve_player_position()
         print(json.dumps(result, ensure_ascii=False, indent=2))
 
     else:

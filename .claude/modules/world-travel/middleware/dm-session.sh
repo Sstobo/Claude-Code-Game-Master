@@ -10,6 +10,20 @@ if [ "$1" = "--help" ]; then
     exit 1
 fi
 
+# Auto-resolve: if player is on compound, move to entry point
+if [ "$1" = "start" ] || [ "$1" = "context" ]; then
+    HIERARCHY_PY="$MODULE_DIR/lib/hierarchy_manager.py"
+    if [ -f "$HIERARCHY_PY" ]; then
+        RESOLVE_OUT=$(uv run python "$HIERARCHY_PY" resolve 2>/dev/null)
+        RESOLVED=$(echo "$RESOLVE_OUT" | uv run python -c "import sys,json; d=json.load(sys.stdin); print(d.get('resolved', False))" 2>/dev/null)
+        if [ "$RESOLVED" = "True" ]; then
+            NEW_LOC=$(echo "$RESOLVE_OUT" | uv run python -c "import sys,json; d=json.load(sys.stdin); print(d.get('location',''))" 2>/dev/null)
+            echo "[HIERARCHY] Auto-resolved player to entry point: $NEW_LOC"
+        fi
+    fi
+    exit 1  # continue to core handler
+fi
+
 [ "$1" = "move" ] || exit 1
 
 shift  # remove 'move'

@@ -17,7 +17,7 @@ PROJECT_ROOT = _find_project_root()
 sys.path.insert(0, str(PROJECT_ROOT / "lib"))
 
 from json_ops import JsonOperations
-from connection_utils import add_canonical_connection, remove_canonical_connection, get_connection_between, get_connections
+from connection_utils import add_canonical_connection, remove_canonical_connection, get_connections
 from pathfinding import PathFinder
 
 MODULE_LIB = Path(__file__).parent
@@ -157,9 +157,28 @@ class VehicleManager:
 
         if destination and destination in locations:
             dest_coords = locations[destination].get("coordinates", {"x": 0, "y": 0})
-            new_coords = {"x": dest_coords["x"], "y": dest_coords["y"]}
+            old_coords = locations[anchor_name].get("coordinates", {"x": 0, "y": 0})
+            dist = PathFinder.calculate_direct_distance(old_coords, dest_coords)
+            dest_data = locations[destination]
+            dest_radius = dest_data.get("diameter_meters", 0) / 2
+            ship_radius = locations[anchor_name].get("diameter_meters", 0) / 2
+            stopping_dist = max(dest_radius + ship_radius, dest_data.get("_vehicle", {}).get("proximity_radius_meters", 0))
+            if not stopping_dist:
+                stopping_dist = locations[anchor_name].get("_vehicle", {}).get("proximity_radius_meters", 500)
+            if dist > stopping_dist:
+                ratio = (dist - stopping_dist) / dist
+                new_coords = {
+                    "x": round(old_coords["x"] + (dest_coords["x"] - old_coords["x"]) * ratio),
+                    "y": round(old_coords["y"] + (dest_coords["y"] - old_coords["y"]) * ratio)
+                }
+                actual_dist = stopping_dist
+            else:
+                new_coords = {"x": dest_coords["x"], "y": dest_coords["y"]}
+                actual_dist = 0
         elif x is not None and y is not None:
             new_coords = {"x": round(x), "y": round(y)}
+            destination = None
+            actual_dist = None
         else:
             return {"success": False, "error": "Specify destination or --x --y"}
 
@@ -186,7 +205,7 @@ class VehicleManager:
             player_status = "inside"
 
         self.ops.save_json("locations.json", locations)
-        return {
+        result = {
             "success": True,
             "vehicle_id": vehicle_id,
             "anchor": anchor_name,
@@ -194,6 +213,10 @@ class VehicleManager:
             "new_connections": new_connections,
             "player_status": player_status
         }
+        if destination:
+            result["destination"] = destination
+            result["stopping_distance"] = actual_dist
+        return result
 
     def _sync_hierarchy_enter(self, anchor_name: str, target_room: str) -> None:
         locations = self.ops.load_json("locations.json")
@@ -239,8 +262,9 @@ class VehicleManager:
 
             dist = PathFinder.calculate_direct_distance(anchor_coords, loc_coords)
             if dist <= proximity_radius:
+                terrain = loc_data.get("terrain", "space")
                 add_canonical_connection(anchor_name, loc_name, locations,
-                                        distance_meters=dist, terrain="docking")
+                                        distance_meters=dist, terrain=terrain)
                 new_neighbors.append(loc_name)
 
         return new_neighbors
