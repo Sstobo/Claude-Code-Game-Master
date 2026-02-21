@@ -21,6 +21,11 @@ sys.path.insert(0, str(PROJECT_ROOT / "lib"))
 
 from json_ops import JsonOperations
 
+MODULE_DIR = Path(__file__).parent
+sys.path.insert(0, str(MODULE_DIR))
+
+from connection_utils import get_connections
+
 
 class HierarchyManager:
 
@@ -291,7 +296,7 @@ class HierarchyManager:
 
         while queue:
             current = queue.popleft()
-            for conn in locations.get(current, {}).get("connections", []):
+            for conn in get_connections(current, locations):
                 neighbor = conn.get("to") if isinstance(conn, dict) else conn
                 if neighbor == target:
                     return True

@@ -138,3 +138,77 @@ Player inside → travels with vehicle. Player outside → stays put (system war
 bash .claude/modules/world-travel/tools/dm-vehicle.sh status
 bash .claude/modules/world-travel/tools/dm-vehicle.sh map indomitable
 ```
+
+---
+
+## Part 4: Hierarchical Locations
+
+Locations form a tree: **world** → **compound** → **interior**. One flat `locations.json`, hierarchy built via `parent`/`children` fields.
+
+### Location Types
+
+| Type | Has coordinates | Has children | Examples |
+|------|----------------|-------------|----------|
+| `world` | Yes | No | Map point, crossroad |
+| `compound` | Yes (top-level) / No (nested) | Yes | City, ship, castle |
+| `interior` | No | No | Room, hall, alley |
+
+### Creating Hierarchy
+
+```bash
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh create-compound "Город Грэйхолл" --entry-points "Ворота"
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh add-room "Ворота" --parent "Город Грэйхолл" --entry-point
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh add-room "Рыночная площадь" --parent "Город Грэйхолл" --connections '[{"to": "Ворота"}]'
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh add-room "Замок" --parent "Город Грэйхолл" --connections '[{"to": "Рыночная площадь"}]'
+```
+
+Nested compounds (castle inside city):
+```bash
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh create-compound "Замок" --parent "Город Грэйхолл" --entry-points "Ворота замка"
+```
+
+### Entry Points
+
+Entry point = interior location with `is_entry_point: true` and `entry_config`:
+- `on_enter` / `on_exit` — DM hint (tax, check, flavor text). NOT automated — DM reads and decides.
+- `locked` — blocked until player finds key/solution
+- `hidden` — DM knows, player doesn't (until discovered)
+- `leads_to` — if entry goes to specific child instead of parent scope
+
+### Entering / Exiting / Moving
+
+```bash
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh enter "Город Грэйхолл" --via "Ворота"
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh move "Рыночная площадь"
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh exit
+```
+
+`enter` → sets player at entry point, builds `location_stack`.
+`move` → BFS checks reachability via connections graph. Uses bidirectional canonical connections.
+`exit` → pops to parent level.
+
+### Viewing Structure
+
+```bash
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh tree                    # all top-level
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh tree "Город Грэйхолл"  # subtree
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh entry-config "Город"    # entry points + configs
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh validate               # check hierarchy integrity
+```
+
+### Map GUI
+
+- **Global view**: only `world` and top-level `compound` locations (no parent). Compounds draw as squares.
+- **Interior view**: double-click compound → shows children with force-directed layout. Entry points have green border.
+- **Breadcrumb**: top bar shows `World > City > Castle > Room`. Click = navigate.
+- **ESC**: go up one level. In global → exit.
+
+### When to Use Hierarchy vs Flat
+
+- **Flat** (`type: "world"`): standalone map points with coordinates and distances
+- **Compound**: anything with an "inside" — cities, buildings, ships, dungeons, caves
+- **Rule of thumb**: if player can "enter" it and find multiple rooms → compound
+
+### Vehicles Are Compounds
+
+All `dm-vehicle.sh` commands still work. Internally, vehicles are compounds with `mobile: true`. Vehicle rooms are interiors with parent = anchor.

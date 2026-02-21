@@ -176,19 +176,68 @@ Display the ASCII map in the session summary so the user sees the world layout.
 
 ---
 
-## Step 7: Vehicles (Optional)
+## Step 7: Compounds & Interiors (Optional)
 
-If the campaign involves ships, dungeons, or cities with interiors, ask:
+If the campaign involves ships, dungeons, cities, or any location with an "inside", ask:
 
 ```
-Does your world have any locations with interior maps?
-(ships, space stations, large dungeons, city districts)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  INTERIOR LOCATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-[Y] Set up vehicle/interior system
-[N] Skip
+Does your world have locations with interior maps?
+(ships, space stations, castles, dungeons, city districts)
+
+  [Y] Set up compounds with rooms
+  [N] Skip — all locations are map points
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-If YES — guide through `dm-vehicle.sh create` for each interior location.
+If YES — for each compound:
+
+### 7a. Create the compound
+
+```bash
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh create-compound "Castle Blackmoor" --entry-points "Main Gate"
+```
+
+For mobile compounds (ships, vehicles):
+```bash
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh create-compound "The Kestrel" --mobile --entry-points "Airlock"
+```
+
+### 7b. Add rooms
+
+```bash
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh add-room "Main Gate" --parent "Castle Blackmoor" --entry-point --connections '[{"to": "Great Hall"}]'
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh add-room "Great Hall" --parent "Castle Blackmoor" --connections '[{"to": "Main Gate"}, {"to": "Throne Room"}]'
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh add-room "Throne Room" --parent "Castle Blackmoor" --connections '[{"to": "Great Hall"}]'
+```
+
+### 7c. Entry point config (optional)
+
+For entry points with events (tax, guard check, hidden entrance):
+
+```bash
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh add-room "Sewers" --parent "Castle Blackmoor" \
+  --entry-point --entry-config '{"name": "Secret Entrance", "hidden": true, "on_enter": {"description": "Stealth DC 15 to enter undetected", "type": "check", "dc": 15}}'
+```
+
+### 7d. Nested compounds
+
+Cities can contain castles, which contain dungeons:
+
+```bash
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh create-compound "Castle Blackmoor" --parent "City of Greyhall" --entry-points "Castle Gate"
+```
+
+### 7e. Verify
+
+```bash
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh tree "Castle Blackmoor"
+bash .claude/modules/world-travel/tools/dm-hierarchy.sh validate
+```
 
 ---
 
@@ -198,3 +247,5 @@ If YES — guide through `dm-vehicle.sh create` for each interior location.
 - If scale is ABSTRACT → skip this entire module's creation flow, fall back to default new-game location creation
 - The starting location coordinates must be set BEFORE adding dependent locations
 - Always show the map at the end — it's the payoff for all the bearing/distance work
+- Compounds replace the old vehicle system. `dm-vehicle.sh` still works — vehicles are compounds with `mobile: true`
+- Interior rooms don't need coordinates — the GUI uses force-directed layout

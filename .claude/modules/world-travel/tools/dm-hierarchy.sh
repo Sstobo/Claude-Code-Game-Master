@@ -54,7 +54,15 @@ case "$ACTION" in
             exit 1
         fi
         shift
-        $PYTHON_CMD "$HIERARCHY_PY" enter "$COMPOUND" "$@"
+        ARGS=()
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --via) ARGS+=("--entry-point"); shift; ARGS+=("$1") ;;
+                *) ARGS+=("$1") ;;
+            esac
+            shift
+        done
+        $PYTHON_CMD "$HIERARCHY_PY" enter "$COMPOUND" "${ARGS[@]}"
         ;;
     exit)
         $PYTHON_CMD "$HIERARCHY_PY" exit
