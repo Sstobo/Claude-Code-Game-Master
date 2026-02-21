@@ -12,11 +12,16 @@ ACTIVE=$(cat "$PROJECT_ROOT/world-state/active-campaign.txt" 2>/dev/null || echo
 OVERVIEW="$PROJECT_ROOT/world-state/campaigns/$ACTIVE/campaign-overview.json"
 [ -f "$OVERVIEW" ] || exit 0
 
-uv run python - "$PROJECT_ROOT" "$OVERVIEW" << 'PYEOF'
+MODE="full"
+[ "${1:-}" = "--modules-only" ] && MODE="modules"
+[ "${1:-}" = "--core-only" ] && MODE="core"
+
+uv run python - "$PROJECT_ROOT" "$OVERVIEW" "$MODE" << 'PYEOF'
 import json, sys, os
 
 project_root = sys.argv[1]
 overview_path = sys.argv[2]
+mode = sys.argv[3]  # full | modules | core
 
 with open(overview_path) as f:
     d = json.load(f)
@@ -56,6 +61,15 @@ for mod in enabled:
     else:
         addons.append((mod, rules))
 
+if mode == "modules":
+    for slot_id, (mod_id, mod_rules) in slot_replacements.items():
+        print(f"\n---\n# MODULE RULES [{slot_id}]: {mod_id}\n")
+        print(mod_rules)
+    for mod_id, mod_rules in addons:
+        print(f"\n---\n# MODULE RULES: {mod_id}\n")
+        print(mod_rules)
+    sys.exit(0)
+
 # Read slots in alphabetical order (skip _preamble — print it first)
 slots_dir = f"{project_root}/.claude/dm/slots"
 if not os.path.isdir(slots_dir):
@@ -69,21 +83,28 @@ if os.path.exists(preamble):
     with open(preamble) as f:
         print(f.read())
 
-# Print each slot — replaced or core
+# Print each slot
 for filename in slot_files:
-    slot_id = filename[:-3]  # strip .md
+    slot_id = filename[:-3]
 
-    if slot_id in slot_replacements:
-        mod_id, mod_rules = slot_replacements[slot_id]
-        print(f"\n---\n# MODULE RULES [{slot_id}]: {mod_id}\n")
-        print(mod_rules)
+    if mode == "core":
+        # Core mode: skip replaced slots, print only pure core
+        if slot_id not in slot_replacements:
+            with open(f"{slots_dir}/{filename}") as f:
+                print(f.read())
     else:
-        with open(f"{slots_dir}/{filename}") as f:
-            print(f.read())
+        # Full mode: slot replaced by module or core
+        if slot_id in slot_replacements:
+            mod_id, mod_rules = slot_replacements[slot_id]
+            print(f"\n---\n# MODULE RULES [{slot_id}]: {mod_id}\n")
+            print(mod_rules)
+        else:
+            with open(f"{slots_dir}/{filename}") as f:
+                print(f.read())
 
-# Append addon modules (don't replace any slot, just add)
-for mod_id, mod_rules in addons:
-    print(f"\n---\n# MODULE RULES: {mod_id}\n")
-    print(mod_rules)
+if mode != "core":
+    for mod_id, mod_rules in addons:
+        print(f"\n---\n# MODULE RULES: {mod_id}\n")
+        print(mod_rules)
 
 PYEOF

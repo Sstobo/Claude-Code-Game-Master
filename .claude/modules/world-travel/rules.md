@@ -83,6 +83,25 @@ Roll d20 + modifier must meet or exceed DC to avoid encounter. Max DC: 30.
 
 ## Part 3: Vehicles
 
+### Creating a Vehicle (Ship Setup)
+
+```bash
+# 1. Register vehicle at an existing anchor location
+bash .claude/modules/world-travel/tools/dm-vehicle.sh create kestrel spacecraft "Станция Кестрел"
+
+# 2. First room: --from = anchor location name (NOT "Entrance" or anything else)
+bash .claude/modules/world-travel/tools/dm-vehicle.sh add-room kestrel "Мостик" --from "Станция Кестрел" --bearing 90 --distance 10
+
+# 3. Subsequent rooms: --from = existing room name
+bash .claude/modules/world-travel/tools/dm-vehicle.sh add-room kestrel "Реакторный отсек" --from "Мостик" --bearing 270 --distance 8
+bash .claude/modules/world-travel/tools/dm-vehicle.sh add-room kestrel "Двигатели" --from "Реакторный отсек" --bearing 270 --distance 10
+```
+
+**Rules:**
+- `add-room` creates bidirectional connections automatically — do NOT use `dm-location.sh connect` after
+- `dm-location.sh connect` requires 4 args: `connect "A" "B" "path_name" --terrain X --distance N`
+- `dm-vehicle.sh map` shows only outgoing links from anchor — bidirectional data is correct even if display looks one-sided
+
 ### Boarding / Entering
 
 ```bash

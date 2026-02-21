@@ -1,7 +1,5 @@
 # /dm-continue - Play the Game
 
-!`bash tools/dm-active-modules-rules.sh 2>/dev/null`
-
 ---
 
 ## SUBCOMMAND ROUTING
@@ -23,10 +21,13 @@
 
 ### Step 1: Load Full Context
 ```bash
+bash tools/dm-active-modules-rules.sh 2>/dev/null > /tmp/dm-rules.md
 bash tools/dm-session.sh start
 bash tools/dm-session.sh context
 ```
-Read and internalize ALL of it: character stats, party, pending consequences, campaign rules, location, time.
+Then use the **Read tool** to read `/tmp/dm-rules.md` — this ensures the FULL rules are loaded (Bash output gets truncated, Read does not).
+
+Read and internalize ALL of it: DM rules, character stats, party, pending consequences, campaign rules, location, time.
 
 **⚠️ Campaign Rules:** Enforce any campaign-specific rules throughout the session.
 

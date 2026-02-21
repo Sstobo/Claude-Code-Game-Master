@@ -106,6 +106,60 @@ Follow module-specific instructions when they apply to that phase.
 
 ---
 
+## PHASE 1.7: NARRATOR STYLE
+
+### 1. List available styles
+```bash
+bash tools/dm-narrator.sh list
+```
+
+### 2. Get recommendation based on campaign genre
+```bash
+bash tools/dm-narrator.sh recommend "<genre>"
+```
+Genre hints from campaign name/tone: horror→horror-atmospheric, classic fantasy→epic-heroic, roguelike/comedy→sarcastic-puns, noir/drama→serious-cinematic.
+
+### 3. Display menu
+
+```
+================================================================
+  ╔═══════════════════════════════════════════════════════════╗
+  ║              NARRATOR STYLE                               ║
+  ╚═══════════════════════════════════════════════════════════╝
+================================================================
+
+  [1] epic-heroic        — Grand scale, legendary deeds
+  [2] horror-atmospheric — Dread through implication, not gore
+  [3] sarcastic-puns     — Terry Pratchett at a tavern
+  [4] serious-cinematic  — Every scene is a film shot
+
+  ────────────────────────────────────────────────────────────
+  💡 RECOMMENDED FOR THIS CAMPAIGN:
+  Based on campaign name and genre, suggest which style fits.
+  Write 1 sentence why it fits the vibe.
+  ────────────────────────────────────────────────────────────
+  Type a number to select, or ENTER to accept recommendation.
+  Type "skip" to use no defined style.
+
+================================================================
+```
+
+### 4. Apply selected style
+```bash
+bash tools/dm-narrator.sh apply <style-id>
+```
+
+This writes the full narrator style object into `campaign-overview.json` under `narrator_style`.
+The DM will load and follow these rules throughout every session.
+
+### 5. If user provides a custom style file
+If user points to a `.md` file with their own style:
+- Read the file
+- Manually extract voice/rules/forbidden into `narrator_style` in campaign-overview.json
+- Follow the same structure as built-in styles
+
+---
+
 ## PHASE 2: TONE
 
 ```
