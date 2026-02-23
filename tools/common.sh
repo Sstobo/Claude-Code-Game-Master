@@ -114,6 +114,29 @@ escape_json() {
     echo "$text" | $PYTHON_CMD -c "import sys, json; print(json.dumps(sys.stdin.read().strip()))" | sed 's/^"//;s/"$//'
 }
 
+# Check if auto-approve mode is enabled (DM_AUTO_APPROVE=1)
+is_auto_approve_enabled() {
+    [ "$DM_AUTO_APPROVE" = "1" ]
+}
+
+# Prompt with auto-approve support - returns 0 for yes, 1 for no
+prompt_yes_no() {
+    local question="$1"
+    local default="${2:-n}"  # default to 'n' if not specified
+
+    # If auto-approve is enabled, always return 0 (yes)
+    if is_auto_approve_enabled; then
+        return 0
+    fi
+
+    # Otherwise, prompt normally
+    local response
+    read -p "$question (y/n) [$default]: " response
+    response=${response:-$default}
+
+    [[ "$response" =~ ^[Yy]$ ]]
+}
+
 # Validate name/identifier (alphanumeric, spaces, hyphens, apostrophes only)
 validate_name() {
     local name="$1"

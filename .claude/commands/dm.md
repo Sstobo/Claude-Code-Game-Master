@@ -56,6 +56,17 @@ echo "✓ Repository updated!"
 
 ---
 
+## AUTO-APPROVE MODE
+
+If user invokes `/dm --auto-approve`, set environment variable:
+```bash
+export DM_AUTO_APPROVE=1
+```
+
+This will skip confirmation prompts throughout the session. Remove it by running `/dm` again without the flag.
+
+---
+
 ## SUBCOMMAND ROUTING
 
 When user invokes `/dm <subcommand>`, route to the appropriate section:
