@@ -4,6 +4,56 @@ One command. Instant immersion.
 
 ---
 
+## REPO UPDATE CHECK
+
+**ALWAYS check for repo updates before anything else.**
+
+```bash
+# Check if remote has updates
+CURRENT_HASH=$(git rev-parse HEAD)
+REMOTE_HASH=$(git ls-remote origin main | cut -f1)
+
+if [ "$CURRENT_HASH" != "$REMOTE_HASH" ]; then
+  # Updates available - fetch and show them
+  git fetch origin main
+  echo "📦 REPO UPDATES AVAILABLE"
+  echo ""
+  git log --oneline HEAD..origin/main | head -10
+  echo ""
+fi
+```
+
+### If Updates Are Available
+
+Display:
+```
+================================================================
+  📦 REPO UPDATES AVAILABLE
+================================================================
+
+  Recent commits on GitHub:
+
+  [commit hash] [Commit message 1]
+  [commit hash] [Commit message 2]
+  [commit hash] [Commit message 3]
+
+================================================================
+  Would you like to pull these updates?
+  [Y] Yes, pull now
+  [N] No, skip for now
+================================================================
+```
+
+**If user selects Y:**
+```bash
+git pull origin main
+echo "✓ Repository updated!"
+```
+
+**If user selects N:** Continue to SUBCOMMAND ROUTING below
+
+---
+
 ## SUBCOMMAND ROUTING
 
 When user invokes `/dm <subcommand>`, route to the appropriate section:
