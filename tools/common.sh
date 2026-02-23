@@ -2,15 +2,17 @@
 # common.sh - Common utilities and environment setup for all DM tools
 # This file should be sourced by all other scripts: source "$(dirname "$0")/common.sh"
 
-# Detect Python executable - prefer uv, fallback to python3/python
+# Detect Python executable - prefer uv, then real python, skip Microsoft Store python3
 find_python() {
     # Try to find uv first
     if command -v uv >/dev/null 2>&1; then
         echo "uv run python"
-    elif command -v python3 >/dev/null 2>&1; then
-        echo "python3"
     elif command -v python >/dev/null 2>&1; then
+        # Prefer real python installation
         echo "python"
+    elif command -v python3 >/dev/null 2>&1; then
+        # Fallback to python3 (may be Microsoft Store, but better than nothing)
+        echo "python3"
     else
         echo "Error: No Python interpreter found. Please install Python 3.11+" >&2
         exit 1
