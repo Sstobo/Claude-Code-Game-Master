@@ -17,6 +17,14 @@ source "$(dirname "$0")/common.sh"
 CAMPAIGNS_DIR="$WORLD_STATE_BASE/campaigns"
 EXTRACT_DIR="$WORLD_STATE_BASE/extraction-temp"  # Default if no campaign specified
 
+# Auto-approve mode - suppress prompts if DM_AUTO_APPROVE=1
+if [ "$DM_AUTO_APPROVE" = "1" ]; then
+    SUPPRESS_PROMPTS="--no-prompt"
+    export DM_AUTO_APPROVE=1  # Pass to Python scripts
+else
+    SUPPRESS_PROMPTS=""
+fi
+
 show_usage() {
     cat << EOF
 D&D Module Extraction Tool

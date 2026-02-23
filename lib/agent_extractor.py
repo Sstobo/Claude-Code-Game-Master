@@ -34,6 +34,9 @@ class AgentExtractor:
         self.campaigns_dir = self.world_state_dir / "campaigns"
         self.campaign_name = campaign_name
 
+        # Auto-approve mode - suppress confirmation prompts
+        self.auto_approve = os.getenv("DM_AUTO_APPROVE", "0") == "1"
+
         # Set extraction directory based on campaign
         if campaign_name:
             self.extraction_dir = self.campaigns_dir / self._sanitize_name(campaign_name)
