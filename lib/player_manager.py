@@ -83,7 +83,8 @@ class PlayerManager(EntityManager):
         if self._is_using_single_character():
             try:
                 with open(self.character_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    char = json.load(f)
+                return self._normalize_hp(char)
             except (json.JSONDecodeError, IOError) as e:
                 print(f"[ERROR] Failed to load character: {e}")
                 return None
@@ -101,7 +102,8 @@ class PlayerManager(EntityManager):
             return None
         try:
             with open(char_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                char = json.load(f)
+            return self._normalize_hp(char)
         except (json.JSONDecodeError, IOError) as e:
             print(f"[ERROR] Failed to load character: {e}")
             return None
@@ -116,6 +118,16 @@ class PlayerManager(EntityManager):
         char_path = self._get_character_path(name)
         char_path.parent.mkdir(parents=True, exist_ok=True)
         return self.json_ops.save_json(str(char_path), data)
+
+    def _normalize_hp(self, char: Dict) -> Dict:
+        """Normalize HP to object format {current, max}"""
+        hp = char.get('hp', 0)
+        if isinstance(hp, int):
+            max_hp = char.get('max_hp', hp)
+            char['hp'] = {'current': hp, 'max': max_hp}
+        elif not isinstance(hp, dict):
+            char['hp'] = {'current': 0, 'max': 0}
+        return char
 
     def _normalize_xp(self, char: Dict) -> Dict:
         """Normalize XP to object format {current, next_level}"""

@@ -105,7 +105,7 @@ class MapGUI:
         self._load_and_generate_all()
 
     def _load_terrain_colors(self):
-        raw = self.overview.get('terrain_colors', {})
+        raw = self.overview.get('terrain_colors') or self.overview.get('campaign_rules', {}).get('terrain_colors', {})
         merged = dict(DEFAULT_TERRAIN_COLORS)
         for key, val in raw.items():
             if isinstance(val, list) and len(val) == 3:
@@ -752,21 +752,35 @@ class MapGUI:
     def draw_locations(self):
         self.hovered_location = None
         player_global = self._resolve_player_global_name()
+
+        visible = []
         for loc_name, loc_data in self.locations.items():
             if not self._is_global_visible(loc_name, loc_data):
                 continue
             coords = loc_data.get('coordinates')
             if not coords:
                 continue
+            visible.append((loc_name, loc_data, coords))
+
+        diameters = [d.get('diameter_meters', 100) for _, d, _ in visible]
+        min_d = min(diameters) if diameters else 1
+        max_d = max(diameters) if diameters else 1
+        MIN_PX, MAX_PX = 8, 40
+
+        for loc_name, loc_data, coords in visible:
             x, y = self.world_to_screen(coords['x'], coords['y'])
-            diameter_meters = loc_data.get('diameter_meters', 10)
-            radius_screen = int((diameter_meters / 2) * self.zoom)
-            margin = radius_screen + 100
+            diameter_meters = loc_data.get('diameter_meters', 100)
+            if max_d > min_d:
+                t = (diameter_meters - min_d) / (max_d - min_d)
+                node_radius = int(MIN_PX + t * (MAX_PX - MIN_PX))
+            else:
+                node_radius = int((MIN_PX + MAX_PX) / 2)
+            margin = node_radius + 100
             if x < -margin or x > self.width + margin or y < -margin or y > self.height + margin:
                 continue
             self.draw_blocked_ranges(loc_name, loc_data)
             is_player_here = (loc_name == player_global)
-            self._draw_node(x, y, max(10, radius_screen), loc_name, loc_data,
+            self._draw_node(x, y, node_radius, loc_name, loc_data,
                             is_player_loc=is_player_here,
                             label_text=f"{loc_name} ({diameter_meters}m)")
 

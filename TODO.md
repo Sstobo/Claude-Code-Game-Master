@@ -5,6 +5,7 @@
 **Цель:** Модульная архитектура для включения/выключения механик при создании кампании
 
 ### Core Architecture
+
 - [ ] **Module Registry** — `.claude/modules/registry.json` с метаданными всех доступных модулей
   - [ ] Поля: `id`, `name`, `version`, `description`, `author`, `dependencies`, `campaign_rules_patch`
   - [ ] Автоматическое сканирование `.claude/modules/*/module.json`
@@ -30,6 +31,7 @@
   ```
 
 ### Module Structure
+
 ```
 .claude/modules/
 ├── registry.json (auto-generated index)
@@ -49,6 +51,7 @@
 ```
 
 ### Example module.json
+
 ```json
 {
   "id": "firearms-system",
@@ -64,6 +67,7 @@
 ```
 
 ### Implementation Tasks
+
 - [ ] Рефакторинг: вынести firearms/survival/encounters из `modern-firearms-campaign.json` в отдельные модули
 - [ ] `lib/module_loader.py` — загрузчик модулей с merge патчей в `campaign_rules`
 - [ ] `tools/dm-module.sh list` — показать доступные модули
@@ -73,6 +77,7 @@
 - [ ] Документация: `.claude/docs/module-development-guide.md` для community
 
 ### Community Benefits
+
 - ✅ Люди могут делать свои expansion pack'и (Sci-Fi, Horror, Economic)
 - ✅ Backward compatibility — стандартные D&D кампании не захламлены
 - ✅ Mix & Match — включай только нужные механики
@@ -81,11 +86,13 @@
 ---
 
 ## Quest System
+
 - [ ] `dm-plot.sh add` — создание квестов через CLI (сейчас только ручной JSON)
 - [ ] `dm-plot.sh objectives` — отметка выполненных целей внутри квеста
 - [ ] `/dm quests` — отображение активных квестов игроку в красивом формате
 
 ## Map System
+
 - [ ] `dm-map.sh` — полноценная ASCII-карта мира (глобальная) с координатами и масштабом
 - [ ] Подкарты (submaps) — вложенные карты для локаций/объектов:
   - [ ] Интерьеры зданий, бункеров, пещер
@@ -96,6 +103,7 @@
 - [ ] Хранение подкарт в `locations.json` (поле `submap` или отдельный `submaps.json`)
 
 ## Inventory System (Weight & Slots)
+
 - [ ] `inventory.json` — отдельный файл вместо списка строк в `character.json`
   - [ ] Каждый предмет: `id`, `name`, `weight_kg`, `quantity`, `stackable`, `category`
   - [ ] Категории: weapon, ammo, medical, food, consumable, quest, junk, armor
@@ -112,3 +120,15 @@
   - [ ] `dm-player.sh inventory list --category weapon` — фильтр по категории
 - [ ] Автообъединение при добавлении (патроны 9мм + патроны 9мм = одна строка)
 - [ ] Миграция: скрипт конвертации старого `equipment[]` в `inventory.json`
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ]
+
+
+
+
+
+
+
+ Я эсипи тип зеденый фодно охота макс сложно.

@@ -13,11 +13,15 @@ if [ "$#" -lt 1 ]; then
     echo "  get <name>                   - Get location info"
     echo "  list                         - List all locations"
     echo "  connections <name>           - Show location connections"
+    echo "  remove <name>                - Delete location (must have no children)"
+    echo "  rename <old> <new>           - Rename location (updates all references)"
     dispatch_middleware_help "dm-location.sh"
     echo ""
     echo "Examples:"
     echo "  dm-location.sh add \"Volcano Temple\" \"north of village\""
     echo "  dm-location.sh connect \"Village\" \"Volcano Temple\" \"rocky path\""
+    echo "  dm-location.sh remove \"Old Tavern\""
+    echo "  dm-location.sh rename \"Станция Кестрел\" \"Кестрел\""
     exit 1
 fi
 
@@ -75,9 +79,25 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/location_manager.py" connections "$1"
         ;;
 
+    remove)
+        if [ "$#" -lt 1 ]; then
+            echo "Usage: dm-location.sh remove <name>"
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/location_manager.py" remove "$1"
+        ;;
+
+    rename)
+        if [ "$#" -lt 2 ]; then
+            echo "Usage: dm-location.sh rename <old_name> <new_name>"
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/location_manager.py" rename "$1" "$2"
+        ;;
+
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: add, connect, describe, get, list, connections"
+        echo "Valid actions: add, connect, describe, get, list, connections, remove, rename"
         exit 1
         ;;
 esac

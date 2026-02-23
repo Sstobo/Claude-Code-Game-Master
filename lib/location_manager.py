@@ -129,6 +129,52 @@ class LocationManager(EntityManager):
             return True
         return False
 
+    def remove_location(self, name: str) -> bool:
+        locations = self._load_entities(self.locations_file)
+        if name not in locations:
+            print(f"[ERROR] Location '{name}' not found")
+            return False
+        anchor_vehicle = locations[name].get('_vehicle', {})
+        vehicle_id = anchor_vehicle.get('vehicle_id') if anchor_vehicle.get('is_vehicle_anchor') else None
+        children = [k for k, v in locations.items() if k != name and (
+            v.get('parent') == name or
+            (vehicle_id and v.get('_vehicle', {}).get('vehicle_id') == vehicle_id
+             and not v.get('_vehicle', {}).get('is_vehicle_anchor'))
+        )]
+        if children:
+            print(f"[ERROR] Has children: {', '.join(children)}. Remove them first.")
+            return False
+        del locations[name]
+        # Remove from other locations' connections and children lists
+        for loc in locations.values():
+            loc['connections'] = [c for c in loc.get('connections', []) if c.get('to') != name]
+            if 'children' in loc:
+                loc['children'] = [c for c in loc['children'] if c != name]
+        self._save_entities(self.locations_file, locations)
+        print(f"[SUCCESS] Removed location: {name}")
+        return True
+
+    def rename_location(self, old_name: str, new_name: str) -> bool:
+        locations = self._load_entities(self.locations_file)
+        if old_name not in locations:
+            print(f"[ERROR] Location '{old_name}' not found")
+            return False
+        if new_name in locations:
+            print(f"[ERROR] Location '{new_name}' already exists")
+            return False
+        locations[new_name] = locations.pop(old_name)
+        for loc in locations.values():
+            for conn in loc.get('connections', []):
+                if conn.get('to') == old_name:
+                    conn['to'] = new_name
+            if 'parent' in loc and loc['parent'] == old_name:
+                loc['parent'] = new_name
+            if 'children' in loc:
+                loc['children'] = [new_name if c == old_name else c for c in loc['children']]
+        self._save_entities(self.locations_file, locations)
+        print(f"[SUCCESS] Renamed '{old_name}' -> '{new_name}'")
+        return True
+
     def get_location(self, name: str) -> Optional[Dict[str, Any]]:
         """
         Get location data
@@ -299,6 +345,15 @@ def main():
     connections_parser = subparsers.add_parser('connections', help='Get location connections')
     connections_parser.add_argument('name', help='Location name')
 
+    # Remove location
+    remove_parser = subparsers.add_parser('remove', help='Remove a location (no children allowed)')
+    remove_parser.add_argument('name', help='Location name')
+
+    # Rename location
+    rename_parser = subparsers.add_parser('rename', help='Rename a location (updates all references)')
+    rename_parser.add_argument('old_name', help='Current name')
+    rename_parser.add_argument('new_name', help='New name')
+
     args = parser.parse_args()
 
     if not args.action:
@@ -340,6 +395,14 @@ def main():
             print(json.dumps(connections, indent=2, ensure_ascii=False))
         else:
             print("No connections found")
+
+    elif args.action == 'remove':
+        if not manager.remove_location(args.name):
+            sys.exit(1)
+
+    elif args.action == 'rename':
+        if not manager.rename_location(args.old_name, args.new_name):
+            sys.exit(1)
 
 
 if __name__ == "__main__":

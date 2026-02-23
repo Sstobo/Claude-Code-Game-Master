@@ -20,8 +20,14 @@ require_active_campaign
 
 dispatch_middleware "dm-time.sh" "$@" && exit $?
 
+# Filter out --sleeping before passing to CORE (modules handle it in post-hook)
+CORE_ARGS=()
+for arg in "${@:3}"; do
+    [ "$arg" = "--sleeping" ] || CORE_ARGS+=("$arg")
+done
+
 # CORE runs, then post-hooks fire
-$PYTHON_CMD "$LIB_DIR/time_manager.py" update "$1" "$2" "${@:3}"
+$PYTHON_CMD "$LIB_DIR/time_manager.py" update "$1" "$2" "${CORE_ARGS[@]}"
 CORE_RC=$?
 [ $CORE_RC -eq 0 ] && dispatch_middleware_post "dm-time.sh" "$@"
 exit $CORE_RC

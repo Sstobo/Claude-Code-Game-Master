@@ -24,4 +24,4 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 cd "$PROJECT_ROOT"
 
-uv run python .claude/modules/survival-stats/lib/survival_engine.py "$@"
+uv run python .claude/modules/custom-stats/lib/survival_engine.py "$@"

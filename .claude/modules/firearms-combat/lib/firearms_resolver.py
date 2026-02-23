@@ -42,12 +42,15 @@ class FirearmsCombatResolver:
         return overview.get("campaign_rules", {})
 
     def _load_character(self) -> Dict:
-        """Load active character"""
+        """Load active character — prefers character.json, falls back to current_character in overview"""
+        char = self.player_mgr._load_character(None)
+        if char:
+            return char
         overview = self.json_ops.load_json("campaign-overview.json")
         char_name = overview.get("current_character")
         if not char_name:
             raise RuntimeError("No active character")
-        char = self.player_mgr.get_player(char_name)
+        char = self.player_mgr._load_character(char_name)
         if not char:
             raise RuntimeError(f"Character '{char_name}' not found")
         return char

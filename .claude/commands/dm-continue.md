@@ -22,6 +22,7 @@
 ### Step 1: Load Full Context
 ```bash
 bash tools/dm-active-modules-rules.sh 2>/dev/null > /tmp/dm-rules.md
+bash tools/dm-campaign-rules.sh 2>/dev/null >> /tmp/dm-rules.md
 bash tools/dm-session.sh start
 bash tools/dm-session.sh context
 ```
@@ -29,7 +30,7 @@ Then use the **Read tool** to read `/tmp/dm-rules.md` — this ensures the FULL 
 
 Read and internalize ALL of it: DM rules, character stats, party, pending consequences, campaign rules, location, time.
 
-**⚠️ Campaign Rules:** Enforce any campaign-specific rules throughout the session.
+**⚠️ Campaign Rules:** The `campaign-rules.md` is appended above — enforce ALL campaign-specific rules (stat formulas, tech bonuses, population structure, era mechanics) throughout the session.
 
 ### Step 2: Verify Location
 ```bash

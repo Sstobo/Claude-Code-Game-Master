@@ -33,6 +33,13 @@ class SurvivalEngine:
         self.json_ops = JsonOperations(str(self.campaign_dir))
         self.player_mgr = PlayerManager(str(self.campaign_dir.parent.parent))
 
+    def _normalize_custom_stats(self, char: dict) -> dict:
+        """Normalize custom_stats: convert {value, min, max} → {current, min, max}"""
+        for stat_data in char.get('custom_stats', {}).values():
+            if isinstance(stat_data, dict) and 'current' not in stat_data and 'value' in stat_data:
+                stat_data['current'] = stat_data['value']
+        return char
+
     def tick(self, elapsed_hours: float, sleeping: bool = False) -> dict:
         """
         Main entry point. Apply time effects + check stat consequences.
@@ -74,6 +81,7 @@ class SurvivalEngine:
             print(f"[ERROR] Character '{char_name}' not found")
             return {}
 
+        char = self._normalize_custom_stats(char)
         custom_stats = char.get('custom_stats', {})
         if not custom_stats:
             print(f"[INFO] {char_name} has no custom stats")
@@ -98,6 +106,7 @@ class SurvivalEngine:
         char = self.player_mgr.get_player(char_name)
         if not char:
             return []
+        char = self._normalize_custom_stats(char)
 
         rules = time_effects.get('rules', [])
         if not rules:
@@ -113,7 +122,17 @@ class SurvivalEngine:
         for _ in range(int(elapsed_hours)):
             for rule in rules:
                 stat = rule['stat']
-                change_per_hour = rule.get('per_hour', 0)
+                change_per_hour = rule.get('per_hour', rule.get('change_per_hour', 0))
+
+                if 'per_hour_formula' in rule:
+                    formula_vars = {
+                        name: data['current']
+                        for name, data in sim_char.get('custom_stats', {}).items()
+                    }
+                    try:
+                        change_per_hour = float(eval(rule['per_hour_formula'], {"__builtins__": {}}, formula_vars))
+                    except Exception:
+                        pass
 
                 if stat == 'sleep' and sleeping:
                     change_per_hour = rule.get('sleep_restore_per_hour', 12.5)
@@ -164,14 +183,17 @@ class SurvivalEngine:
                         if cs_entry:
                             cs_max = cs_entry.get('max')
                             cs_min = cs_entry.get('min', 0)
-                            new_val = cs_entry['current'] + diff
+                            cur = cs_entry.get('current', cs_entry.get('value', 0))
+                            new_val = cur + diff
                             if cs_max is not None:
                                 new_val = min(new_val, cs_max)
                             if cs_min is not None:
                                 new_val = max(new_val, cs_min)
-                            cs_entry['current'] = round(new_val, 2)
+                            new_val = round(new_val, 2)
+                            cs_entry['value'] = new_val
+                            cs_entry.pop('current', None)
                             self.json_ops.save_json("character.json", char_data)
-                            changes.append({'stat': stat, 'old': old_val, 'new': cs_entry['current'], 'change': diff})
+                            changes.append({'stat': stat, 'old': old_val, 'new': new_val, 'change': diff})
 
         return changes
 
@@ -321,7 +343,7 @@ class SurvivalEngine:
         if cs is None:
             raise RuntimeError(f"Custom stat '{stat}' not found for {name}")
 
-        old_val = cs['current']
+        old_val = cs.get('current', cs.get('value', 0))
         new_val = old_val + amount
         cs_max = cs.get('max')
         cs_min = cs.get('min', 0)
@@ -329,9 +351,11 @@ class SurvivalEngine:
             new_val = min(new_val, cs_max)
         if cs_min is not None:
             new_val = max(new_val, cs_min)
-        cs['current'] = round(new_val, 2)
+        new_val = round(new_val, 2)
+        cs['value'] = new_val
+        cs.pop('current', None)
         self.json_ops.save_json("character.json", char)
-        return {'success': True, 'old_value': old_val, 'new_value': cs['current']}
+        return {'success': True, 'old_value': old_val, 'new_value': new_val}
 
     def list_custom_stats(self, name: str = None) -> dict:
         """List all custom stats for character."""

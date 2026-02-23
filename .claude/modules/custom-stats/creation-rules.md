@@ -39,7 +39,11 @@ Based on your [GENRE] campaign, here are stat suggestions:
 - Horror (CoC/Delta Green): Sanity, Stress
 - Fantasy: Mana, Fatigue
 - Sci-fi: Oxygen, Power, Hull
+- Strategy/Civilization: Population, Food, Materials, Knowledge, Faith, Culture
 - Custom: ask user what stats matter in their world
+
+> **ВАЖНО**: Любые статы — персонажные, цивилизационные, фракционные — все пишутся в `character.json` в поле `custom_stats`.
+> Не создавай отдельных полей типа `civilization_stats` в campaign-overview. Единый источник правды — `custom_stats`.
 
 ---
 
@@ -160,3 +164,29 @@ print('[OK] Custom stats initialized')
 - Accumulation stats (radiation, corruption) have no `max` — they climb indefinitely
 - Always confirm the config summary before writing
 - Stats interact with world narrative: mention them in scene descriptions
+
+---
+
+## Population-Scaled Food (Civilization campaigns)
+
+For civilization/tribe campaigns where food consumption scales with population automatically.
+
+Use `per_hour_formula` instead of `per_hour` — the engine evaluates it each tick using current `custom_stats` values as variables:
+
+```json
+{
+  "stat": "food",
+  "per_hour_formula": "-(population * 2) / 24",
+  "description": "Расход еды: population чел * 2 порции / 24ч"
+}
+```
+
+- Any custom stat name can be used as a variable in the formula
+- Evaluated every hour — always reflects current population
+- food stored in **absolute units** (portions), NOT percentages
+- `max` = storage capacity (e.g. 12000 = 120 days for 50 people at 2/day)
+
+**When food is added** (hunt/trade/harvest):
+```bash
+bash .claude/modules/custom-stats/tools/dm-survival.sh custom-stat food +[amount]
+```

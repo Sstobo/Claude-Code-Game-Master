@@ -321,7 +321,7 @@ class NavigationManager:
         if not campaign_overview:
             return {"success": False, "error": "No campaign overview found"}
 
-        current_location = campaign_overview.get("current_location")
+        current_location = campaign_overview.get("current_location") or campaign_overview.get("player_position", {}).get("current_location")
         if not current_location:
             return {"success": False, "error": "No current location set"}
 
@@ -363,10 +363,10 @@ class NavigationManager:
             else:
                 print(f"[INFO] Travel time: {elapsed_hours:.2f} hours ({distance_meters}m)")
 
-        session_mgr = SessionManager(str(self.json_ops.campaign_dir))
+        session_mgr = SessionManager()
         move_result = session_mgr.move_party(location)
 
-        if not move_result.get("success"):
+        if "current_location" not in move_result:
             return {"success": False, "error": move_result.get("message", "Move failed")}
 
         return {

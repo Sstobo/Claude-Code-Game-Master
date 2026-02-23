@@ -403,8 +403,12 @@ class SessionManager(EntityManager):
             race = char.get('race', '?')
             cls = char.get('class', '?')
             hp = char.get('hp', {})
-            hp_cur = hp.get('current', 0)
-            hp_max = hp.get('max', 0)
+            if isinstance(hp, dict):
+                hp_cur = hp.get('current', 0)
+                hp_max = hp.get('max', 0)
+            else:
+                hp_cur = hp
+                hp_max = char.get('max_hp', hp)
             ac = char.get('ac', '?')
             xp = char.get('xp', {})
             if isinstance(xp, dict):

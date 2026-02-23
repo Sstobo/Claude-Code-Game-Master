@@ -64,20 +64,47 @@ bash tools/dm-location.sh add "Forest" "Dark woods" \
 | REGIONAL | 6–10 |
 | CONTINENTAL | 8–12 |
 
-### Terrain
+### Terrain & Colors [MANDATORY]
 
-No defaults. Define per campaign in `campaign-overview.json`:
+Set terrain types and RGB colors for the GUI map. Store in `campaign_rules.terrain_colors`.
+Name the keys in the campaign's language (e.g. Russian campaign → Russian keys).
 
-```json
-{ "terrain_colors": { "road": [180,180,140], "forest": [50,150,50] } }
+**Palette by genre:**
+| Genre | Typical terrains + base colors |
+|-------|-------------------------------|
+| Fantasy/Medieval | forest [50,150,50], mountain [120,100,80], road [180,180,140], swamp [80,120,60], urban [160,160,160], river [60,120,200], plains [160,200,100] |
+| Sci-fi/Space | space [10,10,40], nebula [100,50,150], station [80,80,100], asteroid [100,90,70], void [5,5,20] |
+| Post-apo/STALKER | wasteland [140,120,80], radiation [100,160,60], ruins [100,90,80], anomaly [180,60,180], road [160,150,110] |
+| Horror | forest [30,60,30], swamp [50,70,40], road [100,90,80], ruins [80,70,60], mist [150,150,170] |
+| Stone Age | cave [80,70,60], river [60,120,200], forest [50,150,50], plains [160,200,100], mountain [120,100,80], beach [220,200,140], tundra [200,210,220] |
+
+Add only terrains that realistically appear on this map. Write into `campaign_rules.terrain_colors` in campaign-overview.json.
+
+### Location Sizes [MANDATORY]
+
+Every location must have `diameter_meters` — controls circle size on GUI map (normalized to 8–40px).
+
+| Type | diameter_meters |
+|------|----------------|
+| Building / cave / room / ship interior | 50–200 |
+| Village / outpost / dungeon | 300–800 |
+| Town / fortress / large ruin | 1000–3000 |
+| City / large forest / mountain range | 3000–8000 |
+| Region / continent zone | 10000+ |
+
+Set sizes relative to each other — the GUI auto-normalizes, so ratios matter more than absolute values.
+
+```bash
+uv run python -c "
+import json
+CAMPAIGN_DIR = '$(bash tools/dm-campaign.sh path)'
+with open(f'{CAMPAIGN_DIR}/locations.json') as f:
+    locs = json.load(f)
+locs['Location Name']['diameter_meters'] = 500
+with open(f'{CAMPAIGN_DIR}/locations.json', 'w') as f:
+    json.dump(locs, f, indent=2, ensure_ascii=False)
+"
 ```
-
-| Genre | Typical terrains |
-|-------|-----------------|
-| Fantasy | road, forest, mountain, urban, swamp |
-| Sci-fi | space, internal, nebula, asteroid, station |
-| Modern | road, urban, wilderness, water |
-| Post-apo | wasteland, ruins, road, radiation |
 
 ### Distances
 

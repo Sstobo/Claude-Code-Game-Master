@@ -160,6 +160,63 @@ If user points to a `.md` file with their own style:
 
 ---
 
+## PHASE 1.8: CAMPAIGN RULES TEMPLATE
+
+### 1. Get recommendation based on campaign genre
+```bash
+bash tools/dm-campaign-rules.sh recommend "<genre>"
+```
+Genre hints: horror/investigation → horror-investigation, survival/stalker/metro/fallout → survival-zone, space/sci-fi/ftl → space-travel, political/intrigue → political-intrigue, civilization/tribe/4x → civilization.
+
+### 2. List available templates
+```bash
+bash tools/dm-campaign-rules.sh list
+```
+
+### 3. Display menu
+
+```
+================================================================
+  ╔═══════════════════════════════════════════════════════════╗
+  ║              CAMPAIGN RULES TEMPLATE                      ║
+  ╚═══════════════════════════════════════════════════════════╝
+================================================================
+
+  [1] civilization        — Eras, population, tech tree
+  [2] survival-zone       — Resources, morale, hazards
+  [3] space-travel        — Ships, FTL, crew
+  [4] horror-investigation — Sanity, clues, dread
+  [5] political-intrigue  — Factions, influence, secrets
+
+  ────────────────────────────────────────────────────────────
+  💡 RECOMMENDED FOR THIS CAMPAIGN:
+  Based on campaign name and genre, suggest which template fits.
+  Write 1 sentence why it fits the vibe.
+  ────────────────────────────────────────────────────────────
+  Type a number to select, or ENTER to accept recommendation.
+  Type "skip" to use standard D&D rules (no custom mechanics).
+
+================================================================
+```
+
+### 4. Apply selected template
+```bash
+bash tools/dm-campaign-rules.sh apply <template-id>
+```
+
+This writes template metadata into `campaign-overview.json` under `campaign_rules_template`
+and creates `campaign-rules.md` in the campaign folder.
+The DM will load and enforce these rules every session via `/dm-continue`.
+
+**If "skip"**: no campaign-rules.md needed. Standard D&D applies.
+
+### 5. If user wants custom rules
+If user describes custom mechanics not covered by templates:
+- Generate a `campaign-rules.md` manually based on their description
+- Follow the same section structure as built-in templates (eras/resources/combat/diplomacy etc.)
+
+---
+
 ## PHASE 2: TONE
 
 ```
@@ -345,6 +402,8 @@ As each element completes:
 
 ## PHASE 6: UPDATE CAMPAIGN OVERVIEW
 
+### 6a. Update overview
+
 ```bash
 CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
 
@@ -472,7 +531,9 @@ Before transitioning to character creation, verify:
 - [ ] 3+ consequences scheduled
 - [ ] Session log initialized
 - [ ] Campaign overview updated with settings
-- [ ] Module-specific creation steps completed (custom-stats configured, firearms weapons set, etc.)
+- [ ] Narrator style selected (or skipped)
+- [ ] Campaign rules template applied (or skipped for standard D&D)
+- [ ] Module-specific creation steps completed (custom-stats, world-travel terrain_colors + diameter_meters, firearms, etc.)
 
 ---
 

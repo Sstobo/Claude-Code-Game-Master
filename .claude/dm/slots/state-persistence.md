@@ -16,9 +16,7 @@
 | Check conditions | `bash tools/dm-condition.sh check "[name]"` |
 | NPC updated | `bash tools/dm-npc.sh update "[name]" "[event]"` |
 | Location moved | `bash tools/dm-session.sh move "[location]"` |
-| Future event (timed) | `bash tools/dm-consequence.sh add "[event]" "[label]" --hours N` |
-| Future event (manual) | `bash tools/dm-consequence.sh add "[event]" "[trigger text]"` |
-| Advance time consequences | `bash tools/dm-consequence.sh tick N` (N = hours elapsed) |
+| Future event | `bash tools/dm-consequence.sh add "[event]" "[trigger text]" --hours N` |
 | Important fact | `bash tools/dm-note.sh "[category]" "[fact]"` |
 | Party NPC HP | `bash tools/dm-npc.sh hp "[name]" [+/-amount]` |
 | Party NPC condition | `bash tools/dm-npc.sh condition "[name]" add "[cond]"` |
@@ -27,6 +25,12 @@
 | Tag NPC to location | `bash tools/dm-npc.sh tag-location "[name]" "[location]"` |
 | Tag NPC to quest | `bash tools/dm-npc.sh tag-quest "[name]" "[quest]"` |
 | **Custom stat changed** | `bash tools/dm-player.sh custom-stat "[name]" "[stat]" [+/-amount]` |
+
+### Consequence Rules (MANDATORY)
+
+- **ALWAYS use `--hours N`** when adding consequences — this enables auto-tick.
+- `dm-time.sh --elapsed N` automatically ticks consequences (built into CORE). **Never call `dm-consequence.sh tick` manually.**
+- "3 дня" = `--hours 72`, "1 неделя" = `--hours 168`, "следующая сессия" = `--hours 8`
 
 ### Note Categories
 - `session_events` - What happened this session
