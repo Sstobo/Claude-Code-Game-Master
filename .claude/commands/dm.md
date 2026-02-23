@@ -2,6 +2,8 @@
 
 One command. Instant immersion.
 
+**💡 TIP:** Running in slow mode? Use `/fast` to toggle Fast Mode and skip permission prompts!
+
 ---
 
 ## REPO UPDATE CHECK
