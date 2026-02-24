@@ -78,9 +78,16 @@ bash tools/dm-session.sh move "[location_name]"
 
 **Time advancement (if needed):**
 ```bash
-bash tools/dm-time.sh "[new_time]" "[date]" --elapsed N
-bash tools/dm-consequence.sh tick N   # N = hours elapsed — ALWAYS after dm-time.sh with elapsed hours
+# Option A: Advance by hours (clock auto-advances)
+bash tools/dm-time.sh "Утро" "18 октября 2024" --elapsed 2
+
+# Option B: Advance to exact time (auto-calculates elapsed)
+bash tools/dm-time.sh "_" "18 октября 2024" --to 14:30
+
+# Option C: Set exact clock without elapsed
+bash tools/dm-time.sh "09:00" "18 октября 2024"
 ```
+**NOTE:** `--elapsed` auto-ticks consequences. `--to` also auto-ticks. Never call `dm-consequence.sh tick` manually.
 
 ### Phase 3.5: Arrival Awareness (Optional)
 Use when arriving at dangerous/unfamiliar locations or where ambush is likely.

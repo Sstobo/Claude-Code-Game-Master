@@ -26,11 +26,13 @@
 | Tag NPC to quest | `bash tools/dm-npc.sh tag-quest "[name]" "[quest]"` |
 | **Custom stat changed** | `bash tools/dm-player.sh custom-stat "[name]" "[stat]" [+/-amount]` |
 
-### Consequence Rules (MANDATORY)
+### Consequence Rules (MANDATORY — NO EXCEPTIONS)
 
-- **ALWAYS use `--hours N`** when adding consequences — this enables auto-tick.
-- `dm-time.sh --elapsed N` automatically ticks consequences (built into CORE). **Never call `dm-consequence.sh tick` manually.**
-- "3 дня" = `--hours 72`, "1 неделя" = `--hours 168`, "следующая сессия" = `--hours 8`
+- **EVERY consequence MUST have `--hours N`.** No exceptions. A consequence without `--hours` is BROKEN — it will never tick, never trigger, and silently rot in the JSON. If you catch yourself typing `dm-consequence.sh add` without `--hours` — STOP and add it.
+- `dm-time.sh --elapsed N` and `dm-time.sh --to HH:MM` automatically tick consequences. **Never call `dm-consequence.sh tick` manually.**
+- Conversion: "30 min" = `--hours 0.5`, "2 hours" = `--hours 2`, "1 day" = `--hours 24`, "3 days" = `--hours 72`, "1 week" = `--hours 168`, "next session" = `--hours 8`
+- `immediate` = `--hours 0` (triggers on next tick)
+- **ALWAYS use `--elapsed` or `--to` when advancing time.** Setting time without elapsed means consequences DON'T tick.
 
 ### Note Categories
 - `session_events` - What happened this session

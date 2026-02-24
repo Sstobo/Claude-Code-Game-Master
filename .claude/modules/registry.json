@@ -125,13 +125,16 @@
         "Encounter nature categories (Dangerous, Neutral, Beneficial, Special)",
         "Waypoint creation for Combat/Social/Hazard encounters",
         "Auto-resolve for Loot/Flavor encounters",
-        "Automatic encounter check after every move"
+        "Automatic encounter check after every move",
+        "Vehicle system: ships/transports with dual-map (global anchor + internal rooms)",
+        "Board/exit vehicles, move between rooms, move vehicle with connection rebuild"
       ],
       "adds_to_core": {
         "tools": [
           "dm-navigation.sh",
           "dm-map.sh",
-          "dm-encounter.sh"
+          "dm-encounter.sh",
+          "dm-vehicle.sh"
         ],
         "commands": {
           "dm-navigation.sh move <location>": "Move party with distance/time calc + auto encounter",
@@ -188,7 +191,10 @@
                 }
               }
             }
-          }
+          },
+          "locations.json._vehicle": "vehicle metadata (vehicle_id, is_vehicle_anchor, vehicle_type, dock_room, proximity_radius_meters)",
+          "campaign-overview.json.player_position.map_context": "global|local — absent = global (backward compat)",
+          "campaign-overview.json.player_position.vehicle_id": "string|null — active vehicle if inside"
         }
       },
       "use_cases": [

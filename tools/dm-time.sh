@@ -4,14 +4,17 @@
 source "$(dirname "$0")/common.sh"
 
 if [ -z "$1" ] || [ -z "$2" ]; then
-    echo "Usage: dm-time.sh <time_of_day> <date> [--elapsed <hours>]"
+    echo "Usage: dm-time.sh <time_of_day|HH:MM> <date> [options]"
     echo ""
     echo "Examples:"
-    echo "  dm-time.sh \"Evening\" \"3rd day of Spring\""
-    echo "  dm-time.sh \"Night\" \"3rd day of Spring\" --elapsed 4"
-    echo "  dm-time.sh \"Morning\" \"4th day of Spring\" --elapsed 8"
+    echo "  dm-time.sh \"Утро\" \"18 октября 2024\"              # Set time of day"
+    echo "  dm-time.sh \"Утро\" \"18 октября 2024\" --elapsed 4  # Advance clock by 4h"
+    echo "  dm-time.sh \"_\" \"18 октября 2024\" --to 14:30       # Advance to 14:30"
+    echo "  dm-time.sh \"08:00\" \"18 октября 2024\"              # Set exact clock"
     echo ""
-    echo "  --elapsed <hours>  Hours passed. Auto-ticks timed consequences."
+    echo "  --elapsed <hours>  Hours passed. Auto-advances clock & ticks consequences."
+    echo "  --to <HH:MM>       Advance to exact time. Auto-calculates elapsed hours."
+    echo "  --sleeping          Module hook: marks rest period."
     dispatch_middleware_help "dm-time.sh"
     exit 1
 fi

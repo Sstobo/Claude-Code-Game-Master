@@ -247,6 +247,7 @@ class SurvivalEngine:
         if not char:
             return []
 
+        char = self._normalize_custom_stats(char)
         custom_stats = char.get('custom_stats', {})
         stat_consequences = time_effects.get('stat_consequences', {})
         triggered = []

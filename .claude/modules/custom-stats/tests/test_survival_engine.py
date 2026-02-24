@@ -104,6 +104,7 @@ def make_engine(ws_path):
     engine.__class__ = type('TestEngine', (TestSurvivalEngine,), {
         'tick': SurvivalEngine.tick,
         'status': SurvivalEngine.status,
+        '_normalize_custom_stats': SurvivalEngine._normalize_custom_stats,
         '_apply_time_effects': SurvivalEngine._apply_time_effects,
         '_check_rule_condition': SurvivalEngine._check_rule_condition,
         '_check_stat_consequences': SurvivalEngine._check_stat_consequences,
@@ -507,9 +508,9 @@ class TestPersistence:
         engine.tick(3)
 
         char = engine.player_mgr.get_player("TestHero")
-        assert char['custom_stats']['hunger']['current'] < 80
-        assert char['custom_stats']['thirst']['current'] < 70
-        assert char['custom_stats']['radiation']['current'] > 10
+        assert char['custom_stats']['hunger']['value'] < 80
+        assert char['custom_stats']['thirst']['value'] < 70
+        assert char['custom_stats']['radiation']['value'] > 10
 
     def test_consecutive_ticks_accumulate(self, tmp_path):
         ws = make_campaign(tmp_path, base_campaign(), base_character())
@@ -519,8 +520,8 @@ class TestPersistence:
         engine.tick(1)
 
         char = engine.player_mgr.get_player("TestHero")
-        assert char['custom_stats']['hunger']['current'] == 76
-        assert char['custom_stats']['thirst']['current'] == 64
+        assert char['custom_stats']['hunger']['value'] == 76
+        assert char['custom_stats']['thirst']['value'] == 64
 
 
 if __name__ == "__main__":
