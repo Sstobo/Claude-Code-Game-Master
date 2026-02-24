@@ -1,134 +1,100 @@
 # TODO — DM System
 
-## Module System (Community Expansion Packs) 🔥 NEW
+## Module System (Community Expansion Packs)
 
-**Цель:** Модульная архитектура для включения/выключения механик при создании кампании
+### Done
 
-### Core Architecture
+- [x] **Module Registry** — `.claude/modules/registry.json` with metadata for all modules
+- [x] **Module Loader** — `lib/module_loader.py` for module discovery and activation
+- [x] **Module Structure** — each module is self-contained in `.claude/modules/<name>/`
+- [x] **Middleware Architecture** — `dispatch_middleware` / `dispatch_middleware_post` / `dispatch_middleware_help`
+- [x] **4 modules created**: custom-stats, world-travel, firearms-combat, inventory-system
+- [x] `tools/dm-module.sh list` — show available modules
+- [x] `/new-game` asks which modules to enable
+- [x] `module.json` manifest with dependencies, middleware declarations, features
+- [x] Module rules loaded during gameplay (`rules.md`) and campaign creation (`creation-rules.md`)
 
-- [ ] **Module Registry** — `.claude/modules/registry.json` с метаданными всех доступных модулей
-  - [ ] Поля: `id`, `name`, `version`, `description`, `author`, `dependencies`, `campaign_rules_patch`
-  - [ ] Автоматическое сканирование `.claude/modules/*/module.json`
-- [ ] **Module Loader** — `lib/module_loader.py` для активации модулей в кампании
-  - [ ] Чтение `campaign-overview.json` → `enabled_modules: ["firearms", "survival"]`
-  - [ ] Применение патчей к `campaign_rules` при загрузке кампании
-  - [ ] Валидация зависимостей (если модуль A требует модуль B)
-- [ ] **Interactive Setup** — `/new-game` спрашивает какие модули включить
-  ```
-  > Choose campaign type:
-    1. Standard D&D (default — базовая механика)
-    2. Modern/Firearms (STALKER, Fallout, Cyberpunk)
-    3. Fantasy Extended (magic crafting, alchemy)
-    4. Custom (выбрать модули вручную)
+### Remaining
 
-  > [Custom] Select modules:
-    [✓] Coordinate Navigation (карта с координатами)
-    [✓] Firearms Combat System (огнестрел, PEN/PROT)
-    [ ] Survival Stats (голод/жажда/радиация)
-    [✓] Encounter System (случайные встречи в пути)
-    [ ] Magic Item Crafting (крафт магических предметов)
-    [ ] Economic Simulation (торговля, рынки, инфляция)
-  ```
+- [ ] `tools/dm-module.sh enable/disable` — toggle modules for active campaign
+- [ ] Module dependency validation on enable (if module A requires module B)
+- [ ] Community docs: module development guide
 
-### Module Structure
+---
 
-```
-.claude/modules/
-├── registry.json (auto-generated index)
-├── firearms-system/
-│   ├── module.json (metadata + dependencies)
-│   ├── campaign_rules.json (weapons, fire_modes, armor)
-│   ├── lib/combat_resolver.py (optional module-specific code)
-│   └── README.md
-├── survival-stats/
-│   ├── module.json
-│   ├── campaign_rules.json (time_effects, custom_stats)
-│   └── README.md
-└── coordinate-nav/
-    ├── module.json
-    ├── campaign_rules.json (encounter_system)
-    └── README.md
-```
+## custom-stats module
 
-### Example module.json
+### Done
 
-```json
-{
-  "id": "firearms-system",
-  "name": "Modern Firearms Combat",
-  "version": "1.0.0",
-  "author": "DM System Core",
-  "description": "Adds firearms with RPM-based combat, fire modes, and PEN vs PROT damage scaling",
-  "dependencies": [],
-  "requires_tools": ["dm-combat.sh"],
-  "campaign_rules_patch": "./campaign_rules.json",
-  "incompatible_with": ["medieval-only"]
-}
-```
+- [x] SurvivalEngine — per-tick stat simulation, conditional effects, threshold consequences
+- [x] Sleep/rest mode with `--sleeping` flag
+- [x] CLI: `dm-survival.sh tick/status/custom-stat/custom-stats-list`
+- [x] Middleware: `dm-player.sh` (show stats), `dm-consequence.sh` (timed triggers)
 
-### Implementation Tasks
+### Remaining
 
-- [ ] Рефакторинг: вынести firearms/survival/encounters из `modern-firearms-campaign.json` в отдельные модули
-- [ ] `lib/module_loader.py` — загрузчик модулей с merge патчей в `campaign_rules`
-- [ ] `tools/dm-module.sh list` — показать доступные модули
-- [ ] `tools/dm-module.sh enable "firearms"` — добавить модуль к активной кампании
-- [ ] `tools/dm-module.sh disable "survival"` — отключить модуль
-- [ ] Обновить `/new-game` workflow для выбора модулей
-- [ ] Документация: `.claude/docs/module-development-guide.md` для community
+- [ ] Wire `advance_time()` to `dm-time.sh.post` middleware — currently tick must be called explicitly
+- [ ] Fix sleep stat drain during rest (known bug — sleep penalty applies even during sleep)
 
-### Community Benefits
+---
 
-- ✅ Люди могут делать свои expansion pack'и (Sci-Fi, Horror, Economic)
-- ✅ Backward compatibility — стандартные D&D кампании не захламлены
-- ✅ Mix & Match — включай только нужные механики
-- ✅ Версионирование модулей — обновления без поломки кампаний
+## world-travel module
+
+### Done
+
+- [x] Hierarchical locations (compound/interior with entry points)
+- [x] BFS pathfinding with bidirectional connections
+- [x] Coordinate system with bearing-based location creation
+- [x] GUI map (tkinter) with campaign terrain colors and caching
+- [x] Encounter engine with DC scaling by distance/time
+- [x] Middleware: `dm-session.sh` (move intercept), `dm-location.sh`
+
+### Remaining
+
+- [ ] Vehicle system — code exists (`vehicle_manager.py`) but full board/exit/move cycle incomplete
+- [ ] Submaps for building interiors, ship decks, dungeon floors
+- [ ] Encounter generation creates type (Dangerous/Neutral/Beneficial) but DM must narrate — no auto-enemy spawn
+
+---
+
+## firearms-combat module
+
+### Done
+
+- [x] Full-auto combat resolver with RPM calculation, penetration vs protection, crits, XP
+- [x] CLI: `dm-combat.sh resolve --weapon AK-74 --ammo 120 --targets "Enemy:13:30:4"`
+
+### Remaining
+
+- [ ] Single fire mode — currently returns "not implemented"
+- [ ] Burst fire mode — currently returns "not implemented"
+- [ ] Auto-update ammo in inventory after combat (currently manual)
+- [ ] Enemy type support (`--enemy-type` flag parsed but not implemented)
+
+---
+
+## inventory-system module
+
+### Done
+
+- [x] Stackable + unique items with atomic transactions and rollback
+- [x] Gold, HP, XP tracking
+- [x] Loot shorthand: `dm-inventory.sh loot`
+- [x] Migration from old `equipment[]` format
+- [x] CLI: `dm-inventory.sh show/update/loot`
+
+### Remaining
+
+- [ ] Equipment slots (weapon, armor, accessory)
+- [ ] Weight system with carry capacity (STR-based)
+- [ ] Transfer items between characters
+- [ ] Separate `inventory.json` file (currently stored in `character.json`)
+- [ ] Filter by category: `dm-inventory.sh list --category weapon`
 
 ---
 
 ## Quest System
 
-- [ ] `dm-plot.sh add` — создание квестов через CLI (сейчас только ручной JSON)
-- [ ] `dm-plot.sh objectives` — отметка выполненных целей внутри квеста
-- [ ] `/dm quests` — отображение активных квестов игроку в красивом формате
-
-## Map System
-
-- [ ] `dm-map.sh` — полноценная ASCII-карта мира (глобальная) с координатами и масштабом
-- [ ] Подкарты (submaps) — вложенные карты для локаций/объектов:
-  - [ ] Интерьеры зданий, бункеров, пещер
-  - [ ] Палубы космических кораблей / станций
-  - [ ] Этажи подземелий
-  - [ ] Переключение между глобальной картой и подкартой (`dm-map.sh --submap "Корабль"`)
-- [ ] Связь между уровнями: лестницы, лифты, шлюзы, люки
-- [ ] Хранение подкарт в `locations.json` (поле `submap` или отдельный `submaps.json`)
-
-## Inventory System (Weight & Slots)
-
-- [ ] `inventory.json` — отдельный файл вместо списка строк в `character.json`
-  - [ ] Каждый предмет: `id`, `name`, `weight_kg`, `quantity`, `stackable`, `category`
-  - [ ] Категории: weapon, ammo, medical, food, consumable, quest, junk, armor
-  - [ ] Стакинг: патроны, бинты, еда суммируются автоматически
-- [ ] Система веса:
-  - [ ] Макс. грузоподъёмность = STR × 7 кг (базовая)
-  - [ ] Рюкзак добавляет +10-15 кг к лимиту
-  - [ ] Перегруз: скорость ×0.5, disadvantage на DEX, -2 к Скрытности
-  - [ ] Критический перегруз (×2 лимита): движение 5ft/раунд
-- [ ] `dm-player.sh inventory` — переписать на работу с `inventory.json`
-  - [ ] `dm-player.sh inventory add "item" --qty 5` — добавление с количеством
-  - [ ] `dm-player.sh inventory drop "item"` — выбросить (не удалить!)
-  - [ ] `dm-player.sh inventory weight` — показать текущий вес / лимит
-  - [ ] `dm-player.sh inventory list --category weapon` — фильтр по категории
-- [ ] Автообъединение при добавлении (патроны 9мм + патроны 9мм = одна строка)
-- [ ] Миграция: скрипт конвертации старого `equipment[]` в `inventory.json`
-- [ ] 
-- [ ] 
-- [ ] 
-- [ ]
-
-
-
-
-
-
-
- Я эсипи тип зеденый фодно охота макс сложно.
+- [ ] `dm-plot.sh add` — create quests via CLI (currently manual JSON only)
+- [ ] `dm-plot.sh objectives` — mark quest objectives as complete
+- [ ] `/dm quests` — display active quests to player
