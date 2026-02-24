@@ -1,0 +1,55 @@
+{
+  "description": "Sample NPC entries from the extraction",
+  "samples": [
+    {
+      "name": "Carl",
+      "type": "Player Character",
+      "description": "Protagonist, Dungeon Crawler",
+      "mention_count": 176,
+      "sample_dialogue": "Donut. Dont make her pay from her own pocket. Itll make her feel bad.",
+      "appears_in_chapters": "Throughout (0-413)"
+    },
+    {
+      "name": "Donut",
+      "type": "Sentient Item",
+      "description": "Carl's companion, sentient item",
+      "mention_count": 314,
+      "sample_dialogue": "I DONT LIKE THESE CHOICES, MORDECAI.",
+      "appears_in_chapters": "Throughout (0-413)",
+      "note": "Most frequently mentioned character - serves as narrator and guide"
+    },
+    {
+      "name": "Imani",
+      "type": "Character",
+      "description": "Female character",
+      "mention_count": 66,
+      "sample_dialogue": "Carl, we should refrain from stopping any more trains until we know more.",
+      "appears_in_chapters": "Multiple (43, 82, 104-114, 131, etc.)"
+    },
+    {
+      "name": "Elle",
+      "type": "Character",
+      "description": "Female character, adventurer",
+      "mention_count": 60,
+      "sample_dialogue": "Hey Carl. We have found ourselves in a bit of a pickle.",
+      "appears_in_chapters": "Multiple (42-43, 103-108, 113-114, 131, etc.)"
+    },
+    {
+      "name": "Mordecai",
+      "type": "NPC",
+      "description": "Welcome back. Donut, hit me with the suggested list.",
+      "mention_count": 13,
+      "sample_dialogue": "By the gods, Carl. Dont scare me like that.",
+      "appears_in_chapters": "Various (3-5, 13-25, 373-386)"
+    },
+    {
+      "name": "Zev",
+      "type": "Character",
+      "description": "Male character",
+      "mention_count": 21,
+      "sample_dialogue": "Shes boring. People dont like her. Odette complained about her.",
+      "appears_in_chapters": "Multiple (72-73, 139-150, 187, etc.)",
+      "role": "Manager/organizer role"
+    }
+  ]
+}

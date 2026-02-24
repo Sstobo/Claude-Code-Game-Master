@@ -1,0 +1,193 @@
+# Dungeon Crawler Carl Book 1 - Location Extraction Summary
+
+## Extraction Complete
+
+**Date:** February 23, 2026
+**Source:** Dungeon Crawler Carl Book 1
+**Total Chunks Processed:** 332
+**Total Locations Extracted:** 28
+**Output File:** `world-state/campaigns/dungeon-crawler-carl/extracted/locations.json`
+
+---
+
+## Locations by Type
+
+### Dungeon Floors (18 locations)
+The primary structure of the World Dungeon consists of multiple levels. The following floors were mentioned in Book 1:
+
+- Floor 1
+- Floor 2
+- Floor 3
+- Floor 4
+- Floor 5
+- Floor 6
+- Floor 7
+- Floor 8
+- Floor 9
+- Floor 10
+- Floor 11
+- Floor 12
+- Floor 13
+- Floor 15
+- Floor 18
+- Floor 50
+- Floor 63
+- Floor 93
+
+*Note: The World Dungeon has 18 levels total, but Book 1 mentions floors beyond 18, suggesting futures books will explore higher levels.*
+
+### Boss Chambers (2 locations)
+
+1. **Hoarder's Chamber**
+   - Type: Boss Chamber
+   - Description: Boss chamber of the Hoarder - contains massive treasure hoard
+   - Mentions: 9
+
+2. **War Chieftain's Chamber**
+   - Type: Boss Chamber
+   - Description: Boss chamber of the War Chieftain
+   - Mentions: 2
+
+### Faction Areas (2 locations)
+
+1. **Goblin Territory**
+   - Type: Faction Area
+   - Description: Areas inhabited and controlled by goblins
+   - Mentions: 63
+
+2. **Hobgoblin Territory**
+   - Type: Faction Area
+   - Description: Areas controlled by stronger hobgoblins
+   - Mentions: 5
+
+### Safe Zones (2 locations)
+
+1. **Tutorial Guild Hall**
+   - Type: Safe Zone
+   - Description: Tutorial Guild Hall - A safe zone for new adventurers
+   - Mentions: 1
+
+2. **Respawn Point**
+   - Type: Safe Zone
+   - Description: Location where adventurers respawn after death
+   - Mentions: 3
+
+### Main Dungeon (1 location)
+
+1. **World Dungeon**
+   - Type: Dungeon
+   - Description: The World Dungeon - massive 18-level dungeon that appeared worldwide
+   - Mentions: 5
+
+### Special Features (1 location)
+
+1. **Marble Chamber**
+   - Type: Special Feature
+   - Description: Chamber with marble flooring
+   - Mentions: 1
+
+### Hazard Areas (1 location)
+
+1. **Level Collapse Zone**
+   - Type: Hazard Area
+   - Description: Areas subject to level reclamation and collapse
+   - Mentions: 17
+
+### Other (1 location)
+
+1. **Dungeon Floor 1**
+   - Type: Dungeon Zone
+   - Description: First Floor of the World Dungeon
+   - Mentions: 1
+
+---
+
+## Key Findings
+
+### Most Mentioned Locations
+1. **Goblin Territory** - 63 mentions (central location for early gameplay)
+2. **Floor 2** - 10 mentions
+3. **Floor 3** - 10 mentions
+4. **Floor 10** - 7 mentions
+5. **Floor 15** - 7 mentions
+
+### World Dungeon Structure
+- Main 18-level dungeon system with timed floor collapses
+- Level Collapse is a critical mechanic with 17 mentions
+- Higher floors mentioned (50, 63, 93) suggest exploration beyond the main 18 levels
+- Safe zones: Tutorial Guild Hall and Respawn Points for character revival
+
+### Faction Presence
+- **Goblins** are the dominant early-game faction (63 mentions)
+- **Hobgoblins** appear as stronger variants (5 mentions)
+- Boss encounters: Hoarder and War Chieftain on first floors
+
+---
+
+## File Structure
+
+The extracted locations are stored in JSON format with the following structure:
+
+```json
+{
+  "metadata": {
+    "source": "Dungeon Crawler Carl Book 1",
+    "extraction_type": "Dungeon Locations and Areas",
+    "extraction_date": "2026-02-23",
+    "total_chunks_processed": 332,
+    "total_unique_locations": 28
+  },
+  "locations": {
+    "Location Name": {
+      "name": "Location Name",
+      "type": "dungeon_floor|boss_chamber|faction_area|safe_zone|dungeon|special_feature|hazard_area",
+      "description": "Description of the location",
+      "connections": [],
+      "features": [],
+      "visited": false,
+      "discovered": false
+    }
+  },
+  "location_types": {
+    "location_type": [
+      {
+        "name": "Location Name",
+        "mentions": 5
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Extraction Methodology
+
+The extraction process:
+
+1. **Scanned all 332 chunks** for location references
+2. **Filtered for meaningful names** - Removed generic room descriptions and noise
+3. **Categorized by type** - Dungeon floors, boss chambers, faction areas, safe zones, etc.
+4. **Tracked mention frequency** - Identifies most important locations
+5. **Generated JSON output** - Ready for DM world-building integration
+
+---
+
+## Next Steps
+
+These locations can be used to:
+
+- Build encounter tables for specific floors
+- Create quest hooks tied to faction territories
+- Design boss battle scenarios
+- Map dungeon progression
+- Track level-collapse mechanics and timing
+- Create connections between locations
+
+The `connections` array can be populated to show how locations relate to each other.
+The `features` array can be expanded with specific mechanics, enemies, or treasures found in each location.
+
+---
+
+**Generated by:** Location Extraction Tool
+**Status:** Complete and ready for DM integration
