@@ -2,15 +2,15 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-TEMPLATES_DIR="$PROJECT_DIR/.claude/campaign-rules-templates"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+TEMPLATES_DIR="$PROJECT_DIR/.claude/modules/campaign-rules-templates"
 
 ACTION="${1:-list}"
 
 _list() {
     local active_id=""
     local campaign_dir
-    campaign_dir=$(bash "$SCRIPT_DIR/dm-campaign.sh" path 2>/dev/null || true)
+    campaign_dir=$(bash "$PROJECT_DIR/tools/dm-campaign.sh" path 2>/dev/null || true)
     if [[ -n "$campaign_dir" && -f "$campaign_dir/campaign-overview.json" ]]; then
         active_id=$(uv run python -c "
 import sys, json
@@ -64,7 +64,7 @@ _show() {
 _apply() {
     local target="${2:-}"
     local campaign_dir
-    campaign_dir=$(bash "$SCRIPT_DIR/dm-campaign.sh" path 2>/dev/null)
+    campaign_dir=$(bash "$PROJECT_DIR/tools/dm-campaign.sh" path 2>/dev/null)
 
     if [[ -z "$campaign_dir" ]]; then
         echo "[ERROR] No active campaign" >&2
@@ -152,7 +152,7 @@ _recommend() {
 
 _read() {
     local campaign_dir
-    campaign_dir=$(bash "$SCRIPT_DIR/dm-campaign.sh" path 2>/dev/null)
+    campaign_dir=$(bash "$PROJECT_DIR/tools/dm-campaign.sh" path 2>/dev/null)
 
     if [[ -z "$campaign_dir" ]]; then
         echo "[ERROR] No active campaign" >&2

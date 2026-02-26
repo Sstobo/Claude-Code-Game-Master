@@ -11,7 +11,6 @@ if [ "$#" -lt 1 ]; then
     echo "  end <summary>            - End session with summary"
     echo "  status                   - Show current campaign status"
     echo "  move <location>          - Move party to new location"
-    dispatch_middleware_help "dm-session.sh"
     echo "  context                  - Full session context (character, party, consequences, rules)"
     echo ""
     echo "Save System (JSON snapshots):"
@@ -32,8 +31,6 @@ fi
 
 ACTION="$1"
 shift
-
-dispatch_middleware "dm-session.sh" "$ACTION" "$@" && exit $?
 
 case "$ACTION" in
     start)

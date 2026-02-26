@@ -1,14 +1,16 @@
 #!/bin/bash
 # dm-plot.sh - Manage plot hooks and storylines
+# Uses Python modules for validation and data operations
 
+# Source common utilities
 source "$(dirname "$0")/common.sh"
+
+# Usage: dm-plot.sh <action> [args]
 
 if [ "$#" -lt 1 ]; then
     echo "Usage: dm-plot.sh <action> [args]"
     echo ""
     echo "=== Plot Management ==="
-    echo "  add <name> <desc> [--type X] [--npcs A B] [--locations A B] [--objectives A B] [--rewards X] [--consequences X]"
-    echo "                                   Create a new plot/quest"
     echo "  list [--type X] [--status Y]     List plots (filter by type/status)"
     echo "  show <name>                      Show full plot details"
     echo "  search <query>                   Search plots by name, NPCs, locations"
@@ -17,7 +19,6 @@ if [ "$#" -lt 1 ]; then
     echo "  fail <name> [reason]             Mark plot as failed"
     echo "  threads                          Active story threads (DM dashboard)"
     echo "  counts                           Show plot statistics"
-    dispatch_middleware_help "dm-plot.sh"
     echo ""
     echo "Types: main, side, mystery, threat"
     echo "Status: active, completed, failed, dormant"
@@ -35,15 +36,10 @@ fi
 require_active_campaign
 
 ACTION="$1"
-shift
+shift  # Remove action from arguments
 
-dispatch_middleware "dm-plot.sh" "$ACTION" "$@" && exit $?
-
+# Delegate to Python module based on action
 case "$ACTION" in
-    add)
-        $PYTHON_CMD "$LIB_DIR/plot_manager.py" add "$@"
-        ;;
-
     list)
         $PYTHON_CMD "$LIB_DIR/plot_manager.py" list "$@"
         ;;
@@ -115,4 +111,5 @@ case "$ACTION" in
         ;;
 esac
 
+# Exit with the same status as the Python command
 exit $?

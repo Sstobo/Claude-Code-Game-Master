@@ -4,7 +4,7 @@
 # - Если модуль аддон → добавляется в конец после всех слотов
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 ACTIVE=$(cat "$PROJECT_ROOT/world-state/active-campaign.txt" 2>/dev/null || echo "")
 [ -z "$ACTIVE" ] && exit 0
@@ -71,7 +71,7 @@ if mode == "modules":
     sys.exit(0)
 
 # Read slots in alphabetical order (skip _preamble — print it first)
-slots_dir = f"{project_root}/.claude/dm/slots"
+slots_dir = f"{project_root}/.claude/modules/dm-slots"
 if not os.path.isdir(slots_dir):
     sys.exit(0)
 

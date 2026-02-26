@@ -106,19 +106,6 @@ class SessionManager(EntityManager):
 
     # ==================== Party Movement ====================
 
-    def _build_location_stack(self, location_name: str) -> List[str]:
-        locations = self.json_ops.load_json("locations.json") or {}
-        stack = []
-        visited = set()
-        current = location_name
-        while current and current not in visited:
-            visited.add(current)
-            stack.append(current)
-            loc_data = locations.get(current, {})
-            current = loc_data.get("parent") if isinstance(loc_data, dict) else None
-        stack.reverse()
-        return stack
-
     def _ensure_location_and_connection(self, old_location: str, new_location: str) -> None:
         """
         Auto-create destination location if missing and add bidirectional
@@ -139,42 +126,19 @@ class SessionManager(EntityManager):
 
         # Add bidirectional connection if old location is valid and known
         if old_location and old_location != "Unknown" and old_location in locations:
-            old_data = locations[old_location]
-            new_data = locations[new_location]
-            old_type = old_data.get("type") if isinstance(old_data, dict) else None
-            new_type = new_data.get("type") if isinstance(new_data, dict) else None
-            old_parent = old_data.get("parent") if isinstance(old_data, dict) else None
-            new_parent = new_data.get("parent") if isinstance(new_data, dict) else None
+            # Check if connection from old -> new exists
+            old_connections = locations[old_location].get("connections", [])
+            if not any(c.get("to") == new_location for c in old_connections):
+                old_connections.append({"to": new_location, "path": "traveled"})
+                locations[old_location]["connections"] = old_connections
+                changed = True
 
-            def _get_ancestors(loc: str) -> set:
-                visited = set()
-                current = loc
-                while current and current not in visited:
-                    visited.add(current)
-                    d = locations.get(current, {})
-                    current = d.get("parent") if isinstance(d, dict) else None
-                return visited
-
-            should_connect = True
-            if old_type == "interior" or new_type == "interior":
-                if old_parent != new_parent:
-                    old_ancestors = _get_ancestors(old_location)
-                    new_ancestors = _get_ancestors(new_location)
-                    if new_location not in old_ancestors and old_location not in new_ancestors:
-                        should_connect = False
-
-            if should_connect:
-                old_connections = locations[old_location].get("connections", [])
-                if not any(c.get("to") == new_location for c in old_connections):
-                    old_connections.append({"to": new_location, "path": "traveled"})
-                    locations[old_location]["connections"] = old_connections
-                    changed = True
-
-                new_connections = locations[new_location].get("connections", [])
-                if not any(c.get("to") == old_location for c in new_connections):
-                    new_connections.append({"to": old_location, "path": "traveled"})
-                    locations[new_location]["connections"] = new_connections
-                    changed = True
+            # Check if connection from new -> old exists
+            new_connections = locations[new_location].get("connections", [])
+            if not any(c.get("to") == old_location for c in new_connections):
+                new_connections.append({"to": old_location, "path": "traveled"})
+                locations[new_location]["connections"] = new_connections
+                changed = True
 
         if changed:
             self.json_ops.save_json("locations.json", locations)
@@ -197,7 +161,6 @@ class SessionManager(EntityManager):
         campaign['player_position']['previous_location'] = old_location
         campaign['player_position']['current_location'] = location
         campaign['player_position']['arrival_time'] = self.get_timestamp()
-        campaign['player_position']['location_stack'] = self._build_location_stack(location)
 
         self.json_ops.save_json(self.campaign_file, campaign)
 
@@ -403,12 +366,8 @@ class SessionManager(EntityManager):
             race = char.get('race', '?')
             cls = char.get('class', '?')
             hp = char.get('hp', {})
-            if isinstance(hp, dict):
-                hp_cur = hp.get('current', 0)
-                hp_max = hp.get('max', 0)
-            else:
-                hp_cur = hp
-                hp_max = char.get('max_hp', hp)
+            hp_cur = hp.get('current', 0)
+            hp_max = hp.get('max', 0)
             ac = char.get('ac', '?')
             xp = char.get('xp', {})
             if isinstance(xp, dict):
@@ -576,7 +535,7 @@ class SessionManager(EntityManager):
         if 'character' in characters and len(characters) == 1:
             # New format: restore to character.json
             with open(self.character_file, 'w', encoding='utf-8') as f:
-                json.dump(characters['character'], f, indent=2, ensure_ascii=False)
+                json.dump(characters['character'], f, indent=2)
         else:
             # Legacy format: restore to characters/ directory
             self.characters_dir.mkdir(parents=True, exist_ok=True)
@@ -659,7 +618,7 @@ def main():
 
     if args.action == 'start':
         summary = manager.start_session()
-        print(json.dumps(summary, indent=2, ensure_ascii=False))
+        print(json.dumps(summary, indent=2))
 
     elif args.action == 'end':
         summary_text = ' '.join(args.summary)
@@ -668,12 +627,12 @@ def main():
 
     elif args.action == 'status':
         status = manager.get_status()
-        print(json.dumps(status, indent=2, ensure_ascii=False))
+        print(json.dumps(status, indent=2))
 
     elif args.action == 'move':
         location = ' '.join(args.location)
         result = manager.move_party(location)
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        print(json.dumps(result, indent=2))
 
     elif args.action == 'save':
         name = ' '.join(args.name)
@@ -686,7 +645,7 @@ def main():
     elif args.action == 'list-saves':
         saves = manager.list_saves()
         if saves:
-            print(json.dumps(saves, indent=2, ensure_ascii=False))
+            print(json.dumps(saves, indent=2))
         else:
             print("No saves found")
 

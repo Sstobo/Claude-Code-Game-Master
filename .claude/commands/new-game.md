@@ -38,13 +38,40 @@ bash tools/dm-campaign.sh switch "<CAMPAIGN_NAME>"
 
 ---
 
-## PHASE 1.5: MODULE SELECTION
+## PHASE 1.1: GAME MODE
+
+```
+================================================================
+  ╔═══════════════════════════════════════════════════════════╗
+  ║              GAME MODE                                    ║
+  ╚═══════════════════════════════════════════════════════════╝
+================================================================
+
+  [1] Classic (recommended)
+      Standard D&D rules. Fast start. No extra setup.
+
+  [2] Advanced
+      Custom modules, narrator styles, campaign rule templates.
+      More setup — more control.
+
+================================================================
+  Enter number (or press ENTER for Classic):
+================================================================
+```
+
+**If Classic** → Write `"advanced_mode": false` to campaign-overview.json, then skip to PHASE 2.
+
+**If Advanced** → Write `"advanced_mode": true` to campaign-overview.json, then run PHASES 1.5–1.8 (below) before continuing to PHASE 2.
+
+---
+
+## PHASE 1.5: MODULE SELECTION (Advanced only)
 
 Run after campaign is created and switched (so modules persist to campaign-overview.json).
 
 ### 1. List available modules
 ```bash
-bash tools/dm-module.sh list-verbose
+bash .claude/modules/infrastructure/tools/dm-module.sh list-verbose
 ```
 
 ### 2. Display module menu
@@ -74,25 +101,25 @@ bash tools/dm-module.sh list-verbose
 
 ### 3. Apply selection
 ```bash
-bash tools/dm-module.sh activate <module-name>    # for each enabled
-bash tools/dm-module.sh deactivate <module-name>  # for each disabled
+bash .claude/modules/infrastructure/tools/dm-module.sh activate <module-name>    # for each enabled
+bash .claude/modules/infrastructure/tools/dm-module.sh deactivate <module-name>  # for each disabled
 ```
 
 ### 4. Load module rules into context
 ```bash
-bash tools/dm-active-modules-rules.sh
+bash .claude/modules/infrastructure/dm-active-modules-rules.sh
 ```
 
 Rules are now in context — use them for all world-building that follows.
 
 ---
 
-## PHASE 1.6: LOAD MODULE CREATION RULES
+## PHASE 1.6: LOAD MODULE CREATION RULES (Advanced only)
 
 Load creation-specific instructions from active modules:
 
 ```bash
-bash tools/dm-active-modules-creation-rules.sh
+bash .claude/modules/infrastructure/dm-active-modules-creation-rules.sh
 ```
 
 These rules tell you HOW to handle world-building for each active module:
@@ -106,16 +133,16 @@ Follow module-specific instructions when they apply to that phase.
 
 ---
 
-## PHASE 1.7: NARRATOR STYLE
+## PHASE 1.7: NARRATOR STYLE (Advanced only)
 
 ### 1. List available styles
 ```bash
-bash tools/dm-narrator.sh list
+bash .claude/modules/infrastructure/dm-narrator.sh list
 ```
 
 ### 2. Get recommendation based on campaign genre
 ```bash
-bash tools/dm-narrator.sh recommend "<genre>"
+bash .claude/modules/infrastructure/dm-narrator.sh recommend "<genre>"
 ```
 Genre hints from campaign name/tone: horror→horror-atmospheric, classic fantasy→epic-heroic, roguelike/comedy→sarcastic-puns, noir/drama→serious-cinematic.
 
@@ -146,7 +173,7 @@ Genre hints from campaign name/tone: horror→horror-atmospheric, classic fantas
 
 ### 4. Apply selected style
 ```bash
-bash tools/dm-narrator.sh apply <style-id>
+bash .claude/modules/infrastructure/dm-narrator.sh apply <style-id>
 ```
 
 This writes the full narrator style object into `campaign-overview.json` under `narrator_style`.
@@ -160,17 +187,17 @@ If user points to a `.md` file with their own style:
 
 ---
 
-## PHASE 1.8: CAMPAIGN RULES TEMPLATE
+## PHASE 1.8: CAMPAIGN RULES TEMPLATE (Advanced only)
 
 ### 1. Get recommendation based on campaign genre
 ```bash
-bash tools/dm-campaign-rules.sh recommend "<genre>"
+bash .claude/modules/infrastructure/dm-campaign-rules.sh recommend "<genre>"
 ```
 Genre hints: horror/investigation → horror-investigation, survival/stalker/metro/fallout → survival-zone, space/sci-fi/ftl → space-travel, political/intrigue → political-intrigue, civilization/tribe/4x → civilization.
 
 ### 2. List available templates
 ```bash
-bash tools/dm-campaign-rules.sh list
+bash .claude/modules/infrastructure/dm-campaign-rules.sh list
 ```
 
 ### 3. Display menu
@@ -201,7 +228,7 @@ bash tools/dm-campaign-rules.sh list
 
 ### 4. Apply selected template
 ```bash
-bash tools/dm-campaign-rules.sh apply <template-id>
+bash .claude/modules/infrastructure/dm-campaign-rules.sh apply <template-id>
 ```
 
 This writes template metadata into `campaign-overview.json` under `campaign_rules_template`
@@ -402,8 +429,6 @@ As each element completes:
 
 ## PHASE 6: UPDATE CAMPAIGN OVERVIEW
 
-### 6a. Update overview
-
 ```bash
 CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
 
@@ -531,30 +556,7 @@ Before transitioning to character creation, verify:
 - [ ] 3+ consequences scheduled
 - [ ] Session log initialized
 - [ ] Campaign overview updated with settings
-- [ ] Narrator style selected (or skipped)
-- [ ] Campaign rules template applied (or skipped for standard D&D)
-- [ ] Module-specific creation steps completed (custom-stats, world-travel terrain_colors + diameter_meters, firearms, etc.)
-
----
-
-## AFTER /new-game: RECOMMENDED NEXT STEP
-
-Once world creation and character creation are complete, display:
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  WORLD READY — START PLAYING
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Your campaign is set up. To start playing:
-
-  1. Clear this context window  (/clear or Ctrl+C / new chat)
-  2. Run /dm
-
-Why clear context?
-  /new-game loaded creation rules and build instructions.
-  /dm loads only the game rules your campaign needs.
-  Smaller context = faster, more focused sessions.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+- [ ] `advanced_mode` written to campaign-overview.json
+- [ ] (Advanced only) Narrator style selected or skipped
+- [ ] (Advanced only) Campaign rules template applied or skipped
+- [ ] (Advanced only) Module-specific creation steps completed

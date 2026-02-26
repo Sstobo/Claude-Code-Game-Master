@@ -21,34 +21,6 @@ class PlotManager(EntityManager):
         super().__init__(world_state_dir)
         self.plots_file = "plots.json"
 
-    def add_plot(self, name: str, description: str, plot_type: str = "side",
-                 npcs: list = None, locations: list = None, objectives: list = None,
-                 rewards: str = None, consequences: str = None) -> bool:
-        plots = self._load_entities(self.plots_file)
-        if name in plots:
-            print(f"[ERROR] Plot '{name}' already exists")
-            return False
-        plots[name] = {
-            "name": name,
-            "description": description,
-            "type": plot_type,
-            "status": "active",
-            "npcs": npcs or [],
-            "locations": locations or [],
-            "objectives": objectives or [],
-            "rewards": rewards or "",
-            "consequences": consequences or "",
-            "events": [],
-            "created_at": self.get_timestamp()
-        }
-        if self._save_entities(self.plots_file, plots):
-            print(f"[SUCCESS] Created plot '{name}' (type: {plot_type})")
-            if objectives:
-                for obj in objectives:
-                    print(f"  • {obj}")
-            return True
-        return False
-
     def list_plots(self, plot_type: Optional[str] = None,
                    status: Optional[str] = None) -> Dict[str, Dict]:
         """
@@ -487,18 +459,6 @@ def main():
     parser = argparse.ArgumentParser(description='Plot management')
     subparsers = parser.add_subparsers(dest='action', help='Action to perform')
 
-    # Add plot
-    add_parser = subparsers.add_parser('add', help='Create new plot/quest')
-    add_parser.add_argument('name', help='Plot name')
-    add_parser.add_argument('description', help='Plot description')
-    add_parser.add_argument('--type', dest='plot_type', default='side',
-                            choices=['main', 'side', 'mystery', 'threat'])
-    add_parser.add_argument('--npcs', nargs='+', default=[])
-    add_parser.add_argument('--locations', nargs='+', default=[])
-    add_parser.add_argument('--objectives', nargs='+', default=[])
-    add_parser.add_argument('--rewards', default='')
-    add_parser.add_argument('--consequences', default='')
-
     # List plots
     list_parser = subparsers.add_parser('list', help='List plots')
     list_parser.add_argument('--type', help='Filter by type (main, side, mystery, threat)')
@@ -541,20 +501,7 @@ def main():
 
     manager = PlotManager()
 
-    if args.action == 'add':
-        if not manager.add_plot(
-            name=args.name,
-            description=args.description,
-            plot_type=args.plot_type,
-            npcs=args.npcs,
-            locations=args.locations,
-            objectives=args.objectives,
-            rewards=args.rewards,
-            consequences=args.consequences
-        ):
-            sys.exit(1)
-
-    elif args.action == 'list':
+    if args.action == 'list':
         plots = manager.list_plots(args.type, args.status)
         print(manager.format_plot_list(plots))
 

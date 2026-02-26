@@ -7,7 +7,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 cd "$PROJECT_ROOT"
 
@@ -20,7 +20,7 @@ case "$ACTION" in
             echo "Usage: dm-module.sh activate <module-id>"
             exit 1
         fi
-        uv run python lib/module_loader.py activate --module "$MODULE"
+        uv run python .claude/modules/module_loader.py activate --module "$MODULE"
         ;;
     deactivate)
         MODULE="${2:-}"
@@ -28,7 +28,7 @@ case "$ACTION" in
             echo "Usage: dm-module.sh deactivate <module-id>"
             exit 1
         fi
-        uv run python lib/module_loader.py deactivate --module "$MODULE"
+        uv run python .claude/modules/module_loader.py deactivate --module "$MODULE"
         ;;
     list-verbose)
         uv run python - "$PROJECT_ROOT" <<'PYEOF'
@@ -62,6 +62,6 @@ for i, path in enumerate(paths, 1):
 PYEOF
         ;;
     *)
-        uv run python lib/module_loader.py "$@"
+        uv run python .claude/modules/module_loader.py "$@"
         ;;
 esac

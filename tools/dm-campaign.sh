@@ -46,7 +46,6 @@ case "$ACTION" in
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/campaign_manager.py" switch "$1"
-        bash "$(dirname "$0")/dm-active-modules-rules.sh" 2>/dev/null
         ;;
 
     "create")

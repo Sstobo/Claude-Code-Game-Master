@@ -21,8 +21,8 @@
 
 ### Step 1: Load Full Context
 ```bash
-bash tools/dm-active-modules-rules.sh 2>/dev/null > /tmp/dm-rules.md
-bash tools/dm-campaign-rules.sh 2>/dev/null >> /tmp/dm-rules.md
+bash .claude/modules/infrastructure/dm-active-modules-rules.sh 2>/dev/null > /tmp/dm-rules.md
+bash .claude/modules/infrastructure/dm-campaign-rules.sh read 2>/dev/null >> /tmp/dm-rules.md
 bash tools/dm-session.sh start
 bash tools/dm-session.sh context
 ```
