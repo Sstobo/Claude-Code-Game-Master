@@ -149,7 +149,7 @@ def main():
     elif args.action == 'list-resolved':
         resolved = manager.list_resolved()
         if resolved:
-            print(json.dumps(resolved, indent=2))
+            print(json.dumps(resolved, indent=2, ensure_ascii=False))
         else:
             print("No resolved consequences")
 

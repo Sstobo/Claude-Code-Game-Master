@@ -534,7 +534,7 @@ def main():
     elif args.action == 'counts':
         import json
         counts = manager.get_plot_counts()
-        print(json.dumps(counts, indent=2))
+        print(json.dumps(counts, indent=2, ensure_ascii=False))
 
     elif args.action == 'threads':
         threads = manager.get_active_threads()

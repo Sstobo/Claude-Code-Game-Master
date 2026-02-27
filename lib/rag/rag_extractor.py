@@ -268,7 +268,7 @@ def main():
 
     print("\n" + "=" * 50)
     print("Stats:")
-    print(json.dumps(extractor.get_stats(), indent=2, default=str))
+    print(json.dumps(extractor.get_stats(), indent=2, default=str, ensure_ascii=False))
 
 
 if __name__ == "__main__":

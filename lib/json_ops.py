@@ -228,7 +228,7 @@ def main():
 
     if args.action == 'get':
         result = ops.get_value(args.filename, args.key, path)
-        print(json.dumps(result, indent=2))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
 
     elif args.action == 'set' or args.action == 'update':
         if not args.value:

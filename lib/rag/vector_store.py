@@ -296,7 +296,7 @@ def main():
 
         # Get stats
         stats = store.get_stats()
-        print(f"Stats: {json.dumps(stats, indent=2)}")
+        print(f"Stats: {json.dumps(stats, indent=2, ensure_ascii=False)}")
 
         # Query similar
         results = store.query_similar(embeddings[0], n_results=2)

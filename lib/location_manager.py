@@ -286,7 +286,7 @@ def main():
     elif args.action == 'get':
         location = manager.get_location(args.name)
         if location:
-            print(json.dumps({args.name: location}, indent=2))
+            print(json.dumps({args.name: location}, indent=2, ensure_ascii=False))
         else:
             sys.exit(1)
 
@@ -301,7 +301,7 @@ def main():
     elif args.action == 'connections':
         connections = manager.get_connections(args.name)
         if connections:
-            print(json.dumps(connections, indent=2))
+            print(json.dumps(connections, indent=2, ensure_ascii=False))
         else:
             print("No connections found")
 

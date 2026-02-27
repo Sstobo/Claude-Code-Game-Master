@@ -78,6 +78,17 @@ def create_character_id(name):
     """Convert character name to file-safe ID"""
     return name.lower().replace(' ', '-').replace("'", '').replace('"', '')
 
+STAT_ALIASES = {
+    'strength': 'str', 'dexterity': 'dex', 'constitution': 'con',
+    'intelligence': 'int', 'wisdom': 'wis', 'charisma': 'cha'
+}
+
+
+def normalize_stats(stats: dict) -> dict:
+    """Normalize stat keys to short form (constitution -> con, etc.)"""
+    return {STAT_ALIASES.get(k.lower(), k.lower()): v for k, v in stats.items()}
+
+
 def save_character(character_data):
     """Save character to campaign's character.json file"""
 
@@ -86,6 +97,8 @@ def save_character(character_data):
     for field in required_fields:
         if field not in character_data:
             return {"error": f"Missing required field: {field}"}
+
+    character_data['stats'] = normalize_stats(character_data['stats'])
 
     # Generate character ID
     char_id = create_character_id(character_data['name'])
@@ -137,7 +150,7 @@ def save_character(character_data):
 
     try:
         with open(file_path, 'w') as f:
-            json.dump(character, f, indent=2)
+            json.dump(character, f, indent=2, ensure_ascii=False)
 
         return {
             "success": True,
@@ -169,16 +182,16 @@ def main():
         character_data = json.loads(character_json)
         result = save_character(character_data)
         
-        print(json.dumps(result, indent=2))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
         
         if "error" in result:
             sys.exit(1)
             
     except json.JSONDecodeError as e:
-        print(json.dumps({"error": f"Invalid JSON: {str(e)}"}, indent=2))
+        print(json.dumps({"error": f"Invalid JSON: {str(e)}"}, indent=2, ensure_ascii=False))
         sys.exit(1)
     except Exception as e:
-        print(json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2))
+        print(json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2, ensure_ascii=False))
         sys.exit(1)
 
 if __name__ == "__main__":

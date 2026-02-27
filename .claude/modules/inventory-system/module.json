@@ -1,0 +1,59 @@
+{
+  "id": "inventory-system",
+  "name": "Inventory System",
+  "version": "1.0.0",
+  "author": "DM System",
+  "description": "Unified inventory manager with atomic transactions, stackable items, and unique item tracking",
+  "category": "character-mechanics",
+  "genre_tags": [
+    "fantasy",
+    "survival",
+    "scifi",
+    "modern",
+    "horror"
+  ],
+  "tags": [
+    "inventory",
+    "items",
+    "loot",
+    "equipment"
+  ],
+  "enabled_by_default": true,
+  "dependencies": [],
+  "incompatible_with": [],
+  "middleware": [
+    "dm-inventory.sh"
+  ],
+  "features": [
+    "Atomic add/remove transactions (no partial failures)",
+    "Stackable items with quantity tracking",
+    "Unique item IDs for rare/named items",
+    "Weight and slot capacity support",
+    "Loot tables integration"
+  ],
+  "adds_to_core": {
+    "tools": [
+      "dm-inventory.sh"
+    ],
+    "commands": {
+      "dm-inventory.sh add <item> [qty]": "Add item to inventory",
+      "dm-inventory.sh remove <item> [qty]": "Remove item from inventory",
+      "dm-inventory.sh show": "Show full inventory",
+      "dm-inventory.sh transfer <item> <from> <to>": "Transfer item between characters"
+    },
+    "data_fields": {
+      "character.json": {
+        "inventory": []
+      }
+    }
+  },
+  "use_cases": [
+    "Any campaign with item management",
+    "Loot-heavy dungeon crawls",
+    "Survival resource tracking",
+    "Trading and economy systems",
+    "Party shared inventory"
+  ],
+  "architecture": "Middleware intercepts dm-inventory.sh CORE calls and handles all item operations. No dependency on other modules.",
+  "replaces": []
+}

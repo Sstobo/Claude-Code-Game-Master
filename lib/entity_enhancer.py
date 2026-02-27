@@ -758,7 +758,7 @@ def main():
         result = enhancer.find_entity(args.name)
         if result:
             print(f"Found {result['type'].upper()}: {result['name']}")
-            print(json.dumps(result['data'], indent=2))
+            print(json.dumps(result['data'], indent=2, ensure_ascii=False))
         else:
             print(f"No entity found matching: {args.name}")
             sys.exit(1)
@@ -824,7 +824,7 @@ def main():
         passages = enhancer.query_passages(entity['name'], entity['type'])
 
         summary = enhancer.get_enhancement_summary(entity, passages)
-        print(json.dumps(summary, indent=2, default=str))
+        print(json.dumps(summary, indent=2, default=str, ensure_ascii=False))
 
     elif args.action == 'search':
         print(f"RAG Search: {args.query}")
@@ -880,7 +880,7 @@ def main():
 
         # Output JSON for script parsing
         print("\n--- JSON ---")
-        print(json.dumps(info, indent=2))
+        print(json.dumps(info, indent=2, ensure_ascii=False))
 
     elif args.action == 'scene':
         # DM-internal scene context (minimal output)

@@ -42,8 +42,8 @@ class PlayerManager(EntityManager):
         355000,  # Level 20
     ]
 
-    def __init__(self, world_state_dir: str = None):
-        super().__init__(world_state_dir)
+    def __init__(self, world_state_dir: Optional[str] = None, require_active_campaign: bool = True):
+        super().__init__(world_state_dir, require_active_campaign)
 
         # Additional paths specific to player management
         self.world_state_dir = self.campaign_dir  # Alias for compatibility
@@ -73,7 +73,7 @@ class PlayerManager(EntityManager):
         char_id = self._name_to_id(name)
         return self.characters_dir / f"{char_id}.json"
 
-    def _load_character(self, name: str = None) -> Optional[Dict]:
+    def _load_character(self, name: Optional[str] = None) -> Optional[Dict]:
         """
         Load character data from file
         In single-character mode, name is optional/ignored
@@ -131,7 +131,7 @@ class PlayerManager(EntityManager):
 
         return char
 
-    def get_player(self, name: str) -> Optional[Dict]:
+    def get_player(self, name: Optional[str] = None) -> Optional[Dict]:
         """Get full player character data"""
         char = self._load_character(name)
         if not char:
@@ -721,7 +721,7 @@ def main():
     elif args.action == 'get':
         char = manager.get_player(args.name)
         if char:
-            print(json.dumps(char, indent=2))
+            print(json.dumps(char, indent=2, ensure_ascii=False))
         else:
             sys.exit(1)
 

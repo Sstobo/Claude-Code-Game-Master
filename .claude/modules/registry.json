@@ -1,0 +1,343 @@
+{
+  "version": "1.0.0",
+  "modules": {
+    "custom-stats": {
+      "id": "custom-stats",
+      "name": "Custom Stats & Time Effects",
+      "version": "1.0.0",
+      "author": "DM System Core",
+      "description": "Any custom character stats with automatic time-based changes and conditional effects. Not limited to survival — use for mana, sanity, reputation, fatigue, anything.",
+      "category": "character-mechanics",
+      "genre_tags": [
+        "fantasy",
+        "survival",
+        "horror",
+        "scifi",
+        "modern"
+      ],
+      "tags": [
+        "custom-stats",
+        "time-effects",
+        "conditions",
+        "mechanics"
+      ],
+      "enabled_by_default": false,
+      "dependencies": [],
+      "incompatible_with": [],
+      "middleware": [
+        "dm-player.sh",
+        "dm-consequence.sh"
+      ],
+      "post_middleware": [
+        "dm-time.sh.post"
+      ],
+      "features": [
+        "Define ANY custom stats — hunger, mana, sanity, reputation, fatigue, oxygen, fuel, stress...",
+        "Time effects engine: stats change automatically per hour",
+        "Conditional effects (e.g., heal only when HP < max, drain only when moving)",
+        "Per-tick simulation for accurate timing",
+        "Sleep/rest mode (--sleeping flag reverses drain for recovery stats)",
+        "Threshold consequences (stat hits 0 → damage, condition, or event)",
+        "Auto-tick during travel and time advancement"
+      ],
+      "adds_to_core": {
+        "tools": [
+          "dm-survival.sh"
+        ],
+        "commands": {
+          "dm-survival.sh tick --elapsed <hours>": "Apply time effects to all custom stats",
+          "dm-survival.sh tick --elapsed <hours> --sleeping": "Apply effects in sleep mode",
+          "dm-survival.sh status": "Show current custom stats",
+          "dm-survival.sh custom-stat <stat> [+/-amount]": "Get or modify a stat",
+          "dm-survival.sh custom-stats-list": "List all custom stats"
+        },
+        "data_fields": {
+          "character.json": {
+            "custom_stats": {
+              "<any_stat_name>": {
+                "current": 100,
+                "min": 0,
+                "max": 100
+              }
+            }
+          },
+          "campaign_rules": {
+            "time_effects": {
+              "enabled": true,
+              "effects_per_hour": {
+                "<stat_name>": -5
+              },
+              "stat_consequences": [],
+              "rules": []
+            }
+          }
+        }
+      },
+      "use_cases": [
+        "Survival: hunger, thirst, radiation (STALKER, Fallout)",
+        "Fantasy: mana regeneration, spell slots over time",
+        "Horror: sanity drain from eldrich encounters",
+        "Sci-fi: oxygen, fuel, power cells",
+        "Social: reputation with factions, trust",
+        "Any stat that changes over time or has thresholds"
+      ],
+      "architecture": "Middleware hooks into dm-player.sh (show custom stats), dm-consequence.sh (threshold effects). Post-hook on dm-time.sh reads --elapsed and ticks stats after CORE updates time. Zero hardcoded stat names — all defined in campaign_rules.time_effects.",
+      "replaces": []
+    },
+    "world-travel": {
+      "id": "world-travel",
+      "name": "World Travel (Navigation + Encounters)",
+      "version": "1.0.0",
+      "author": "DM System Core",
+      "description": "Unified travel system: coordinate navigation, pathfinding, maps, and automatic random encounter checks during overland travel",
+      "category": "travel-mechanics",
+      "genre_tags": [
+        "fantasy",
+        "survival",
+        "scifi",
+        "horror",
+        "modern"
+      ],
+      "tags": [
+        "navigation",
+        "maps",
+        "coordinates",
+        "pathfinding",
+        "encounters",
+        "travel"
+      ],
+      "enabled_by_default": false,
+      "dependencies": [],
+      "incompatible_with": [],
+      "middleware": [
+        "dm-location.sh",
+        "dm-session.sh"
+      ],
+      "features": [
+        "Coordinate system for locations (x, y)",
+        "Bearing-based location creation with auto distance calc",
+        "BFS pathfinding between named locations",
+        "Path preference caching (DM route decisions)",
+        "Direction blocking (cliffs, radiation zones)",
+        "ASCII and GUI map rendering",
+        "Distance-based encounter segmentation (1-3 checks per journey)",
+        "DC scaling by distance and time of day",
+        "Encounter nature categories (Dangerous, Neutral, Beneficial, Special)",
+        "Waypoint creation for Combat/Social/Hazard encounters",
+        "Auto-resolve for Loot/Flavor encounters",
+        "Automatic encounter check after every move",
+        "Vehicle system: ships/transports with dual-map (global anchor + internal rooms)",
+        "Board/exit vehicles, move between rooms, move vehicle with connection rebuild"
+      ],
+      "adds_to_core": {
+        "tools": [
+          "dm-navigation.sh",
+          "dm-map.sh",
+          "dm-encounter.sh",
+          "dm-vehicle.sh"
+        ],
+        "commands": {
+          "dm-navigation.sh move <location>": "Move party with distance/time calc + auto encounter",
+          "dm-navigation.sh route <from> <to>": "Calculate route and distance",
+          "dm-navigation.sh decide <from> <to>": "Interactive route decision (cached)",
+          "dm-navigation.sh routes <from> <to>": "Show all possible routes",
+          "dm-navigation.sh block <loc> <from_deg> <to_deg> <reason>": "Block direction range",
+          "dm-navigation.sh unblock <loc> <from_deg> <to_deg>": "Unblock direction",
+          "dm-map.sh show": "ASCII map of known locations",
+          "dm-map.sh --gui": "Interactive Pygame map",
+          "dm-encounter.sh check <from> <to> <dist> [terrain]": "Manual encounter check",
+          "dm-encounter.sh toggle": "Enable/disable encounter checks",
+          "dm-encounter.sh set-base-dc <dc>": "Set encounter difficulty",
+          "dm-encounter.sh status": "Show encounter config"
+        },
+        "data_fields": {
+          "locations.json": {
+            "LocationName": {
+              "coordinates": {
+                "x": 0,
+                "y": 0
+              },
+              "connections": [
+                {
+                  "to": "Other",
+                  "distance_meters": 1000,
+                  "bearing": 90,
+                  "terrain": "open"
+                }
+              ],
+              "blocked_ranges": [
+                {
+                  "from_bearing": 160,
+                  "to_bearing": 200,
+                  "reason": "cliff"
+                }
+              ]
+            }
+          },
+          "campaign-overview.json": {
+            "path_preferences": {},
+            "campaign_rules": {
+              "encounter_system": {
+                "enabled": true,
+                "min_distance_meters": 300,
+                "base_dc": 16,
+                "distance_modifier": 2,
+                "stat_to_use": "stealth",
+                "time_dc_modifiers": {
+                  "Morning": 0,
+                  "Day": 0,
+                  "Evening": 2,
+                  "Night": 4
+                }
+              }
+            }
+          },
+          "locations.json._vehicle": "vehicle metadata (vehicle_id, is_vehicle_anchor, vehicle_type, dock_room, proximity_radius_meters)",
+          "campaign-overview.json.player_position.map_context": "global|local — absent = global (backward compat)",
+          "campaign-overview.json.player_position.vehicle_id": "string|null — active vehicle if inside"
+        }
+      },
+      "use_cases": [
+        "Open-world exploration (STALKER, Fallout-style)",
+        "Wilderness travel with random encounters",
+        "Hex-map or grid-based campaigns",
+        "Realistic travel time + encounter simulation",
+        "Visual map for DM and players"
+      ],
+      "architecture": "Middleware intercepts dm-session.sh move: runs navigation (distance/time), then auto-triggers encounter check. dm-location.sh middleware handles coordinate-based location creation. All travel logic in one module.",
+      "replaces": [
+        "movement"
+      ]
+    },
+    "inventory-system": {
+      "id": "inventory-system",
+      "name": "Inventory System",
+      "version": "1.0.0",
+      "author": "DM System",
+      "description": "Unified inventory manager with atomic transactions, stackable items, and unique item tracking",
+      "category": "character-mechanics",
+      "genre_tags": [
+        "fantasy",
+        "survival",
+        "scifi",
+        "modern",
+        "horror"
+      ],
+      "tags": [
+        "inventory",
+        "items",
+        "loot",
+        "equipment"
+      ],
+      "enabled_by_default": true,
+      "dependencies": [],
+      "incompatible_with": [],
+      "middleware": [
+        "dm-inventory.sh"
+      ],
+      "features": [
+        "Atomic add/remove transactions (no partial failures)",
+        "Stackable items with quantity tracking",
+        "Unique item IDs for rare/named items",
+        "Weight and slot capacity support",
+        "Loot tables integration"
+      ],
+      "adds_to_core": {
+        "tools": [
+          "dm-inventory.sh"
+        ],
+        "commands": {
+          "dm-inventory.sh add <item> [qty]": "Add item to inventory",
+          "dm-inventory.sh remove <item> [qty]": "Remove item from inventory",
+          "dm-inventory.sh show": "Show full inventory",
+          "dm-inventory.sh transfer <item> <from> <to>": "Transfer item between characters"
+        },
+        "data_fields": {
+          "character.json": {
+            "inventory": []
+          }
+        }
+      },
+      "use_cases": [
+        "Any campaign with item management",
+        "Loot-heavy dungeon crawls",
+        "Survival resource tracking",
+        "Trading and economy systems",
+        "Party shared inventory"
+      ],
+      "architecture": "Middleware intercepts dm-inventory.sh CORE calls and handles all item operations. No dependency on other modules.",
+      "replaces": []
+    },
+    "firearms-combat": {
+      "id": "firearms-combat",
+      "name": "Firearms Combat System",
+      "version": "1.0.0",
+      "author": "DM System Core",
+      "description": "Automated firearms combat resolver with penetration mechanics, RPM simulation, and fire mode support for modern/STALKER campaigns",
+      "category": "combat",
+      "genre_tags": [
+        "survival",
+        "modern",
+        "scifi",
+        "horror"
+      ],
+      "tags": [
+        "firearms",
+        "combat",
+        "ballistics",
+        "stalker",
+        "modern"
+      ],
+      "enabled_by_default": false,
+      "dependencies": [],
+      "incompatible_with": [],
+      "middleware": [],
+      "features": [
+        "Full-auto fire mode with RPM-based shot calculation",
+        "Penetration vs Protection damage scaling",
+        "Subclass bonuses (Стрелок sharpshooter)",
+        "Critical hit mechanics (2× dice on nat 20)",
+        "Multi-target distribution",
+        "Auto XP tracking",
+        "Test mode for dry runs"
+      ],
+      "adds_to_core": {
+        "tools": [
+          "dm-combat.sh"
+        ],
+        "commands": {
+          "dm-combat.sh resolve": "Resolve firearms combat with auto-damage calculation"
+        },
+        "data_fields": {
+          "campaign_rules": {
+            "firearms_system": {
+              "weapons": {
+                "AK-74": {
+                  "damage": "2d8+2",
+                  "pen": 6,
+                  "rpm": 650,
+                  "ammo_type": "5.45x39mm"
+                }
+              },
+              "fire_modes": {
+                "full_auto": {
+                  "penalty_per_shot": -2,
+                  "penalty_per_shot_sharpshooter": -1
+                }
+              }
+            }
+          }
+        }
+      },
+      "use_cases": [
+        "STALKER campaigns with Svoboda/Долговцы firefights",
+        "Fallout-style wasteland combat",
+        "Modern military operations",
+        "Cyberpunk gunfights",
+        "Zombie apocalypse firearms survival"
+      ],
+      "architecture": "Standalone tool. DM calls dm-combat.sh resolve when firearms combat occurs. No middleware — does not intercept CORE tools.",
+      "replaces": []
+    }
+  }
+}

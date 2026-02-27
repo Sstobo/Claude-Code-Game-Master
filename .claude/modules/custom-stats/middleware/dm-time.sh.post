@@ -1,0 +1,21 @@
+#!/bin/bash
+# custom-stats post-hook for dm-time.sh
+# Called AFTER CORE updates time. Reads --elapsed from args and ticks custom stats.
+
+MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+ELAPSED=""
+SLEEPING=""
+i=1
+for arg in "$@"; do
+    if [ "$arg" = "--elapsed" ]; then
+        eval "ELAPSED=\${$((i+1)):-}"
+    elif [ "$arg" = "--sleeping" ]; then
+        SLEEPING="--sleeping"
+    fi
+    i=$((i+1))
+done
+
+[ -n "$ELAPSED" ] || exit 0
+
+bash "$MODULE_DIR/tools/dm-survival.sh" tick --elapsed "$ELAPSED" $SLEEPING

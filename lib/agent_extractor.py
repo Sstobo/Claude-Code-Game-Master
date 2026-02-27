@@ -169,7 +169,7 @@ class AgentExtractor:
 
         # Save metadata
         (self.extraction_dir / "metadata.json").write_text(
-            json.dumps(metadata, indent=2, default=str)
+            json.dumps(metadata, indent=2, default=str, ensure_ascii=False)
         )
 
         return {
@@ -357,7 +357,7 @@ class AgentExtractor:
 
         # Save merged results
         merged_path = self.extraction_dir / "merged-results.json"
-        merged_path.write_text(json.dumps(merged, indent=2))
+        merged_path.write_text(json.dumps(merged, indent=2, ensure_ascii=False))
 
         print(f"Merged {len(agent_files)} agent outputs:")
         for key, count in merged['extraction_summary'].items():
@@ -493,7 +493,7 @@ class AgentExtractor:
                 items_dict[name] = item_data
 
             items_path = self.extraction_dir / "items.json"
-            items_path.write_text(json.dumps(items_dict, indent=2))
+            items_path.write_text(json.dumps(items_dict, indent=2, ensure_ascii=False))
             results['items_saved'] = len(new_items)
             print(f"  Saved {len(items_dict)} total items ({len(new_items)} new, {len(existing_items)} preserved)")
 
@@ -511,7 +511,7 @@ class AgentExtractor:
                 plots_dict[name] = plot_data
 
             plots_path = self.extraction_dir / "plots.json"
-            plots_path.write_text(json.dumps(plots_dict, indent=2))
+            plots_path.write_text(json.dumps(plots_dict, indent=2, ensure_ascii=False))
             results['plots_saved'] = len(new_plots)
             print(f"  Saved {len(plots_dict)} total plots ({len(new_plots)} new, {len(existing_plots)} preserved)")
 
@@ -697,7 +697,7 @@ def main():
         # Prepare document for extraction
         filepath = sys.argv[2]
         result = extractor.prepare_for_agents(filepath)
-        print(json.dumps(result, indent=2))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
 
     elif command == "merge":
         # Merge agent results
@@ -719,7 +719,7 @@ def main():
     elif command == "review":
         # Review extracted content
         result = extractor.review_extraction()
-        print(json.dumps(result, indent=2))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
 
     else:
         print(f"Unknown command: {command}")

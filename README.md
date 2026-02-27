@@ -1,26 +1,10 @@
-# DM Claude
+# DM Claude — AI Dungeon Master
 
 **Drop any book into it. Play inside the story.**
 
-Got a favorite fantasy novel? A classic adventure module? A weird obscure sci-fi book from the 70s? Drop the PDF in, and DM Claude extracts every character, location, item, and plot thread, then drops you into that world as whoever you want to be.
+Got a favourite fantasy novel? A Star Trek fanfic? A weird detective novel from the 70s? Drop the PDF in — the system extracts every character, location, item, and plot thread, then drops you into that world as whoever you want to be.
 
-Be a character from the book, someone original, or just yourself walking into the story. Every round, the AI queries the actual source material — NPCs talk like they do in the book, locations look like the author described them, and plot points unfold the way they should... until your choices change things.
-
-The [Internet Archive](https://archive.org/) is a goldmine for this. Thousands of free books, adventure modules, and old pulp novels. Jump into *IT* and help the bad guys. Drop into *Lord of the Rings* and play from Gollum's perspective. It's your call.
-
-D&D 5e rules aren't really the point — they're just there to give the story stakes and consequences. You don't need to know D&D at all, just say what you want to do.
-
----
-
-## In Action — Dungeon Crawler Carl
-
-A campaign imported from *Dungeon Crawler Carl*. Tandy the sasquatch rips the skin off a Terror Clown, forces Carl to wear it as a disguise, then performs a sasquatch mating dance to distract Grimaldi while Donut frees the dragon. Standard Tuesday.
-
-![Tandy acquires Terror Clown skin disguise for Carl](public/622422010_1572097020675669_3114747955156903860_n.png)
-
-![Tandy performs a sasquatch mating dance to distract Grimaldi](public/625560066_33916991331281718_1129121114640091251_n.png)
-
-![Exploring The Laughing Crypt — thirty clown bodies wake up](public/623940676_2000130920531570_2521032782764513297_n.png)
+D&D 5e rules give the story stakes and consequences. You don't need to know D&D. Just say what you want to do.
 
 ---
 
@@ -34,55 +18,92 @@ cd Claude-Code-Game-Master
 ./install.sh
 ```
 
-The setup script installs everything you need — Python, uv, jq, and all project dependencies. It works on macOS and Linux with zero prior setup. You can also run it from inside Claude Code by asking the agent to set things up.
-
 Once installed:
 
-1. Drop a PDF in the `source-material/` folder
+1: Optional: drop a PDF or text file into `source-material/`
 2. Run `claude` to launch Claude Code
-3. Run `/dm` and let the agent guide you
-
-That's it. The AI handles world extraction, character creation, and gameplay.
+3. Type `/new-game` — choose **Classic** for the classic experience, or if youre feeling brave, **Advanced** to configure modules 
 
 ---
 
-## What Happens Under the Hood
+## Two Modes: Classic and Advanced
 
-When you import a document, the system vectorizes it locally with ChromaDB and spawns extraction agents that pull the book apart into structured data. During gameplay, every scene gets grounded in real passages from your source material — the AI isn't making things up, it's drawing from the text.
+When you run `/new-game`, the first choice you make is the mode for that campaign. It's set once and lives with the campaign forever.
 
-Everything persists. NPCs remember what you said last session. Piss off a shopkeeper? That's tracked. The system schedules consequences that fire days later in-game time. Locations change as events unfold. Plot threads track your progress. Save and restore at any point.
+### Classic (default)
 
-Specialist agents spin up on the fly. A fight starts and the monster-manual agent grabs real stat blocks. Cast a spell and the spell-caster agent looks up actual mechanics. Shopping? The gear-master has 237+ equipment items and 362+ magic items. The player never sees any of this — they just see the story — but you can always pull up the hood and see what's going on.
+The original experience. Zero setup beyond naming your campaign.
 
-It uses the [D&D 5e API](https://www.dnd5eapi.co/) for official rules, spellbooks, monsters, and equipment. This grounds everything in real mechanics and keeps Claude from just picking numbers.
+- Standard D&D 5e mechanics
+- Full world generation, NPCs, locations, plot hooks, consequences
+- Source material import (RAG-powered — play inside any book)
+- Save/restore, session history, character sheets
+- Works immediately out of the box
+
+### Advanced (opt-in per campaign)
+
+Everything in Classic, plus a suite of optional modules you toggle like game mods. Designed for campaigns that need mechanics beyond standard D&D.
+
+At campaign creation you get a module selection menu, narrator style picker, and campaign rules template selector. All of it lives in `.claude/modules/` and never touches the vanilla core.
 
 ---
 
-## Advanced
+## Advanced Modules
 
-Everything below is handled automatically by the `/dm` command, but you can call these directly if you want manual control.
+| Module | What it does | Good for |
+|--------|-------------|----------|
+| 🌍 **world-travel** | Spatial world simulation: real XY coordinates, A\* pathfinding, travel time by distance + speed. Auto-runs encounter checks on move. ASCII map, minimap, GUI. | Any campaign with a real map |
+| 🎭 **custom-stats** | Any custom stat — mana, sanity, hunger, radiation, reputation. Per-hour decay/gain, conditional effects, per-tick simulation. Zero hardcoded names. | STALKER, Fallout, survival horror |
+| ⚔️ **firearms-combat** | Automated combat resolver. RPM → shots per round, fire modes (single/burst/full\_auto), PEN vs PROT damage scaling, subclass bonuses. | Modern or military campaigns |
+| 📦 **inventory-system** | Atomic multi-change transactions (`--gold --hp --xp --add --remove` in one command). Stackable items with quantities. Unique items with automatic validation. | All campaigns |
 
-### Dependencies
+Each module is self-contained: its own `tools/`, `lib/`, `rules.md`, and `module.json`. Drop a folder into `.claude/modules/` to install community modules.
 
-Installed automatically during setup via [uv](https://docs.astral.sh/uv/):
+---
 
-**Core:**
-| Package | Purpose |
-|---------|---------|
-| `anthropic` | Claude API client |
-| `pdfplumber` | PDF text extraction |
-| `pypdf2` | PDF parsing |
-| `python-docx` | Word document support |
-| `python-dotenv` | Environment variable loading |
-| `requests` | HTTP requests (D&D 5e API) |
+## Campaign Ideas
 
-**RAG (for document import):**
-| Package | Purpose |
-|---------|---------|
-| `sentence-transformers` | Text embeddings for semantic search |
-| `chromadb` | Vector database for RAG retrieval |
+The system is universal — not just fantasy.
 
-### Slash Commands
+| Campaign | You play as... |
+|----------|---------------|
+| **S.T.A.L.K.E.R.** | A stalker in the Chernobyl Zone. Radiation, anomalies, mutants, rival factions. Hunger and thirst tick in real time. |
+| **Fallout** | A vault dweller emerging into a post-nuclear wasteland. SPECIAL stats, bottlecaps, power armor. |
+| **Metro 2033** | A survivor in Moscow's metro tunnels. Factions at war, mutants on the surface, bullets as currency. |
+| **Civilization** | An immortal ruler guiding a civilization from stone age to space age. Strategic decisions across millennia. |
+| **SCP: Infinite IKEA** | Trapped inside SCP-3008 — an infinite IKEA. Friendly by day, predatory staff by night. No exit. |
+| **Star Wars: Clone Wars** | A clone trooper squad leader or Jedi on tactical missions during the Clone Wars. |
+| **Warhammer 40K** | An Imperial Guard soldier in the grim far future. Everything wants to kill you. Everything will. |
+| **Pirates of the Caribbean** | A pirate captain in the 1700s. Treasure, naval battles, supernatural curses. |
+| **Medieval Child** | An orphaned child in war-torn medieval Europe. No combat stats — just stealth, cunning, and cold. |
+| **Barotrauma** | A submarine crew on an alien ocean moon. Pressure, monsters, and things going very wrong with the hull. |
+
+---
+
+## In Action — Dungeon Crawler Carl
+
+A campaign imported from *Dungeon Crawler Carl*. Tandy the sasquatch rips the skin off a Terror Clown, forces Carl to wear it as a disguise, then performs a sasquatch mating dance to distract Grimaldi while Donut frees the dragon.
+
+![Tandy acquires Terror Clown skin disguise for Carl](public/622422010_1572097020675669_3114747955156903860_n.png)
+
+![Tandy performs a sasquatch mating dance to distract Grimaldi](public/625560066_33916991331281718_1129121114640091251_n.png)
+
+![Exploring The Laughing Crypt — thirty clown bodies wake up](public/623940676_2000130920531570_2521032782764513297_n.png)
+
+---
+
+
+## How It Works
+
+When you import a document, the system vectorizes it with ChromaDB and spawns extraction agents that pull the book apart into structured data. During gameplay, every scene gets grounded in real passages from your source material.
+
+Everything persists. NPCs remember what you said last session. Consequences fire days later in-game time. Locations change as events unfold. Save and restore at any point.
+
+Specialist agents spin up on the fly — monster stats, spell mechanics, loot tables, equipment databases. The player sees only the story. It uses the [D&D 5e API](https://www.dnd5eapi.co/) for official rules, spellbooks, monsters, and equipment.
+
+---
+
+## Commands
 
 | Command | What it does |
 |---------|--------------|
@@ -90,40 +111,37 @@ Installed automatically during setup via [uv](https://docs.astral.sh/uv/):
 | `/dm save` | Save your progress |
 | `/dm character` | View your character sheet |
 | `/dm overview` | See the world state |
-| `/new-game` | Create a world from scratch |
+| `/new-game` | Create a world from scratch (choose Classic or Advanced) |
 | `/create-character` | Build your character |
-| `/import` | Import a PDF/document as a new campaign |
-| `/enhance` | Enrich entities with source material via RAG |
-| `/world-check` | Validate campaign consistency |
-| `/reset` | Clear campaign state |
-| `/setup` | Verify/fix installation |
+| `/import` | Import a PDF/document as a campaign |
+| `/enhance` | Enrich entities with source material |
 | `/help` | Full command reference |
 
-### Bash Tools
+---
 
-All tools follow the pattern: `bash tools/dm-<tool>.sh <command> [args]`
+## Core Tools
 
 | Tool | Purpose |
 |------|---------|
-| `dm-campaign.sh` | Create, list, switch, and delete campaigns |
-| `dm-session.sh` | Session lifecycle, party movement, save/restore |
-| `dm-player.sh` | Player stats — HP, XP, gold, inventory, conditions |
-| `dm-npc.sh` | NPC creation, updates, party member management |
-| `dm-location.sh` | Location creation and connections |
+| `dm-campaign.sh` | Create, list, switch campaigns |
+| `dm-session.sh` | Session lifecycle, movement, save/restore |
+| `dm-player.sh` | HP, XP, gold, inventory, conditions |
+| `dm-npc.sh` | NPC creation, updates, party management |
+| `dm-location.sh` | Locations and connections |
+| `dm-time.sh` | Update in-game time |
+| `dm-consequence.sh` | Schedule and resolve consequences |
 | `dm-plot.sh` | Quest and storyline tracking |
-| `dm-search.sh` | Search world state and/or source material |
+| `dm-search.sh` | Search world state and source material |
 | `dm-enhance.sh` | RAG-powered entity enrichment |
-| `dm-extract.sh` | Document import and extraction pipeline |
-| `dm-consequence.sh` | Future event scheduling and triggers |
-| `dm-condition.sh` | Player condition tracking (poisoned, stunned, etc.) |
-| `dm-note.sh` | Record world facts by category |
-| `dm-time.sh` | Advance in-game time |
-| `dm-overview.sh` | Quick world state summary |
-| `dm-reset.sh` | Reset campaign data |
+| `dm-extract.sh` | Document import pipeline |
+| `dm-note.sh` | Record world facts |
+| `dm-overview.sh` | World state summary |
 
-### Specialist Agents
+Advanced module tools (`dm-inventory.sh`, `dm-combat.sh`, `dm-map.sh`, `dm-encounter.sh`, `dm-navigation.sh`, `dm-vehicle.sh`, `dm-survival.sh`) are available when the relevant module is enabled for a campaign.
 
-These spawn automatically during gameplay when context demands it:
+---
+
+## Specialist Agents
 
 | Agent | Triggered by |
 |-------|--------------|
@@ -139,10 +157,29 @@ These spawn automatically during gameplay when context demands it:
 
 ---
 
+## Architecture
+
+```
+CORE (vanilla)                   ADVANCED (opt-in, per campaign)
+──────────────                   ───────────────────────────────
+lib/                             .claude/modules/
+tools/                             ├── infrastructure/   ← dispatch, narrator, rules
+.claude/commands/                  ├── custom-stats/
+                                   ├── world-travel/
+                                   ├── inventory-system/
+                                   └── firearms-combat/
+```
+
+The vanilla core (`lib/`, `tools/`) is never modified by modules. Advanced features hook in via middleware — enabled per campaign, invisible when not active. A campaign's `advanced_mode` flag in `campaign-overview.json` determines which path `/dm` takes.
+
+---
+
 ## License
 
 This work is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) — free to share and adapt for non-commercial use. See [LICENSE](LICENSE) for details.
 
 ---
 
-Built by [Sean Stobo](https://www.linkedin.com/in/sean-stobo/). Your story awaits. Run `/dm` to begin.
+Original project by [Sean Stobo](https://www.linkedin.com/in/sean-stobo/). Advanced modules contributed by [Maxim Astrakhantsev](https://www.linkedin.com/in/maxim-astrakhantsev-13a9391b9/).
+
+Your story awaits. Run `/new-game` to begin.

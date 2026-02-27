@@ -239,16 +239,16 @@ def main():
 
     if args.action == 'status':
         status = world.get_status()
-        print(json.dumps(status, indent=2))
+        print(json.dumps(status, indent=2, ensure_ascii=False))
 
     elif args.action == 'overview':
         overview = world.get_overview()
-        print(json.dumps(overview, indent=2))
+        print(json.dumps(overview, indent=2, ensure_ascii=False))
 
     elif args.action == 'move':
         location = ' '.join(args.location)
         result = world.move_to(location)
-        print(json.dumps(result, indent=2))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

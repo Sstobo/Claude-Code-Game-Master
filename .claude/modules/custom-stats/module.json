@@ -1,0 +1,83 @@
+{
+  "id": "custom-stats",
+  "name": "Custom Stats & Time Effects",
+  "version": "1.0.0",
+  "author": "DM System Core",
+  "description": "Any custom character stats with automatic time-based changes and conditional effects. Not limited to survival — use for mana, sanity, reputation, fatigue, anything.",
+  "category": "character-mechanics",
+  "genre_tags": [
+    "fantasy",
+    "survival",
+    "horror",
+    "scifi",
+    "modern"
+  ],
+  "tags": [
+    "custom-stats",
+    "time-effects",
+    "conditions",
+    "mechanics"
+  ],
+  "enabled_by_default": false,
+  "dependencies": [],
+  "incompatible_with": [],
+  "middleware": [
+    "dm-player.sh",
+    "dm-consequence.sh"
+  ],
+  "post_middleware": [
+    "dm-time.sh.post"
+  ],
+  "features": [
+    "Define ANY custom stats — hunger, mana, sanity, reputation, fatigue, oxygen, fuel, stress...",
+    "Time effects engine: stats change automatically per hour",
+    "Conditional effects (e.g., heal only when HP < max, drain only when moving)",
+    "Per-tick simulation for accurate timing",
+    "Sleep/rest mode (--sleeping flag reverses drain for recovery stats)",
+    "Threshold consequences (stat hits 0 → damage, condition, or event)",
+    "Auto-tick during travel and time advancement"
+  ],
+  "adds_to_core": {
+    "tools": [
+      "dm-survival.sh"
+    ],
+    "commands": {
+      "dm-survival.sh tick --elapsed <hours>": "Apply time effects to all custom stats",
+      "dm-survival.sh tick --elapsed <hours> --sleeping": "Apply effects in sleep mode",
+      "dm-survival.sh status": "Show current custom stats",
+      "dm-survival.sh custom-stat <stat> [+/-amount]": "Get or modify a stat",
+      "dm-survival.sh custom-stats-list": "List all custom stats"
+    },
+    "data_fields": {
+      "character.json": {
+        "custom_stats": {
+          "<any_stat_name>": {
+            "current": 100,
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      "campaign_rules": {
+        "time_effects": {
+          "enabled": true,
+          "effects_per_hour": {
+            "<stat_name>": -5
+          },
+          "stat_consequences": [],
+          "rules": []
+        }
+      }
+    }
+  },
+  "use_cases": [
+    "Survival: hunger, thirst, radiation (STALKER, Fallout)",
+    "Fantasy: mana regeneration, spell slots over time",
+    "Horror: sanity drain from eldrich encounters",
+    "Sci-fi: oxygen, fuel, power cells",
+    "Social: reputation with factions, trust",
+    "Any stat that changes over time or has thresholds"
+  ],
+  "architecture": "Middleware hooks into dm-player.sh (show custom stats), dm-consequence.sh (threshold effects). Post-hook on dm-time.sh reads --elapsed and ticks stats after CORE updates time. Zero hardcoded stat names — all defined in campaign_rules.time_effects.",
+  "replaces": []
+}

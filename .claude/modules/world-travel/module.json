@@ -1,0 +1,125 @@
+{
+  "id": "world-travel",
+  "name": "World Travel (Navigation + Encounters)",
+  "version": "1.0.0",
+  "author": "DM System Core",
+  "description": "Unified travel system: coordinate navigation, pathfinding, maps, and automatic random encounter checks during overland travel",
+  "category": "travel-mechanics",
+  "genre_tags": [
+    "fantasy",
+    "survival",
+    "scifi",
+    "horror",
+    "modern"
+  ],
+  "tags": [
+    "navigation",
+    "maps",
+    "coordinates",
+    "pathfinding",
+    "encounters",
+    "travel"
+  ],
+  "enabled_by_default": false,
+  "dependencies": [],
+  "incompatible_with": [],
+  "middleware": [
+    "dm-location.sh",
+    "dm-session.sh"
+  ],
+  "features": [
+    "Coordinate system for locations (x, y)",
+    "Bearing-based location creation with auto distance calc",
+    "BFS pathfinding between named locations",
+    "Path preference caching (DM route decisions)",
+    "Direction blocking (cliffs, radiation zones)",
+    "ASCII and GUI map rendering",
+    "Distance-based encounter segmentation (1-3 checks per journey)",
+    "DC scaling by distance and time of day",
+    "Encounter nature categories (Dangerous, Neutral, Beneficial, Special)",
+    "Waypoint creation for Combat/Social/Hazard encounters",
+    "Auto-resolve for Loot/Flavor encounters",
+    "Automatic encounter check after every move",
+    "Vehicle system: ships/transports with dual-map (global anchor + internal rooms)",
+    "Board/exit vehicles, move between rooms, move vehicle with connection rebuild"
+  ],
+  "adds_to_core": {
+    "tools": [
+      "dm-navigation.sh",
+      "dm-map.sh",
+      "dm-encounter.sh",
+      "dm-vehicle.sh"
+    ],
+    "commands": {
+      "dm-navigation.sh move <location>": "Move party with distance/time calc + auto encounter",
+      "dm-navigation.sh route <from> <to>": "Calculate route and distance",
+      "dm-navigation.sh decide <from> <to>": "Interactive route decision (cached)",
+      "dm-navigation.sh routes <from> <to>": "Show all possible routes",
+      "dm-navigation.sh block <loc> <from_deg> <to_deg> <reason>": "Block direction range",
+      "dm-navigation.sh unblock <loc> <from_deg> <to_deg>": "Unblock direction",
+      "dm-map.sh show": "ASCII map of known locations",
+      "dm-map.sh --gui": "Interactive Pygame map",
+      "dm-encounter.sh check <from> <to> <dist> [terrain]": "Manual encounter check",
+      "dm-encounter.sh toggle": "Enable/disable encounter checks",
+      "dm-encounter.sh set-base-dc <dc>": "Set encounter difficulty",
+      "dm-encounter.sh status": "Show encounter config"
+    },
+    "data_fields": {
+      "locations.json": {
+        "LocationName": {
+          "coordinates": {
+            "x": 0,
+            "y": 0
+          },
+          "connections": [
+            {
+              "to": "Other",
+              "distance_meters": 1000,
+              "bearing": 90,
+              "terrain": "open"
+            }
+          ],
+          "blocked_ranges": [
+            {
+              "from_bearing": 160,
+              "to_bearing": 200,
+              "reason": "cliff"
+            }
+          ]
+        }
+      },
+      "campaign-overview.json": {
+        "path_preferences": {},
+        "campaign_rules": {
+          "encounter_system": {
+            "enabled": true,
+            "min_distance_meters": 300,
+            "base_dc": 16,
+            "distance_modifier": 2,
+            "stat_to_use": "stealth",
+            "time_dc_modifiers": {
+              "Morning": 0,
+              "Day": 0,
+              "Evening": 2,
+              "Night": 4
+            }
+          }
+        }
+      },
+      "locations.json._vehicle": "vehicle metadata (vehicle_id, is_vehicle_anchor, vehicle_type, dock_room, proximity_radius_meters)",
+      "campaign-overview.json.player_position.map_context": "global|local — absent = global (backward compat)",
+      "campaign-overview.json.player_position.vehicle_id": "string|null — active vehicle if inside"
+    }
+  },
+  "use_cases": [
+    "Open-world exploration (STALKER, Fallout-style)",
+    "Wilderness travel with random encounters",
+    "Hex-map or grid-based campaigns",
+    "Realistic travel time + encounter simulation",
+    "Visual map for DM and players"
+  ],
+  "architecture": "Middleware intercepts dm-session.sh move: runs navigation (distance/time), then auto-triggers encounter check. dm-location.sh middleware handles coordinate-based location creation. All travel logic in one module.",
+  "replaces": [
+    "movement"
+  ]
+}

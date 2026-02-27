@@ -1,0 +1,71 @@
+{
+  "id": "firearms-combat",
+  "name": "Firearms Combat System",
+  "version": "1.0.0",
+  "author": "DM System Core",
+  "description": "Automated firearms combat resolver with penetration mechanics, RPM simulation, and fire mode support for modern/STALKER campaigns",
+  "category": "combat",
+  "genre_tags": [
+    "survival",
+    "modern",
+    "scifi",
+    "horror"
+  ],
+  "tags": [
+    "firearms",
+    "combat",
+    "ballistics",
+    "stalker",
+    "modern"
+  ],
+  "enabled_by_default": false,
+  "dependencies": [],
+  "incompatible_with": [],
+  "middleware": [],
+  "features": [
+    "Full-auto fire mode with RPM-based shot calculation",
+    "Penetration vs Protection damage scaling",
+    "Subclass bonuses (Стрелок sharpshooter)",
+    "Critical hit mechanics (2× dice on nat 20)",
+    "Multi-target distribution",
+    "Auto XP tracking",
+    "Test mode for dry runs"
+  ],
+  "adds_to_core": {
+    "tools": [
+      "dm-combat.sh"
+    ],
+    "commands": {
+      "dm-combat.sh resolve": "Resolve firearms combat with auto-damage calculation"
+    },
+    "data_fields": {
+      "campaign_rules": {
+        "firearms_system": {
+          "weapons": {
+            "AK-74": {
+              "damage": "2d8+2",
+              "pen": 6,
+              "rpm": 650,
+              "ammo_type": "5.45x39mm"
+            }
+          },
+          "fire_modes": {
+            "full_auto": {
+              "penalty_per_shot": -2,
+              "penalty_per_shot_sharpshooter": -1
+            }
+          }
+        }
+      }
+    }
+  },
+  "use_cases": [
+    "STALKER campaigns with Svoboda/Долговцы firefights",
+    "Fallout-style wasteland combat",
+    "Modern military operations",
+    "Cyberpunk gunfights",
+    "Zombie apocalypse firearms survival"
+  ],
+  "architecture": "Standalone tool. DM calls dm-combat.sh resolve when firearms combat occurs. No middleware — does not intercept CORE tools.",
+  "replaces": []
+}

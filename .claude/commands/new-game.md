@@ -38,6 +38,212 @@ bash tools/dm-campaign.sh switch "<CAMPAIGN_NAME>"
 
 ---
 
+## PHASE 1.1: GAME MODE
+
+```
+================================================================
+  ╔═══════════════════════════════════════════════════════════╗
+  ║              GAME MODE                                    ║
+  ╚═══════════════════════════════════════════════════════════╝
+================================================================
+
+  [1] Classic (recommended)
+      Standard D&D rules. Fast start. No extra setup.
+
+  [2] Advanced
+      Custom modules, narrator styles, campaign rule templates.
+      More setup — more control.
+
+================================================================
+  Enter number (or press ENTER for Classic):
+================================================================
+```
+
+**If Classic** → Write `"advanced_mode": false` to campaign-overview.json, then skip to PHASE 2.
+
+**If Advanced** → Write `"advanced_mode": true` to campaign-overview.json, then run PHASES 1.5–1.8 (below) before continuing to PHASE 2.
+
+---
+
+## PHASE 1.5: MODULE SELECTION (Advanced only)
+
+Run after campaign is created and switched (so modules persist to campaign-overview.json).
+
+### 1. List available modules
+```bash
+bash .claude/modules/infrastructure/tools/dm-module.sh list-verbose
+```
+
+### 2. Display module menu
+
+```
+================================================================
+  ╔═══════════════════════════════════════════════════════════╗
+  ║              CONFIGURE MODULES                            ║
+  ╚═══════════════════════════════════════════════════════════╝
+================================================================
+
+  [1] ✅ <id>  — <description, 5 words max>  ← default
+  [2] ❌ <id>  — <description, 5 words max>
+  ...
+
+  ────────────────────────────────────────────────────────────
+  💡 RECOMMENDED FOR THIS CAMPAIGN:
+  Based on campaign name and tone, suggest which modules make
+  sense. E.g. for survival/STALKER → custom-stats + firearms.
+  For classic D&D → inventory only. For open world → world-travel.
+  Write 1-2 sentences why each suggested module fits the vibe.
+  ────────────────────────────────────────────────────────────
+  Type numbers to toggle (e.g. "1 2") or ENTER to keep current.
+
+================================================================
+```
+
+### 3. Apply selection
+```bash
+bash .claude/modules/infrastructure/tools/dm-module.sh activate <module-name>    # for each enabled
+bash .claude/modules/infrastructure/tools/dm-module.sh deactivate <module-name>  # for each disabled
+```
+
+### 4. Load module rules into context
+```bash
+bash .claude/modules/infrastructure/dm-active-modules-rules.sh
+```
+
+Rules are now in context — use them for all world-building that follows.
+
+---
+
+## PHASE 1.6: LOAD MODULE CREATION RULES (Advanced only)
+
+Load creation-specific instructions from active modules:
+
+```bash
+bash .claude/modules/infrastructure/dm-active-modules-creation-rules.sh
+```
+
+These rules tell you HOW to handle world-building for each active module:
+- **custom-stats**: Which stats to propose, how to configure them
+- **world-travel**: How to generate locations with coordinates and encounters
+- **inventory-system**: Starting equipment philosophy and item initialization
+- **firearms-combat**: Weapon presets and firearms system configuration
+
+**The creation rules augment (not replace) the phases below.**
+Follow module-specific instructions when they apply to that phase.
+
+---
+
+## PHASE 1.7: NARRATOR STYLE (Advanced only)
+
+### 1. List available styles
+```bash
+bash .claude/modules/infrastructure/dm-narrator.sh list
+```
+
+### 2. Get recommendation based on campaign genre
+```bash
+bash .claude/modules/infrastructure/dm-narrator.sh recommend "<genre>"
+```
+Genre hints from campaign name/tone: horror→horror-atmospheric, classic fantasy→epic-heroic, roguelike/comedy→sarcastic-puns, noir/drama→serious-cinematic.
+
+### 3. Display menu
+
+```
+================================================================
+  ╔═══════════════════════════════════════════════════════════╗
+  ║              NARRATOR STYLE                               ║
+  ╚═══════════════════════════════════════════════════════════╝
+================================================================
+
+  [1] epic-heroic        — Grand scale, legendary deeds
+  [2] horror-atmospheric — Dread through implication, not gore
+  [3] sarcastic-puns     — Terry Pratchett at a tavern
+  [4] serious-cinematic  — Every scene is a film shot
+
+  ────────────────────────────────────────────────────────────
+  💡 RECOMMENDED FOR THIS CAMPAIGN:
+  Based on campaign name and genre, suggest which style fits.
+  Write 1 sentence why it fits the vibe.
+  ────────────────────────────────────────────────────────────
+  Type a number to select, or ENTER to accept recommendation.
+  Type "skip" to use no defined style.
+
+================================================================
+```
+
+### 4. Apply selected style
+```bash
+bash .claude/modules/infrastructure/dm-narrator.sh apply <style-id>
+```
+
+This writes the full narrator style object into `campaign-overview.json` under `narrator_style`.
+The DM will load and follow these rules throughout every session.
+
+### 5. If user provides a custom style file
+If user points to a `.md` file with their own style:
+- Read the file
+- Manually extract voice/rules/forbidden into `narrator_style` in campaign-overview.json
+- Follow the same structure as built-in styles
+
+---
+
+## PHASE 1.8: CAMPAIGN RULES TEMPLATE (Advanced only)
+
+### 1. Get recommendation based on campaign genre
+```bash
+bash .claude/modules/infrastructure/dm-campaign-rules.sh recommend "<genre>"
+```
+Genre hints: horror/investigation → horror-investigation, survival/stalker/metro/fallout → survival-zone, space/sci-fi/ftl → space-travel, political/intrigue → political-intrigue, civilization/tribe/4x → civilization.
+
+### 2. List available templates
+```bash
+bash .claude/modules/infrastructure/dm-campaign-rules.sh list
+```
+
+### 3. Display menu
+
+```
+================================================================
+  ╔═══════════════════════════════════════════════════════════╗
+  ║              CAMPAIGN RULES TEMPLATE                      ║
+  ╚═══════════════════════════════════════════════════════════╝
+================================================================
+
+  [1] civilization        — Eras, population, tech tree
+  [2] survival-zone       — Resources, morale, hazards
+  [3] space-travel        — Ships, FTL, crew
+  [4] horror-investigation — Sanity, clues, dread
+  [5] political-intrigue  — Factions, influence, secrets
+
+  ────────────────────────────────────────────────────────────
+  💡 RECOMMENDED FOR THIS CAMPAIGN:
+  Based on campaign name and genre, suggest which template fits.
+  Write 1 sentence why it fits the vibe.
+  ────────────────────────────────────────────────────────────
+  Type a number to select, or ENTER to accept recommendation.
+  Type "skip" to use standard D&D rules (no custom mechanics).
+
+================================================================
+```
+
+### 4. Apply selected template
+```bash
+bash .claude/modules/infrastructure/dm-campaign-rules.sh apply <template-id>
+```
+
+This writes template metadata into `campaign-overview.json` under `campaign_rules_template`
+and creates `campaign-rules.md` in the campaign folder.
+The DM will load and enforce these rules every session via `/dm-continue`.
+
+**If "skip"**: no campaign-rules.md needed. Standard D&D applies.
+
+### 5. If user wants custom rules
+If user describes custom mechanics not covered by templates:
+- Generate a `campaign-rules.md` manually based on their description
+- Follow the same section structure as built-in templates (eras/resources/combat/diplomacy etc.)
+
+---
+
 ## PHASE 2: TONE
 
 ```
@@ -350,3 +556,7 @@ Before transitioning to character creation, verify:
 - [ ] 3+ consequences scheduled
 - [ ] Session log initialized
 - [ ] Campaign overview updated with settings
+- [ ] `advanced_mode` written to campaign-overview.json
+- [ ] (Advanced only) Narrator style selected or skipped
+- [ ] (Advanced only) Campaign rules template applied or skipped
+- [ ] (Advanced only) Module-specific creation steps completed

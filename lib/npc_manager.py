@@ -883,14 +883,14 @@ def main():
         tags = manager.get_tags(args.name)
         if tags:
             import json
-            print(json.dumps(tags, indent=2))
+            print(json.dumps(tags, indent=2, ensure_ascii=False))
         else:
             sys.exit(1)
 
     elif args.action == 'list':
         npcs = manager.list_npcs(args.attitude, args.location, args.quest)
         import json
-        print(json.dumps(npcs, indent=2))
+        print(json.dumps(npcs, indent=2, ensure_ascii=False))
 
     elif args.action == 'promote':
         if not manager.promote_to_party_member(args.name):

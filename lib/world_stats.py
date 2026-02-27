@@ -294,7 +294,7 @@ def main():
         stats.print_counts()
     elif args.action == 'json':
         overview = stats.get_overview(args.detailed)
-        print(json.dumps(overview, indent=2))
+        print(json.dumps(overview, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

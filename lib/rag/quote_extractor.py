@@ -188,7 +188,7 @@ class QuoteExtractor:  # Keep class name for backwards compatibility
                     print(f"    {npc_name}: {len(all_context)} context passages (+{added} new)")
 
         # Save enriched NPCs
-        self.npcs_path.write_text(json.dumps(npcs, indent=2))
+        self.npcs_path.write_text(json.dumps(npcs, indent=2, ensure_ascii=False))
 
         return enriched_count
 

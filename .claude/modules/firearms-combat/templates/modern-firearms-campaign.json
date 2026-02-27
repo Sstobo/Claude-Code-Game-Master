@@ -1,0 +1,381 @@
+{
+  "_template_info": {
+    "name": "Modern/STALKER Firearms Campaign",
+    "description": "Template for modern/post-apocalyptic campaigns with firearms mechanics",
+    "use_cases": ["STALKER", "Fallout", "Modern Military", "Cyberpunk", "Zombie Survival"]
+  },
+  "campaign_rules": {
+    "firearms_system": {
+      "enabled": true,
+      "description": "Realistic firearms with fire modes, penetration, and RPM-based combat resolution",
+      "weapons": {
+        "AKM": {
+          "name": "AKM (7.62x39mm)",
+          "damage": "2d8+3",
+          "pen": 4,
+          "rpm": 600,
+          "magazine": 30,
+          "type": "assault_rifle"
+        },
+        "AK74": {
+          "name": "AK-74 (5.45x39mm)",
+          "damage": "2d6+2",
+          "pen": 3,
+          "rpm": 650,
+          "magazine": 30,
+          "type": "assault_rifle"
+        },
+        "PM_Pistol": {
+          "name": "PM Pistol (9x18mm)",
+          "damage": "2d4+1",
+          "pen": 1,
+          "rpm": 30,
+          "magazine": 8,
+          "type": "pistol"
+        },
+        "M4A1": {
+          "name": "M4A1 Carbine (5.56x45mm)",
+          "damage": "2d6+2",
+          "pen": 3,
+          "rpm": 700,
+          "magazine": 30,
+          "type": "assault_rifle"
+        },
+        "SVD": {
+          "name": "SVD Dragunov (7.62x54mm)",
+          "damage": "2d10+4",
+          "pen": 5,
+          "rpm": 30,
+          "magazine": 10,
+          "type": "sniper_rifle"
+        },
+        "SPAS12": {
+          "name": "SPAS-12 Shotgun (12 gauge)",
+          "damage": "3d8+2",
+          "pen": 2,
+          "rpm": 40,
+          "magazine": 8,
+          "type": "shotgun"
+        },
+        "Glock17": {
+          "name": "Glock 17 (9x19mm)",
+          "damage": "2d4+2",
+          "pen": 2,
+          "rpm": 60,
+          "magazine": 17,
+          "type": "pistol"
+        }
+      },
+      "fire_modes": {
+        "single": {
+          "description": "Single shot (semi-auto)",
+          "attacks": 1,
+          "ammo": 1,
+          "penalty": 0
+        },
+        "burst": {
+          "description": "3-round burst",
+          "attacks": 3,
+          "ammo": 3,
+          "penalty_per_shot": -2,
+          "penalty_per_shot_sharpshooter": -1,
+          "comment": "2nd shot: -2, 3rd shot: -4 (or -1/-2 for Sharpshooter subclass)"
+        },
+        "full_auto": {
+          "description": "Full automatic fire (empty magazine in 6 seconds)",
+          "attacks": "based_on_rpm",
+          "ammo": "full_magazine",
+          "penalty_per_shot": -2,
+          "penalty_per_shot_sharpshooter": -1,
+          "comment": "Progressive penalty per shot. Use dm-combat.sh resolve for auto-calculation."
+        }
+      },
+      "penetration_vs_armor": {
+        "description": "Damage scaling based on weapon PEN vs armor PROT",
+        "rules": {
+          "full_damage": "PEN > PROT → 100% damage",
+          "half_damage": "PEN <= PROT → 50% damage",
+          "quarter_damage": "PEN <= PROT/2 → 25% damage"
+        }
+      },
+      "usage": {
+        "manual_combat": "Use standard D&D rolls with fire mode penalties from above",
+        "automated_combat": "bash .claude/modules/firearms-combat/tools/dm-combat.sh resolve --weapon AKM --fire-mode full_auto --ammo 30 --targets Enemy:AC:HP:PROT"
+      }
+    },
+    "armor_system": {
+      "enabled": true,
+      "description": "Armor provides PROT rating against penetration",
+      "armor_types": {
+        "leather_jacket": {
+          "name": "Leather Jacket",
+          "ac_bonus": 1,
+          "prot": 1,
+          "weight": "light"
+        },
+        "medium_vest": {
+          "name": "Medium Body Armor",
+          "ac_bonus": 3,
+          "prot": 3,
+          "weight": "medium"
+        },
+        "heavy_armor": {
+          "name": "Heavy Armor Plate",
+          "ac_bonus": 5,
+          "prot": 5,
+          "weight": "heavy"
+        },
+        "exoskeleton": {
+          "name": "Powered Exoskeleton",
+          "ac_bonus": 7,
+          "prot": 7,
+          "weight": "powered"
+        }
+      }
+    },
+    "enemies_modern": {
+      "description": "Common modern/STALKER enemies with PROT ratings",
+      "snork": {
+        "name": "Snork (Mutant)",
+        "ac": 14,
+        "hp": 25,
+        "prot": 1,
+        "attack": "+5",
+        "damage": "1d6+3",
+        "pen": 2,
+        "cr": 0.125,
+        "xp": 25
+      },
+      "bandit": {
+        "name": "Bandit",
+        "ac": 13,
+        "hp": 20,
+        "prot": 2,
+        "attack": "+3",
+        "damage": "2d4+1",
+        "pen": 1,
+        "cr": 0.5,
+        "xp": 100
+      },
+      "mercenary": {
+        "name": "Mercenary",
+        "ac": 16,
+        "hp": 30,
+        "prot": 3,
+        "attack": "+5",
+        "damage": "2d6+2",
+        "pen": 3,
+        "cr": 2,
+        "xp": 450
+      },
+      "controller": {
+        "name": "Controller (Psychic Mutant)",
+        "ac": 12,
+        "hp": 60,
+        "prot": 0,
+        "attack": "+6 (psychic)",
+        "damage": "3d8",
+        "pen": 0,
+        "cr": 5,
+        "xp": 1800
+      }
+    },
+    "custom_stats_survival": {
+      "description": "Optional survival stats (hunger, thirst, radiation, sleep)",
+      "enabled": true,
+      "stats": {
+        "hunger": {
+          "max": 100,
+          "min": 0,
+          "per_hour": -1.5,
+          "critical_threshold": 0,
+          "critical_effect": "1 HP damage per hour"
+        },
+        "thirst": {
+          "max": 100,
+          "min": 0,
+          "per_hour": -2,
+          "critical_threshold": 0,
+          "critical_effect": "2 HP damage per hour"
+        },
+        "radiation": {
+          "max": 500,
+          "min": 0,
+          "per_hour": -1,
+          "critical_threshold": 100,
+          "critical_effect": "Radiation Sickness condition"
+        },
+        "sleep": {
+          "max": 100,
+          "min": 0,
+          "per_hour": -3,
+          "critical_threshold": 20,
+          "critical_effect": "Exhaustion level 1"
+        }
+      }
+    },
+    "time_effects": {
+      "enabled": true,
+      "rules": [
+        {
+          "stat": "hunger",
+          "per_hour": -1.5,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "stat": "thirst",
+          "per_hour": -2,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "stat": "radiation",
+          "per_hour": -1,
+          "min": 0,
+          "max": 500
+        },
+        {
+          "stat": "sleep",
+          "per_hour": -3,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "stat": "hp",
+          "per_hour": 0.5,
+          "condition": "resting",
+          "comment": "Natural healing while resting"
+        }
+      ],
+      "stat_consequences": [
+        {
+          "stat": "hunger",
+          "threshold": 0,
+          "effect": "damage",
+          "value": 1,
+          "message": "Starving: you take 1 HP damage per hour"
+        },
+        {
+          "stat": "thirst",
+          "threshold": 0,
+          "effect": "damage",
+          "value": 2,
+          "message": "Dehydrated: you take 2 HP damage per hour"
+        },
+        {
+          "stat": "radiation",
+          "threshold": 100,
+          "effect": "condition",
+          "value": "Radiation Sickness",
+          "message": "Severe radiation exposure causes illness"
+        },
+        {
+          "stat": "sleep",
+          "threshold": 20,
+          "effect": "condition",
+          "value": "Exhaustion",
+          "message": "Extreme fatigue sets in"
+        }
+      ]
+    },
+    "encounter_system": {
+      "enabled": true,
+      "description": "Automatic random encounters during travel",
+      "min_distance_meters": 300,
+      "base_dc": 8,
+      "distance_modifier": 4,
+      "stat_to_use": "custom:awareness",
+      "use_luck": false,
+      "time_dc_modifiers": {
+        "Morning": 0,
+        "Day": 0,
+        "Evening": 2,
+        "Night": 4,
+        "Late Night": 6
+      }
+    }
+  },
+  "character_template": {
+    "custom_stats": {
+      "hunger": {
+        "current": 100,
+        "min": 0,
+        "max": 100
+      },
+      "thirst": {
+        "current": 100,
+        "min": 0,
+        "max": 100
+      },
+      "radiation": {
+        "current": 0,
+        "min": 0,
+        "max": 500
+      },
+      "sleep": {
+        "current": 100,
+        "min": 0,
+        "max": 100
+      },
+      "awareness": {
+        "current": 50,
+        "min": 0,
+        "max": 100,
+        "description": "Zone awareness skill (affects encounter checks)"
+      }
+    },
+    "faction_reputation": {
+      "description": "Faction standing from -100 (hostile) to +100 (revered)",
+      "factions": {}
+    }
+  },
+  "sample_factions": {
+    "STALKER": {
+      "Duty": 0,
+      "Freedom": 0,
+      "Loners": 0,
+      "Bandits": -50,
+      "Monolith": -100,
+      "Military": 0,
+      "Mercenaries": 0,
+      "Scientists": 0
+    },
+    "Modern_Military": {
+      "NATO": 0,
+      "Russian_Forces": 0,
+      "PMC_Contractors": 0,
+      "Insurgents": -50,
+      "Civilians": 25
+    },
+    "Cyberpunk": {
+      "Arasaka": 0,
+      "Militech": 0,
+      "Netwatch": 0,
+      "Street_Gangs": -25,
+      "Fixers": 0,
+      "NCPD": 0
+    }
+  },
+  "subclasses_firearms": {
+    "description": "Recommended subclasses for firearms campaigns",
+    "Sharpshooter": {
+      "name": "Sharpshooter",
+      "base_class": "Fighter",
+      "features": [
+        "Precise Shot: +2 to ranged attacks with firearms",
+        "Quick Reload: Reload as bonus action",
+        "Controlled Bursts: -1 penalty instead of -2 per shot in burst/auto fire"
+      ]
+    },
+    "Sniper": {
+      "name": "Sniper",
+      "base_class": "Rogue",
+      "features": [
+        "Long Shot: Double weapon range without penalty",
+        "Critical Eye: Critical hits on 19-20",
+        "Precision Strike: Bonus +1d8 damage on first shot each round"
+      ]
+    }
+  }
+}

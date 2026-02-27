@@ -84,7 +84,7 @@ def main():
         elif action == 'get':
             category = sys.argv[2] if len(sys.argv) > 2 else None
             facts = manager.get_facts(category)
-            print(json.dumps(facts, indent=2))
+            print(json.dumps(facts, indent=2, ensure_ascii=False))
 
         elif action == 'categories':
             categories = manager.list_categories()
