@@ -24,6 +24,8 @@ require_active_campaign
 ACTION="$1"
 shift
 
+dispatch_middleware "dm-consequence.sh" "$ACTION" "$@" && exit $?
+
 case "$ACTION" in
     add)
         if [ "$#" -lt 2 ]; then
@@ -53,9 +55,11 @@ case "$ACTION" in
     *)
         echo "Unknown action: $ACTION"
         echo "Valid actions: add, check, resolve, list-resolved"
+        dispatch_middleware_help "dm-consequence.sh"
         exit 1
         ;;
 esac
 
-# Propagate Python exit code
-exit $?
+CORE_RC=$?
+dispatch_middleware_post "dm-consequence.sh" "$ACTION" "$@"
+exit $CORE_RC

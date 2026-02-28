@@ -57,6 +57,8 @@ require_active_campaign
 ACTION="$1"
 shift  # Remove action from arguments
 
+dispatch_middleware "dm-npc.sh" "$ACTION" "$@" && exit $?
+
 # Special handling for actions that don't require a name
 if [ "$ACTION" = "list" ]; then
     $PYTHON_CMD "$LIB_DIR/npc_manager.py" list "$@"
@@ -251,5 +253,6 @@ case "$ACTION" in
         ;;
 esac
 
-# Exit with the same status as the Python command
-exit $?
+CORE_RC=$?
+dispatch_middleware_post "dm-npc.sh" "$ACTION" "$@"
+exit $CORE_RC

@@ -11,7 +11,7 @@
 _module_enabled() {
     local module_id="$1"
     local enabled
-    enabled=$(uv run python -c "
+    enabled=$(${PYTHON_CMD:-uv run python} -c "
 import sys
 sys.path.insert(0, '$PROJECT_ROOT/.claude/modules')
 from module_loader import ModuleLoader

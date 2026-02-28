@@ -171,7 +171,7 @@ class InventoryManager:
                 errors.append(f"Custom stat '{stat_name}' does not exist")
             else:
                 stat = custom_stats[stat_name]
-                current = stat.get("current", 0)
+                current = stat.get("current", stat.get("value", 0))
                 min_val = stat.get("min", 0)
                 max_val = stat.get("max", 100)
                 new_val = current + change
@@ -300,7 +300,8 @@ class InventoryManager:
             # Custom stats
             for stat_name, change in operations.get('custom_stats', {}).items():
                 stat = self.character["custom_stats"][stat_name]
-                old = stat["current"]
+                key = "current" if "current" in stat else "value"
+                old = stat[key]
                 new = old + change
 
                 # Clamp to min/max
@@ -310,7 +311,7 @@ class InventoryManager:
                 if max_val is not None:
                     new = min(max_val, new)
 
-                stat["current"] = new
+                stat[key] = new
                 self.changes_log.append(("custom_stat", stat_name, old, new, change))
 
             # Save
@@ -367,7 +368,8 @@ class InventoryManager:
             print(f"  - {item} [unique]")
 
         for stat, change in operations.get('custom_stats', {}).items():
-            current = self.character.get("custom_stats", {}).get(stat, {}).get("current", 0)
+            sd = self.character.get("custom_stats", {}).get(stat, {})
+            current = sd.get("current", sd.get("value", 0))
             new = current + change
             print(f"  {stat}: {current} → {new} ({change:+d})")
 
@@ -483,7 +485,7 @@ class InventoryManager:
             print("\nCUSTOM STATS:")
             max_len = max(len(name) for name in custom_stats.keys())
             for stat_name, stat_data in custom_stats.items():
-                current = stat_data.get("current", 0)
+                current = stat_data.get("current", stat_data.get("value", 0))
                 max_val = stat_data.get("max", 100)
                 dots = '.' * (max_len + 5 - len(stat_name))
                 print(f"  {stat_name.capitalize()} {dots} {current}/{max_val}")

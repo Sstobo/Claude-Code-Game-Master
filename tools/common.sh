@@ -210,3 +210,16 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
     source "$PROJECT_ROOT/.env"
     set +a
 fi
+
+# --- Module middleware dispatch ---
+# Source advanced dispatch if modules infrastructure exists; otherwise define no-ops.
+# This keeps CORE clean: vanilla installs have no .claude/modules/ and pay zero cost.
+
+_ADVANCED_SH="$PROJECT_ROOT/.claude/modules/infrastructure/common-advanced.sh"
+if [ -f "$_ADVANCED_SH" ]; then
+    source "$_ADVANCED_SH"
+else
+    dispatch_middleware()      { return 1; }
+    dispatch_middleware_post() { :; }
+    dispatch_middleware_help() { :; }
+fi

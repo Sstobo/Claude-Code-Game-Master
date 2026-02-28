@@ -32,6 +32,8 @@ fi
 ACTION="$1"
 shift
 
+dispatch_middleware "dm-session.sh" "$ACTION" "$@" && exit $?
+
 case "$ACTION" in
     start)
         echo "Starting D&D Session"
@@ -178,9 +180,11 @@ case "$ACTION" in
     *)
         echo "Unknown action: $ACTION"
         echo "Valid actions: start, end, status, move, context, save, restore, list-saves, delete-save, history"
+        dispatch_middleware_help "dm-session.sh"
         exit 1
         ;;
 esac
 
-# Propagate Python exit code
-exit $?
+CORE_RC=$?
+dispatch_middleware_post "dm-session.sh" "$ACTION" "$@"
+exit $CORE_RC

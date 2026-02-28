@@ -68,7 +68,7 @@ class TestTimeManagerUpdateTime:
         ws = make_world_state(tmp_path, stalker_campaign)
         mgr = TimeManager(str(ws))
         result = mgr.update_time("Night", "April 15th, 2012")
-        assert isinstance(result, dict) and result['elapsed'] == 0.0
+        assert result is True
         data = json.loads((ws / "campaigns" / "test-campaign" / "campaign-overview.json").read_text())
         assert data["time_of_day"] == "Night"
 

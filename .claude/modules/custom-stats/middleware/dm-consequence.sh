@@ -3,7 +3,7 @@
 # Handles: add ... --hours N (timed consequences with trigger_hours)
 
 MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROJECT_ROOT="$(cd "$MODULE_DIR/../../../.." && pwd)"
+PROJECT_ROOT="$(cd "$MODULE_DIR/../../.." && pwd)"
 
 if [ "$1" = "--help" ]; then
     echo "  add <description> <trigger> --hours <N>  Add timed consequence"
