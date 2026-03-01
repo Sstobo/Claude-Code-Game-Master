@@ -3,8 +3,7 @@
 ### Short Rest (1 Hour)
 ```bash
 bash tools/dm-time.sh "_" "[date]" --elapsed 1
-# Apply healing or feature recovery manually
-bash tools/dm-player.sh hp "[character_name]" +[amount]
+# Apply healing — see Loot & Rewards for HP/inventory commands
 ```
 
 ### Long Rest (8 Hours)
@@ -13,7 +12,7 @@ bash tools/dm-time.sh "_" "[next day date]" --elapsed 8 --sleeping
 bash tools/dm-note.sh "session_events" "[character] completed a long rest"
 ```
 
-**NOTE:** `--elapsed` auto-ticks consequences. Never call `dm-consequence.sh tick` manually.
+**NOTE:** See State Persistence for time/consequence tick rules.
 
 ### Healing Potions
 - Basic: 2d4+2 HP

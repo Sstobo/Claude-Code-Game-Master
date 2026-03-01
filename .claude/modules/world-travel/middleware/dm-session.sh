@@ -65,7 +65,7 @@ echo "$NAV_OUTPUT"
 [ $NAV_RC -eq 0 ] || exit 0  # navigation handled it (even if error)
 
 # Extract distance_meters from navigation output JSON if present
-DISTANCE_METERS=$(echo "$NAV_OUTPUT" | python3 -c "
+DISTANCE_METERS=$(echo "$NAV_OUTPUT" | uv run python -c "
 import sys, json, re
 text = sys.stdin.read()
 # Try to find JSON in output
@@ -80,7 +80,7 @@ if m:
 print(0)
 " 2>/dev/null)
 
-TERRAIN=$(echo "$NAV_OUTPUT" | python3 -c "
+TERRAIN=$(echo "$NAV_OUTPUT" | uv run python -c "
 import sys, json, re
 text = sys.stdin.read()
 m = re.search(r'\{[^}]+\"terrain\"[^}]+\}', text)
@@ -100,7 +100,7 @@ if [ -n "$DISTANCE_METERS" ] && [ "$DISTANCE_METERS" -gt 0 ] 2>/dev/null; then
     ACTIVE=$(cat "$PROJECT_ROOT/world-state/active-campaign.txt" 2>/dev/null)
     FROM_LOC=""
     if [ -n "$ACTIVE" ]; then
-        FROM_LOC=$(python3 -c "
+        FROM_LOC=$(uv run python -c "
 import json
 try:
     with open('$PROJECT_ROOT/world-state/campaigns/$ACTIVE/campaign-overview.json') as f:

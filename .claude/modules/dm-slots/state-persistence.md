@@ -6,11 +6,8 @@
 
 | Change Type | Command |
 |-------------|---------|
-| Gold | `bash tools/dm-player.sh gold "[name]" [+/-amount]` |
-| Item gained | `bash tools/dm-player.sh inventory "[name]" add "[item]"` |
-| Item lost | `bash tools/dm-player.sh inventory "[name]" remove "[item]"` |
-| HP changed | `bash tools/dm-player.sh hp "[name]" [+/-amount]` |
-| XP earned | `bash tools/dm-player.sh xp "[name]" +[amount]` |
+| XP | See [XP & Rewards](#xp--rewards) |
+| Gold/Items/HP | See [Loot & Rewards](#loot--rewards) |
 | Condition added | `bash tools/dm-condition.sh add "[name]" "[condition]"` |
 | Condition removed | `bash tools/dm-condition.sh remove "[name]" "[condition]"` |
 | Check conditions | `bash tools/dm-condition.sh check "[name]"` |

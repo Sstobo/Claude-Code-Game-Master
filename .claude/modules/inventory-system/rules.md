@@ -1,21 +1,29 @@
 # Inventory System — DM Rules
 
+Replaces core Loot & Rewards slot. Use `dm-inventory.sh` for ALL inventory/gold/HP/XP/stat changes — never edit character.json manually.
+
 ---
 
-## When to Use
+## After Combat / Loot Found
 
-Use `dm-inventory.sh` for ALL inventory/gold/HP/XP/stat changes — never edit character.json manually.
+### 1. Persist with dm-inventory.sh [PERSIST BEFORE NARRATING]
+
+```bash
+# All-in-one after combat
+bash .claude/modules/inventory-system/tools/dm-inventory.sh loot "[char]" \
+  --gold 250 --xp 150 --items "Medkit:2" "Ammo 5.56mm:60"
+```
+
+### 2. Record & Advance
+```bash
+bash tools/dm-note.sh "combat" "[Character] defeated [X] [enemies] at [location]"
+bash tools/dm-time.sh "[new_time]" "[date]"
+bash tools/dm-consequence.sh check
+```
 
 ---
 
 ## Core Commands
-
-### After combat / loot found
-
-```bash
-bash .claude/modules/inventory-system/tools/dm-inventory.sh loot "[char]" \
-  --gold 250 --xp 150 --items "Medkit:2" "Ammo 5.56mm:60"
-```
 
 ### Player uses item
 

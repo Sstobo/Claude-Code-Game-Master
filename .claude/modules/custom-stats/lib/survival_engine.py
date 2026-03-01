@@ -326,6 +326,7 @@ class SurvivalEngine:
         if not char:
             raise RuntimeError(f"Character '{name}' not found")
 
+        self._normalize_custom_stats(char)
         custom_stats = char.get('custom_stats', {})
         if stat and stat not in custom_stats:
             raise RuntimeError(f"Custom stat '{stat}' not found for {name}")
@@ -367,6 +368,7 @@ class SurvivalEngine:
         if not char:
             raise RuntimeError(f"Character '{name}' not found")
 
+        self._normalize_custom_stats(char)
         return char.get('custom_stats', {})
 
     def advance_time(self, time_of_day: str, date: str, elapsed_hours: float = 0,

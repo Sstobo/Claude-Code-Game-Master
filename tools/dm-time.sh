@@ -11,5 +11,9 @@ fi
 
 require_active_campaign
 
+dispatch_middleware "dm-time.sh" "$1" "$2" "$@" && exit $?
+
 $PYTHON_CMD -m lib.time_manager update "$1" "$2"
-exit $?
+CORE_RC=$?
+dispatch_middleware_post "dm-time.sh" "$1" "$2" "$@"
+exit $CORE_RC

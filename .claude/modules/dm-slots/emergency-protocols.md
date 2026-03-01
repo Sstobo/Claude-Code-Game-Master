@@ -4,10 +4,7 @@
 Quick assign: `AC 13, HP 15, Attack +3, Damage 1d6+1`
 
 ### "Player at 0 HP!"
-- Character falls unconscious, start death saves
-- DC 10 Constitution save each turn
-- 3 successes = stabilized, 3 failures = death
-- Nat 20 = regain 1 HP, Nat 1 = 2 failures
+See: Combat → Death & Dying
 
 ### "TPK Risk!"
 - Enemies might capture instead of kill

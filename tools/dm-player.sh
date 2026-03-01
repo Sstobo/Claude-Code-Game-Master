@@ -10,6 +10,8 @@ require_active_campaign
 ACTION=$1
 shift
 
+dispatch_middleware "dm-player.sh" "$ACTION" "$@" && exit $?
+
 case "$ACTION" in
     "show")
         if [ -z "$1" ]; then
@@ -173,8 +175,10 @@ case "$ACTION" in
         echo "  save-json '<json>'           - Save complete character from JSON"
         echo ""
         echo "Note: Character is stored in the active campaign's character.json"
+        dispatch_middleware_help "dm-player.sh"
         ;;
 esac
 
-# Propagate Python exit code
-exit $?
+CORE_RC=$?
+dispatch_middleware_post "dm-player.sh" "$ACTION" "$@"
+exit $CORE_RC

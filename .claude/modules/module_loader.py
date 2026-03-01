@@ -17,7 +17,7 @@ class ModuleLoader:
 
     def __init__(self, project_root: Optional[Path] = None):
         if project_root is None:
-            project_root = Path(__file__).parent.parent
+            project_root = Path(__file__).parent.parent.parent
         self.project_root = project_root
         self.modules_dir = self.project_root / ".claude" / "modules"
         self.registry_file = self.modules_dir / "registry.json"

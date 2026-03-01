@@ -87,7 +87,7 @@ bash tools/dm-time.sh "_" "18 октября 2024" --to 14:30
 # Option C: Set exact clock without elapsed
 bash tools/dm-time.sh "09:00" "18 октября 2024"
 ```
-**NOTE:** `--elapsed` auto-ticks consequences. `--to` also auto-ticks. Never call `dm-consequence.sh tick` manually.
+**NOTE:** See State Persistence for time/consequence tick rules.
 
 ### Phase 3.5: Arrival Awareness (Optional)
 Use when arriving at dangerous/unfamiliar locations or where ambush is likely.

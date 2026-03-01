@@ -16,6 +16,8 @@ fi
 
 require_active_campaign
 
+dispatch_middleware "dm-note.sh" "$@" && exit $?
+
 if [ "$1" = "categories" ]; then
     echo "Fact Categories:"
     $PYTHON_CMD -m lib.note_manager categories

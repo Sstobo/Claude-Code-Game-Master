@@ -38,6 +38,8 @@ require_active_campaign
 ACTION="$1"
 shift  # Remove action from arguments
 
+dispatch_middleware "dm-plot.sh" "$ACTION" "$@" && exit $?
+
 # Delegate to Python module based on action
 case "$ACTION" in
     list)
@@ -111,5 +113,6 @@ case "$ACTION" in
         ;;
 esac
 
-# Exit with the same status as the Python command
-exit $?
+CORE_RC=$?
+dispatch_middleware_post "dm-plot.sh" "$ACTION" "$@"
+exit $CORE_RC

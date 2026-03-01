@@ -55,5 +55,5 @@
     "Party shared inventory"
   ],
   "architecture": "Middleware intercepts dm-inventory.sh CORE calls and handles all item operations. No dependency on other modules.",
-  "replaces": []
+  "replaces": ["loot-and-rewards"]
 }

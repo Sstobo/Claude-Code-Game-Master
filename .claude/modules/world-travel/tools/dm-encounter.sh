@@ -35,11 +35,11 @@ shift
 
 case "$ACTION" in
     toggle)
-        if [ -z "$CAMPAIGN_DIR" ]; then
+        if [ -z "$WORLD_STATE_DIR" ]; then
             echo "[ERROR] No active campaign"
             exit 1
         fi
-        OVERVIEW="$CAMPAIGN_DIR/campaign-overview.json"
+        OVERVIEW="$WORLD_STATE_DIR/campaign-overview.json"
 
         if [ ! -f "$OVERVIEW" ]; then
             echo "[ERROR] Campaign overview not found"
@@ -72,11 +72,11 @@ case "$ACTION" in
         ;;
 
     status)
-        if [ -z "$CAMPAIGN_DIR" ]; then
+        if [ -z "$WORLD_STATE_DIR" ]; then
             echo "[ERROR] No active campaign"
             exit 1
         fi
-        OVERVIEW="$CAMPAIGN_DIR/campaign-overview.json"
+        OVERVIEW="$WORLD_STATE_DIR/campaign-overview.json"
         echo "Encounter System Status"
         echo "======================="
         if [ -f "$OVERVIEW" ]; then
@@ -92,7 +92,7 @@ case "$ACTION" in
             exit 1
         fi
         NEW_DC="$1"
-        OVERVIEW="$CAMPAIGN_DIR/campaign-overview.json"
+        OVERVIEW="$WORLD_STATE_DIR/campaign-overview.json"
         jq ".campaign_rules.encounter_system.base_dc = $NEW_DC" "$OVERVIEW" > "$OVERVIEW.tmp" && mv "$OVERVIEW.tmp" "$OVERVIEW"
         echo "[SUCCESS] Base DC set to $NEW_DC"
         ;;
@@ -103,7 +103,7 @@ case "$ACTION" in
             exit 1
         fi
         NEW_MOD="$1"
-        OVERVIEW="$CAMPAIGN_DIR/campaign-overview.json"
+        OVERVIEW="$WORLD_STATE_DIR/campaign-overview.json"
         jq ".campaign_rules.encounter_system.distance_modifier = $NEW_MOD" "$OVERVIEW" > "$OVERVIEW.tmp" && mv "$OVERVIEW.tmp" "$OVERVIEW"
         echo "[SUCCESS] Distance modifier set to $NEW_MOD"
         ;;
@@ -115,7 +115,7 @@ case "$ACTION" in
             exit 1
         fi
         STAT_NAME="$1"
-        OVERVIEW="$CAMPAIGN_DIR/campaign-overview.json"
+        OVERVIEW="$WORLD_STATE_DIR/campaign-overview.json"
         jq ".campaign_rules.encounter_system.stat_to_use = \"$STAT_NAME\"" "$OVERVIEW" > "$OVERVIEW.tmp" && mv "$OVERVIEW.tmp" "$OVERVIEW"
         echo "[SUCCESS] Encounter stat set to $STAT_NAME"
         ;;
@@ -127,7 +127,7 @@ case "$ACTION" in
         fi
         TIME="$1"
         MOD="$2"
-        OVERVIEW="$CAMPAIGN_DIR/campaign-overview.json"
+        OVERVIEW="$WORLD_STATE_DIR/campaign-overview.json"
         jq ".campaign_rules.encounter_system.time_dc_modifiers.\"$TIME\" = $MOD" "$OVERVIEW" > "$OVERVIEW.tmp" && mv "$OVERVIEW.tmp" "$OVERVIEW"
         echo "[SUCCESS] Time modifier for '$TIME' set to $MOD"
         ;;

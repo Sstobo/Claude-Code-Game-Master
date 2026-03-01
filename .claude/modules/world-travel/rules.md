@@ -182,3 +182,26 @@ Campaign-defined in `campaign-overview.json`:
 ```
 
 No defaults. DM creates types per campaign. Unknown types use `default` fallback color.
+
+---
+
+## Arrival Awareness
+
+On arrival at dangerous/unfamiliar locations, check passive Perception.
+
+**Passive Perception** = 10 + Wisdom mod (+ proficiency if trained)
+
+| Hidden Element | Typical DC |
+|----------------|------------|
+| Someone watching openly | 10 |
+| Hidden watcher | 15 |
+| Well-concealed trap | 15-18 |
+| Secret door | 20+ |
+
+- If passive beats DC → mention in description
+- If passive fails → element remains hidden (note for later)
+- If player actively searches → roll Perception vs DC
+
+## Arrival Narration
+
+Use [Narration](#narration) workflow for the new scene.
