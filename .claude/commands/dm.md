@@ -179,10 +179,13 @@ Otherwise, continue below with the standard vanilla gameplay loop.
 
 #### Step 1: Load Full Context (PRIMARY)
 ```bash
+bash .claude/modules/infrastructure/dm-active-modules-rules.sh 2>/dev/null > /tmp/dm-rules.md
 bash tools/dm-session.sh start
 bash tools/dm-session.sh context
 ```
-This single command gives you: character stats, party members (with recent events), pending consequences, campaign rules, location, and time. Read and internalize ALL of it.
+Then use the **Read tool** to read `/tmp/dm-rules.md` — this ensures the FULL rules are loaded (Bash output gets truncated, Read does not).
+
+Read and internalize ALL of it: DM rules, character stats, party members (with recent events), pending consequences, campaign rules, location, and time.
 
 **⚠️ Campaign Rules:** If the context output shows campaign-specific rules, enforce them throughout the session just like core rules. Each campaign is different.
 
