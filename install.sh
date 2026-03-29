@@ -360,8 +360,8 @@ ENVEOF
         PASS=$((PASS + 1))
     else
         warn "Claude Code CLI not found"
-        info "Install it with:  npm install -g @anthropic-ai/claude-code"
-        info "  (requires Node.js 18+ — https://nodejs.org)"
+        info "Install it following the instructions on"
+        info "https://code.claude.com/docs/en/quickstart#step-1-install-claude-code"
     fi
 
     # ------------------------------------------------------------------
