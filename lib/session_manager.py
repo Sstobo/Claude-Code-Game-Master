@@ -49,8 +49,10 @@ class SessionManager(EntityManager):
 
     def start_session(self) -> Dict[str, Any]:
         """
-        Start a new session, return world state summary
+        Start a new session, return world state summary and display previous session recap
         """
+        import json
+
         # Ensure session log exists
         if not self.session_log.exists():
             self.session_log.write_text("# Campaign Session Log\n\n")
@@ -69,12 +71,45 @@ class SessionManager(EntityManager):
         with open(self.session_log, 'a') as f:
             f.write(f"## Session Started: {summary['timestamp']}\n\n")
 
-        print(f"[SUCCESS] Session started at {summary['timestamp']}")
+        # Display previous session recap if available
+        session_history_file = self.campaign_dir / "session-history.json"
+        if session_history_file.exists():
+            try:
+                with open(session_history_file, 'r', encoding='utf-8') as f:
+                    history = json.load(f)
+                if history:
+                    last_session = history[-1]
+                    print("\n" + "="*60)
+                    print("  PREVIOUS SESSION RECAP")
+                    print("="*60)
+                    print(f"  Session #{last_session.get('session_number', '?')} ended: {last_session.get('ended', 'Unknown')}")
+                    print(f"  Location: {last_session.get('location', 'Unknown')}")
+                    print(f"  Character: {last_session.get('character', 'Unknown')}")
+                    print("")
+                    print("  What happened:")
+                    summary_text = last_session.get('summary', 'No summary available')
+                    # Print first 300 chars of summary, wrapped
+                    if len(summary_text) > 300:
+                        summary_text = summary_text[:297] + "..."
+                    for line in summary_text.split('\n')[:5]:  # First 5 lines
+                        if line.strip():
+                            print(f"    - {line.strip()[:80]}")
+                    key_events = last_session.get('key_events', [])
+                    if key_events:
+                        print("")
+                        print("  Key Events:")
+                        for event in key_events[:3]:
+                            print(f"    > {event[:70]}")
+                    print("="*60)
+            except (json.JSONDecodeError, IOError):
+                pass  # Silently fail if history file is corrupted
+
+        print(f"\n[SUCCESS] Session started at {summary['timestamp']}")
         return summary
 
     def end_session(self, summary: str) -> bool:
         """
-        End session with summary, log to session-log.md
+        End session with summary, log to session-log.md and save structured history
         """
         timestamp = self.get_timestamp()
 
@@ -87,8 +122,48 @@ class SessionManager(EntityManager):
             f.write(f"{summary}\n\n")
             f.write("---\n\n")
 
+        # Create structured session history entry
+        session_history_file = self.campaign_dir / "session-history.json"
+        history_entry = {
+            "session_number": session_num,
+            "ended": timestamp,
+            "summary": summary,
+            "location": self._get_current_location(),
+            "character": self._get_active_character(),
+            "key_events": self._extract_key_events_from_summary(summary)
+        }
+
+        # Load existing history or create new
+        import json
+        history = []
+        if session_history_file.exists():
+            try:
+                with open(session_history_file, 'r', encoding='utf-8') as f:
+                    history = json.load(f)
+            except (json.JSONDecodeError, IOError):
+                history = []
+
+        # Append new entry and save (keep last 20 sessions)
+        history.append(history_entry)
+        history = history[-20:]  # Keep only last 20 sessions
+
+        with open(session_history_file, 'w', encoding='utf-8') as f:
+            json.dump(history, f, indent=2, ensure_ascii=False)
+
         print(f"[SUCCESS] Session {session_num} ended and logged")
         return True
+
+    def _extract_key_events_from_summary(self, summary: str) -> list:
+        """Extract key events from summary text"""
+        events = []
+        lines = summary.split('\n')
+        for line in lines:
+            line = line.strip()
+            if line and not line.startswith('#') and len(line) > 10:
+                # Look for key action words
+                if any(word in line.lower() for word in ['defeated', 'found', 'acquired', 'met', 'joined', 'defended', 'cleared', 'discovered', 'killed', 'recruited', 'gained', 'lost']):
+                    events.append(line[:100])  # Keep first 100 chars
+        return events[:5]  # Top 5 events
 
     def get_status(self) -> Dict[str, Any]:
         """

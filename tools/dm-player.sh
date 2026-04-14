@@ -112,7 +112,7 @@ case "$ACTION" in
                 echo "Error: Item name required for $2"
                 exit 1
             fi
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" inventory "$1" "$2" "$3"
+            $PYTHON_CMD "$LIB_DIR/player_manager.py" inventory "$1" "$2" "${@:3}"
         fi
         ;;
 
