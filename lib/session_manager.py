@@ -150,8 +150,65 @@ class SessionManager(EntityManager):
         with open(session_history_file, 'w', encoding='utf-8') as f:
             json.dump(history, f, indent=2, ensure_ascii=False)
 
+        # Generate markdown version for easy reading
+        self._generate_markdown_history(history)
+
         print(f"[SUCCESS] Session {session_num} ended and logged")
         return True
+
+    def _generate_markdown_history(self, history: list):
+        """Generate a markdown version of session history for easy reading"""
+        import json
+        md_file = self.campaign_dir / "session-history.md"
+
+        lines = []
+        lines.append("# Session History")
+        lines.append("")
+
+        # Add campaign overview from latest session
+        if history:
+            latest = history[-1]
+            lines.append("## Campaign Overview")
+            lines.append(f"- **Current Character:** {latest.get('character', 'Unknown')}")
+            lines.append(f"- **Current Location:** {latest.get('location', 'Unknown')}")
+            lines.append(f"- **Total Sessions:** {len(history)}")
+            lines.append(f"- **Last Updated:** {latest.get('ended', 'Unknown')}")
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+
+        # Add each session (in reverse order - newest first)
+        for session in reversed(history):
+            session_num = session.get('session_number', '?')
+            ended = session.get('ended', 'Unknown')
+            summary = session.get('summary', 'No summary available')
+            location = session.get('location', 'Unknown')
+
+            lines.append(f"## Session #{session_num}")
+            lines.append("")
+            lines.append(f"**Ended:** {ended}")
+            lines.append(f"**Location:** {location}")
+            lines.append("")
+            lines.append("### Summary")
+            lines.append("")
+            lines.append(summary)
+            lines.append("")
+
+            key_events = session.get('key_events', [])
+            if key_events:
+                lines.append("### Key Events")
+                lines.append("")
+                for event in key_events:
+                    lines.append(f"- {event}")
+                lines.append("")
+
+            lines.append("---")
+            lines.append("")
+
+        lines.append("*Generated from session-history.json*")
+
+        with open(md_file, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines))
 
     def _extract_key_events_from_summary(self, summary: str) -> list:
         """Extract key events from summary text"""
