@@ -157,25 +157,105 @@ class SessionManager(EntityManager):
         return True
 
     def _generate_markdown_history(self, history: list):
-        """Generate a markdown version of session history for easy reading"""
+        """Generate a verbose markdown version of session history with full details"""
         import json
         md_file = self.campaign_dir / "session-history.md"
 
         lines = []
-        lines.append("# Session History")
+        lines.append("# Session History - Dungeon Crawler Carl Campaign")
         lines.append("")
 
-        # Add campaign overview from latest session
-        if history:
-            latest = history[-1]
-            lines.append("## Campaign Overview")
-            lines.append(f"- **Current Character:** {latest.get('character', 'Unknown')}")
-            lines.append(f"- **Current Location:** {latest.get('location', 'Unknown')}")
-            lines.append(f"- **Total Sessions:** {len(history)}")
-            lines.append(f"- **Last Updated:** {latest.get('ended', 'Unknown')}")
+        # Get full campaign and character data
+        campaign = self.json_ops.load_json(self.campaign_file) or {}
+        character = {}
+        if self.character_file.exists():
+            try:
+                character = self.json_ops.load_json("character.json") or {}
+            except:
+                pass
+
+        # CAMPAIGN OVERVIEW SECTION
+        lines.append("## Campaign Overview")
+        lines.append("")
+        if character:
+            name = character.get('name', 'Unknown')
+            level = character.get('level', 1)
+            race = character.get('race', '?')
+            cls = character.get('class', '?')
+            hp = character.get('hp', {})
+            hp_cur = hp.get('current', 0)
+            hp_max = hp.get('max', 0)
+            ac = character.get('ac', 10)
+            gold = character.get('gold', 0)
+            xp = character.get('xp', 0)
+            if isinstance(xp, dict):
+                xp = xp.get('current', 0)
+
+            lines.append(f"### Character: {name}")
+            lines.append(f"**Level {level} {race} {cls}**")
             lines.append("")
-            lines.append("---")
+            lines.append("#### Stats")
+            lines.append(f"| HP | AC | Gold | XP |")
+            lines.append(f"|----|----|------|----|")
+            lines.append(f"| {hp_cur}/{hp_max} | {ac} | {gold} gp | {xp} |")
             lines.append("")
+
+            # Equipment
+            equipment = character.get('equipment', [])
+            if equipment:
+                lines.append("#### Equipment")
+                for item in equipment:
+                    lines.append(f"- {item}")
+                lines.append("")
+
+            # Inventory
+            inventory = character.get('inventory', [])
+            if inventory:
+                lines.append("#### Inventory")
+                for item in inventory:
+                    lines.append(f"- {item}")
+                lines.append("")
+
+        # Current world state
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        locations = self.json_ops.load_json("locations.json") or {}
+        facts = self.json_ops.load_json("facts.json") or {}
+
+        lines.append("### World State")
+        lines.append(f"- **Current Location:** {self._get_current_location()}")
+        lines.append(f"- **Total Sessions:** {len(history)}")
+        lines.append(f"- **NPCs Discovered:** {len(npcs)}")
+        lines.append(f"- **Locations Discovered:** {len(locations)}")
+        lines.append(f"- **Facts Recorded:** {len(facts)}")
+        lines.append("")
+
+        # Party Members
+        party = {n: d for n, d in npcs.items() if isinstance(d, dict) and d.get('is_party_member')}
+        if party:
+            lines.append("### Active Party")
+            lines.append("")
+            for name, data in party.items():
+                lines.append(f"#### {name}")
+                if isinstance(data, dict):
+                    sheet = data.get('character_sheet', {})
+                    hp = sheet.get('hp', {})
+                    hp_cur = hp.get('current', '?')
+                    hp_max = hp.get('max', '?')
+                    ac = sheet.get('ac', '?')
+                    level = sheet.get('level', '?')
+                    cls = sheet.get('class', 'Unknown')
+                    lines.append(f"- {cls} Level {level}")
+                    lines.append(f"- HP: {hp_cur}/{hp_max}, AC: {ac}")
+                    if data.get('notes'):
+                        lines.append(f"- Notes: {data.get('notes')}")
+                lines.append("")
+
+        lines.append("---")
+        lines.append("")
+
+        # SESSION DETAILS SECTION
+        lines.append("## Session Log")
+        lines.append("")
 
         # Add each session (in reverse order - newest first)
         for session in reversed(history):
@@ -183,32 +263,58 @@ class SessionManager(EntityManager):
             ended = session.get('ended', 'Unknown')
             summary = session.get('summary', 'No summary available')
             location = session.get('location', 'Unknown')
+            character_name = session.get('character', 'Unknown')
 
-            lines.append(f"## Session #{session_num}")
+            lines.append(f"### Session #{session_num}")
             lines.append("")
-            lines.append(f"**Ended:** {ended}")
-            lines.append(f"**Location:** {location}")
+            lines.append(f"**Date:** {ended}")
+            lines.append(f"**Character:** {character_name}")
+            lines.append(f"**Ending Location:** {location}")
             lines.append("")
-            lines.append("### Summary")
+
+            lines.append("#### Synopsis")
             lines.append("")
             lines.append(summary)
             lines.append("")
 
             key_events = session.get('key_events', [])
             if key_events:
-                lines.append("### Key Events")
+                lines.append("#### Key Events")
                 lines.append("")
-                for event in key_events:
-                    lines.append(f"- {event}")
+                for i, event in enumerate(key_events, 1):
+                    lines.append(f"{i}. {event}")
                 lines.append("")
 
             lines.append("---")
             lines.append("")
 
-        lines.append("*Generated from session-history.json*")
+        # LEGENDARY MOMENTS SECTION
+        lines.append("## Legendary Moments")
+        lines.append("")
+        lines.append("*Notable achievements and viral content from this campaign*")
+        lines.append("")
+        lines.append("| Session | Moment | Impact |")
+        lines.append("|---------|--------|--------|")
+        for session in reversed(history):
+            session_num = session.get('session_number', '?')
+            summary = session.get('summary', '').lower()
+            if 'defeated' in summary:
+                lines.append(f"| #{session_num} | Boss Defeated | +Viewers |")
+            if 'recruited' in summary:
+                lines.append(f"| #{session_num} | New Allies | Party Grew |")
+        lines.append("")
+
+        # FOOTER
+        lines.append("---")
+        lines.append("")
+        lines.append(f"*Generated: {self.get_timestamp()}*")
+        lines.append(f"*Total Sessions: {len(history)}*")
+        lines.append(f"*Campaign Directory: {self.campaign_dir.name}*")
 
         with open(md_file, 'w', encoding='utf-8') as f:
             f.write('\n'.join(lines))
+
+        print(f"[INFO] Generated session-history.md ({len(lines)} lines)")
 
     def _extract_key_events_from_summary(self, summary: str) -> list:
         """Extract key events from summary text"""
