@@ -14,7 +14,9 @@ if [ "$#" -lt 1 ]; then
     echo "  list [--type X] [--status Y]     List plots (filter by type/status)"
     echo "  show <name>                      Show full plot details"
     echo "  search <query>                   Search plots by name, NPCs, locations"
+    echo "  add <title>                      Create a new plot (interactive)"
     echo "  update <name> <event>            Add progress event to plot"
+    echo "  objectives <name> [add|complete] Manage quest objectives"
     echo "  complete <name> [outcome]        Mark plot as completed"
     echo "  fail <name> [reason]             Mark plot as failed"
     echo "  threads                          Active story threads (DM dashboard)"
@@ -58,6 +60,59 @@ case "$ACTION" in
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/plot_manager.py" search "$1"
+        ;;
+
+    add)
+        if [ "$#" -lt 1 ]; then
+            echo "Usage: dm-plot.sh add <title>"
+            echo ""
+            echo "Creates a new plot with interactive prompts for:"
+            echo "  - Description"
+            echo "  - Type (main, side, mystery, threat)"
+            echo "  - Objective(s)"
+            echo "  - Stakes"
+            echo "  - NPCs involved"
+            echo "  - Locations"
+            echo "  - Rewards"
+            exit 1
+        fi
+        TITLE="$1"
+        $PYTHON_CMD "$LIB_DIR/plot_manager.py" add "$TITLE"
+        ;;
+
+    objectives)
+        if [ "$#" -lt 1 ]; then
+            echo "Usage: dm-plot.sh objectives <name> [add|complete <objective>]"
+            echo ""
+            echo "Examples:"
+            echo "  dm-plot.sh objectives \"The Heist\"          # Show objectives"
+            echo "  dm-plot.sh objectives \"The Heist\" add \"Reconnaissance\""
+            echo "  dm-plot.sh objectives \"The Heist\" complete \"Find the map\""
+            exit 1
+        fi
+        PLOT_NAME="$1"
+        ACTION_OBJ="${2:-}"
+        OBJ_TEXT="${3:-}"
+
+        if [ -z "$ACTION_OBJ" ]; then
+            # Just show the plot (which includes objectives)
+            $PYTHON_CMD "$LIB_DIR/plot_manager.py" show "$PLOT_NAME"
+        elif [ "$ACTION_OBJ" = "add" ]; then
+            if [ -z "$OBJ_TEXT" ]; then
+                echo "Usage: dm-plot.sh objectives <name> add <objective>"
+                exit 1
+            fi
+            $PYTHON_CMD "$LIB_DIR/plot_manager.py" objectives "$PLOT_NAME" add "$OBJ_TEXT"
+        elif [ "$ACTION_OBJ" = "complete" ]; then
+            if [ -z "$OBJ_TEXT" ]; then
+                echo "Usage: dm-plot.sh objectives <name> complete <objective>"
+                exit 1
+            fi
+            $PYTHON_CMD "$LIB_DIR/plot_manager.py" objectives "$PLOT_NAME" complete "$OBJ_TEXT"
+        else
+            echo "Error: Unknown sub-action '$ACTION_OBJ' (use 'add' or 'complete')"
+            exit 1
+        fi
         ;;
 
     update)

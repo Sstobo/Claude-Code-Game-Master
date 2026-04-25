@@ -149,7 +149,7 @@ class AgentExtractor:
         from lib.content_extractor import ContentExtractor
         extractor = ContentExtractor()
         full_text = extractor.extract_text(filepath)
-        (self.extraction_dir / "current-document.txt").write_text(full_text)
+        (self.extraction_dir / "current-document.txt").write_text(full_text, encoding='utf-8')
 
         # Write chunks to files for extraction agents to read
         chunks = self._rag_extractor._split_into_chunks(full_text)
@@ -582,7 +582,7 @@ class AgentExtractor:
             header = f"# Chunk {idx + 1} of {len(chunks)}\n"
             header += "---\n\n"
 
-            filepath.write_text(header + chunk_text)
+            filepath.write_text(header + chunk_text, encoding='utf-8')
             chunk_files.append(str(filepath))
 
         print(f"  Wrote {len(chunk_files)} chunk files to {chunk_dir}")
@@ -607,7 +607,7 @@ class AgentExtractor:
                 header += f"# Start line: ~{chunk_info.get('start_line', 0)}\n"
                 header += "---\n\n"
 
-                filepath.write_text(header + chunk_info['text'])
+                filepath.write_text(header + chunk_info['text'], encoding='utf-8')
                 category_files.append(str(filepath))
 
             chunk_files[category] = category_files
