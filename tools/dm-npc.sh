@@ -5,6 +5,9 @@
 # Source common utilities
 source "$(dirname "$0")/common.sh"
 
+# Source module middleware dispatch
+source "$PROJECT_ROOT/.claude/modules/infrastructure/common-advanced.sh" 2>/dev/null || true
+
 # Usage: dm-npc.sh <action> <name> [additional args]
 # Examples:
 #   dm-npc.sh create "Grimnar" "dwarf blacksmith" "friendly"
@@ -53,6 +56,9 @@ if [ "$#" -lt 1 ]; then
 fi
 
 require_active_campaign
+
+# Let module middleware handle new subcommands (relate, factions, etc.)
+dispatch_middleware "dm-npc.sh" "$@" && exit $?
 
 ACTION="$1"
 shift  # Remove action from arguments

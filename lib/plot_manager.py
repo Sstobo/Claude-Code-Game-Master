@@ -231,6 +231,89 @@ class PlotManager(EntityManager):
 
         return counts
 
+    def add_plot(self, title: str, plot_data: Dict[str, Any]) -> bool:
+        """
+        Create a new plot with provided data
+        """
+        plots = self._load_entities(self.plots_file)
+
+        # Ensure required fields
+        if not plot_data.get('objective'):
+            plot_data['objective'] = plot_data.get('description', '')
+
+        # Initialize defaults
+        if 'status' not in plot_data:
+            plot_data['status'] = 'active'
+        if 'type' not in plot_data:
+            plot_data['type'] = 'side'
+        if 'objectives' not in plot_data:
+            plot_data['objectives'] = [plot_data.get('objective', 'Incomplete objective')]
+        if 'npcs' not in plot_data:
+            plot_data['npcs'] = []
+        if 'locations' not in plot_data:
+            plot_data['locations'] = []
+        if 'rewards' not in plot_data:
+            plot_data['rewards'] = ''
+        if 'events' not in plot_data:
+            plot_data['events'] = []
+
+        plots[title] = plot_data
+
+        if self._save_entities(self.plots_file, plots):
+            print(f"[SUCCESS] Created plot: {title}")
+            return True
+        return False
+
+    def add_objective(self, plot_name: str, objective: str, complete: bool = False) -> bool:
+        """
+        Add an objective to a plot, or mark one as complete
+        """
+        actual_name = self._find_entity_name(self.plots_file, plot_name)
+        if not actual_name:
+            print(f"[ERROR] Plot '{plot_name}' not found")
+            return False
+
+        plots = self._load_entities(self.plots_file)
+
+        # Ensure objectives list exists
+        if 'objectives' not in plots[actual_name]:
+            plots[actual_name]['objectives'] = []
+
+        objectives = plots[actual_name]['objectives']
+
+        if complete:
+            # Mark objective as complete
+            found = False
+            for i, obj in enumerate(objectives):
+                if isinstance(obj, dict):
+                    if obj.get('text', '').lower() == objective.lower():
+                        obj['complete'] = True
+                        found = True
+                        break
+                elif isinstance(obj, str):
+                    if obj.lower() == objective.lower():
+                        objectives[i] = {'text': obj, 'complete': True}
+                        found = True
+                        break
+
+            if not found:
+                print(f"[ERROR] Objective '{objective}' not found in plot '{actual_name}'")
+                return False
+
+            status_msg = f"Marked objective complete: {objective}"
+        else:
+            # Add new objective
+            if isinstance(objective, str):
+                objectives.append({'text': objective, 'complete': False})
+            else:
+                objectives.append(objective)
+            status_msg = f"Added objective: {objective}"
+
+        if self._save_entities(self.plots_file, plots):
+            print(f"[SUCCESS] {status_msg}")
+            return True
+        return False
+
     def format_plot_status(self, name: str) -> Optional[str]:
         """
         Format plot details for display
@@ -269,7 +352,13 @@ class PlotManager(EntityManager):
             lines.append("")
             lines.append("Objectives:")
             for obj in objectives:
-                lines.append(f"  • {obj}")
+                if isinstance(obj, dict):
+                    text = obj.get('text', 'Unknown')
+                    complete = obj.get('complete', False)
+                    marker = "[x]" if complete else "[ ]"
+                    lines.append(f"  {marker} {text}")
+                else:
+                    lines.append(f"  [ ] {obj}")
 
         # Consequences
         consequences = plot.get('consequences', '')
@@ -399,6 +488,33 @@ class PlotManager(EntityManager):
 
         return threads
 
+    def format_quests_for_player(self) -> str:
+        """
+        Format active quests for player display during gameplay
+        """
+        plots = self._load_entities(self.plots_file)
+        active_quests = {k: v for k, v in plots.items() if isinstance(v, dict) and v.get('status', 'active').lower() == 'active'}
+
+        if not active_quests:
+            return "\n┌─ QUESTS ─────────────────┐\n│ No active quests        │\n└───────────────────────────┘"
+
+        lines = ["┌─ QUESTS ─────────────────┐"]
+
+        for quest_name, quest_data in list(active_quests.items())[:5]:  # Show up to 5 quests
+            lines.append(f"│ • {quest_name[:20]:20s} │")
+
+            # Show current objective
+            objectives = quest_data.get('objectives', [])
+            if objectives:
+                if isinstance(objectives[0], dict):
+                    obj_text = objectives[0].get('text', 'Unknown')
+                else:
+                    obj_text = str(objectives[0])
+                lines.append(f"│   → {obj_text[:18]:18s} │")
+
+        lines.append("└───────────────────────────┘")
+        return "\n" + "\n".join(lines)
+
     def format_threads(self, threads: Dict[str, List[Dict]]) -> str:
         """
         Format active threads for display — DM notes style, not a database query.
@@ -493,6 +609,16 @@ def main():
     # Active threads summary
     subparsers.add_parser('threads', help='Show active story threads (DM dashboard)')
 
+    # Add new plot
+    add_parser = subparsers.add_parser('add', help='Create a new plot')
+    add_parser.add_argument('title', help='Plot title')
+
+    # Manage objectives
+    objectives_parser = subparsers.add_parser('objectives', help='Manage plot objectives')
+    objectives_parser.add_argument('plot_name', help='Plot name')
+    objectives_parser.add_argument('obj_action', nargs='?', choices=['add', 'complete'], help='Action: add or complete objective')
+    objectives_parser.add_argument('objective', nargs='?', help='Objective text')
+
     args = parser.parse_args()
 
     if not args.action:
@@ -539,6 +665,37 @@ def main():
     elif args.action == 'threads':
         threads = manager.get_active_threads()
         print(manager.format_threads(threads))
+
+    elif args.action == 'add':
+        import json
+        plot_data = {
+            'title': args.title,
+            'description': input("Description: "),
+            'type': input("Type (main/side/mystery/threat) [side]: ") or 'side',
+            'objective': input("Main objective: "),
+            'stakes': input("Stakes: "),
+            'npcs': [n.strip() for n in input("NPCs (comma-separated): ").split(',') if n.strip()],
+            'locations': [l.strip() for l in input("Locations (comma-separated): ").split(',') if l.strip()],
+            'rewards': input("Rewards: "),
+        }
+        if not manager.add_plot(args.title, plot_data):
+            sys.exit(1)
+
+    elif args.action == 'objectives':
+        if hasattr(args, 'obj_action') and args.obj_action in ['add', 'complete']:
+            if not args.objective:
+                print(f"Error: objective text required for '{args.obj_action}' action")
+                sys.exit(1)
+            is_complete = (args.obj_action == 'complete')
+            if not manager.add_objective(args.plot_name, args.objective, complete=is_complete):
+                sys.exit(1)
+        else:
+            # No action specified, just show the plot
+            formatted = manager.format_plot_status(args.plot_name)
+            if formatted:
+                print(formatted)
+            else:
+                sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -2,15 +2,17 @@
 # common.sh - Common utilities and environment setup for all DM tools
 # This file should be sourced by all other scripts: source "$(dirname "$0")/common.sh"
 
-# Detect Python executable - prefer uv, fallback to python3/python
+# Detect Python executable - prefer uv, then real python, skip Microsoft Store python3
 find_python() {
     # Try to find uv first
     if command -v uv >/dev/null 2>&1; then
         echo "uv run python"
-    elif command -v python3 >/dev/null 2>&1; then
-        echo "python3"
     elif command -v python >/dev/null 2>&1; then
+        # Prefer real python installation
         echo "python"
+    elif command -v python3 >/dev/null 2>&1; then
+        # Fallback to python3 (may be Microsoft Store, but better than nothing)
+        echo "python3"
     else
         echo "Error: No Python interpreter found. Please install Python 3.11+" >&2
         exit 1
@@ -110,6 +112,29 @@ escape_json() {
     local text="$1"
     # Use Python for proper JSON escaping to avoid injection
     echo "$text" | $PYTHON_CMD -c "import sys, json; print(json.dumps(sys.stdin.read().strip()))" | sed 's/^"//;s/"$//'
+}
+
+# Check if auto-approve mode is enabled (DM_AUTO_APPROVE=1)
+is_auto_approve_enabled() {
+    [ "$DM_AUTO_APPROVE" = "1" ]
+}
+
+# Prompt with auto-approve support - returns 0 for yes, 1 for no
+prompt_yes_no() {
+    local question="$1"
+    local default="${2:-n}"  # default to 'n' if not specified
+
+    # If auto-approve is enabled, always return 0 (yes)
+    if is_auto_approve_enabled; then
+        return 0
+    fi
+
+    # Otherwise, prompt normally
+    local response
+    read -p "$question (y/n) [$default]: " response
+    response=${response:-$default}
+
+    [[ "$response" =~ ^[Yy]$ ]]
 }
 
 # Validate name/identifier (alphanumeric, spaces, hyphens, apostrophes only)

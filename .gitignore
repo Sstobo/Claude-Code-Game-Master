@@ -38,6 +38,9 @@ source-material/*
 # Claude Code Local Settings
 .claude/settings.local.json
 
+# Personal docs/plans (not for upstream)
+sjg_dm_docs/
+
 # Third-party skill installs (per-user, not project code)
 .agents/
 .codex/

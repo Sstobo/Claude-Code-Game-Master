@@ -176,15 +176,20 @@ def roll_formatted(notation: str) -> str:
 def main():
     """CLI interface for dice rolling"""
     import sys
-    
+
+    # Fix encoding for Windows
+    if sys.platform == 'win32':
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
     if len(sys.argv) < 2:
         print("Usage: dice.py <notation>")
         print("Examples: 1d20, 3d6+2, 2d20kh1 (advantage), 2d20kl1 (disadvantage)")
         sys.exit(1)
-    
+
     roller = DiceRoller()
     notation = sys.argv[1]
-    
+
     try:
         result = roller.roll(notation)
         print(roller.format_result(result))

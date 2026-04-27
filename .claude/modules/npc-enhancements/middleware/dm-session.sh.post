@@ -1,0 +1,61 @@
+#!/bin/bash
+# npc-enhancements post-middleware for dm-session.sh
+# Runs auto-extraction + auto-prompt after session end/save
+
+MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_ROOT="$(cd "$MODULE_DIR/../../.." && pwd)"
+
+# Set PYTHONPATH so module libs can import campaign_manager, etc.
+export PYTHONPATH="$PROJECT_ROOT/lib${PYTHONPATH:+:$PYTHONPATH}"
+
+ACTION="$1"
+
+# Only run on end/save actions
+if [ "$ACTION" != "end" ] && [ "$ACTION" != "save" ]; then
+    exit 0
+fi
+
+echo ""
+echo "[NPC AUTO-EXTRACT] Scanning session log for new NPCs..."
+
+# Get current location for first_encounter tracking
+LOCATION=$(uv run python -c "
+import sys, json
+sys.path.insert(0, '$(dirname "$MODULE_DIR")/../lib')
+from campaign_manager import CampaignManager
+mgr = CampaignManager()
+try:
+    with open(str(mgr.get_active_campaign_dir() / 'campaign-overview.json')) as f:
+        d = json.load(f)
+    print(d.get('player_position', {}).get('current_location', ''))
+except:
+    print('')
+" 2>/dev/null)
+
+# Run auto-extraction and save
+uv run python "$MODULE_DIR/lib/npc_extractor.py" --log | uv run python -c "
+import sys, json, os
+sys.path.insert(0, '$MODULE_DIR/lib')
+from npc_autoprompt import prompt_and_save
+
+data = sys.stdin.read()
+try:
+    candidates = json.loads(data)
+except (json.JSONDecodeError, ValueError):
+    candidates = []
+
+location = '$LOCATION'
+auto = os.environ.get('DM_AUTO_APPROVE') == '1'
+
+if candidates:
+    saved = prompt_and_save(candidates, location=location, auto_approve=auto)
+    if saved:
+        print(f'  Saved {len(saved)} new NPC(s): {saved}')
+    else:
+        print('  No new NPCs saved.')
+else:
+    print('  No new NPC candidates found.')
+"
+
+echo "[NPC AUTO-EXTRACT] Done."
+exit 0

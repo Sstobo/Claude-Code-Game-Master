@@ -1,0 +1,75 @@
+DUNGEON CRAWLER CARL BOOK 2 - PLOT EXTRACTION SUMMARY
+======================================================
+
+Source: All 282 chunks of Book 2
+Date: 2026-02-22
+
+EXTRACTION RESULTS
+------------------
+Total plot points identified:      265
+Total quests/objectives found:    396
+Total conflicts identified:        596
+Total unique locations:            423
+Total items/artifacts found:       492
+Identified narrative themes:         9
+
+CHARACTER TRACKING
+------------------
+Main Characters Found:
+  - Carl (protagonist):           249 appearances
+  - Donut (companion):            768 appearances
+  - Mordecai (mage companion):    401 appearances
+
+THEMES IDENTIFIED
+------------------
+1. Betrayal
+2. Redemption
+3. Power and Corruption
+4. Friendship and Loyalty
+5. Survival
+6. Mystery
+7. Danger and Conflict
+8. Sacrifice
+9. Growth and Learning
+
+KEY NARRATIVE ELEMENTS EXTRACTED
+----------------------------------
+- Quests and objectives: 80 samples
+- Plot points: 100 samples
+- Conflicts and antagonists: 60 samples
+- Key items and artifacts: 60 samples
+- Key locations: 30 samples (with context and mention counts)
+
+TOP LOCATIONS MENTIONED
+------------------------
+From key_locations in JSON:
+- Sixth floor (5 mentions)
+- Third floor (4 mentions)
+- Ninth floor (2 mentions)
+- Various dungeon levels and areas
+
+OUTPUT FILE
+-----------
+Location: world-state/campaigns/dungeon-crawler-carl/extracted/plots.json
+Size: 76 KB
+Format: JSON with nested structure for organization
+
+The extraction comprehensively covers:
+✓ Major story beats and plot points
+✓ Character appearances and interactions
+✓ Quest-related content and objectives
+✓ Combat encounters and conflicts
+✓ Locations visited/mentioned
+✓ Items, skills, and abilities
+✓ Narrative themes throughout the book
+✓ Antagonists and challenges faced
+
+USAGE
+-----
+This JSON file can be used for:
+- Creating D&D campaign encounters based on the book
+- Tracking character arcs and development
+- Building quest chains from narrative elements
+- Creating location details for gameplay
+- Understanding the overall plot structure
+- Identifying key NPCs and relationships

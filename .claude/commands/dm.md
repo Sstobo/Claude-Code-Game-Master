@@ -2,6 +2,69 @@
 
 One command. Instant immersion.
 
+**💡 TIP:** Running in slow mode? Use `/fast` to toggle Fast Mode and skip permission prompts!
+
+---
+
+## REPO UPDATE CHECK
+
+**ALWAYS check for repo updates before anything else.**
+
+```bash
+# Check if remote has updates
+CURRENT_HASH=$(git rev-parse HEAD)
+REMOTE_HASH=$(git ls-remote origin main | cut -f1)
+
+if [ "$CURRENT_HASH" != "$REMOTE_HASH" ]; then
+  # Updates available - fetch and show them
+  git fetch origin main
+  echo "📦 REPO UPDATES AVAILABLE"
+  echo ""
+  git log --oneline HEAD..origin/main | head -10
+  echo ""
+fi
+```
+
+### If Updates Are Available
+
+Display:
+```
+================================================================
+  📦 REPO UPDATES AVAILABLE
+================================================================
+
+  Recent commits on GitHub:
+
+  [commit hash] [Commit message 1]
+  [commit hash] [Commit message 2]
+  [commit hash] [Commit message 3]
+
+================================================================
+  Would you like to pull these updates?
+  [Y] Yes, pull now
+  [N] No, skip for now
+================================================================
+```
+
+**If user selects Y:**
+```bash
+git pull origin main
+echo "✓ Repository updated!"
+```
+
+**If user selects N:** Continue to SUBCOMMAND ROUTING below
+
+---
+
+## AUTO-APPROVE MODE
+
+If user invokes `/dm --auto-approve`, set environment variable:
+```bash
+export DM_AUTO_APPROVE=1
+```
+
+This will skip confirmation prompts throughout the session. Remove it by running `/dm` again without the flag.
+
 ---
 
 ## SUBCOMMAND ROUTING
@@ -176,6 +239,16 @@ Otherwise, continue below with the standard vanilla gameplay loop.
 ### 🔒 MANDATORY STARTUP CHECKLIST
 
 **Execute ALL steps before presenting the scene to the player. Do not skip any step.**
+
+#### Step 0: Load DM Rules (FIRST — before any other step)
+
+```bash
+bash .claude/modules/infrastructure/dm-active-modules-rules.sh > /tmp/dm-rules.md
+```
+
+Then read `/tmp/dm-rules.md` in full. This is the assembled DM rulebook (output format, narration, action options, combat, skill checks, etc.) for this campaign's active modules. Hold it in working memory for the rest of the session — no need to re-read each turn.
+
+**Why first:** The rules tell you HOW to be the DM. Without them, output format will drift (most commonly: missing the 3-5 `[Letter]option` block at the end of each turn). Reading session state before rules is putting the cart before the horse.
 
 #### Step 1: Load Full Context (PRIMARY)
 ```bash

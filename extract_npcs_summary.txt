@@ -1,0 +1,134 @@
+================================================================================
+NPC EXTRACTION SUMMARY
+================================================================================
+Source: Dungeon Crawler Carl - Book 3 (The Dungeon Anarchist's Cookbook)
+Date: 2026-02-22
+Status: COMPLETED
+
+================================================================================
+EXTRACTION STATISTICS
+================================================================================
+Total Chunks Processed: 415
+Total NPCs Extracted: 16
+Output File: world-state/campaigns/dungeon-crawler-carl/extracted/npcs.json
+File Size: 33 KB
+
+================================================================================
+TOP NPCs BY MENTION FREQUENCY
+================================================================================
+
+1. Donut (314 mentions)
+   Type: Sentient Item/Companion
+   Role: Carl's companion, sentient item, interactive voice
+
+2. Carl (176 mentions)
+   Type: Player Character
+   Role: Protagonist, Dungeon Crawler, main character
+
+3. Imani (66 mentions)
+   Type: Character
+   Role: Female character, party member, strategist
+
+4. Elle (60 mentions)
+   Type: Character
+   Role: Female character, adventurer, party member
+
+5. Zev (21 mentions)
+   Type: Character
+   Role: Male character, manager/contact
+
+6. Mordecai (13 mentions)
+   Type: NPC
+   Role: Contact/Guide, provides system information and advice
+
+7. Katia (13 mentions)
+   Type: NPC
+   Role: Party member, companion
+
+8. Bautista (10 mentions)
+   Type: NPC
+   Role: Acquaintance, provides messages and information
+
+9. Pip (1 mention)
+   Type: Creature
+   Role: Companion creature
+
+10. Brandon (1 mention)
+    Type: NPC
+    Role: Messenger
+
+11. Daniel (1 mention)
+    Type: NPC
+    Role: Contact
+
+12. Porter T (1 mention)
+    Type: NPC
+    Role: Acquaintance
+
+13. Mei W (1 mention)
+    Type: NPC
+    Role: Party member
+
+14. Ronaldo Qu (1 mention)
+    Type: NPC
+    Role: Contact/Accomplice
+
+15. Gwendolyn Duet (1 mention)
+    Type: NPC
+    Role: Contact
+
+16. Kaiju (1 mention)
+    Type: NPC
+    Role: Unknown role (from book advertisement)
+
+================================================================================
+EXTRACTION METHOD
+================================================================================
+The extraction was performed using a refined Python script that:
+1. Scanned all 415 text chunks from the PDF
+2. Identified character names using pattern matching
+3. Extracted descriptions and contextual information
+4. Tracked mention frequency across chunks
+5. Filtered out system fields and false positives
+6. Compiled results into structured JSON format
+
+================================================================================
+KEY FINDINGS
+================================================================================
+- Main characters (Carl, Donut, Imani, Elle) appear throughout the book
+- Donut is highly interactive and appears in most chapters
+- Strong party dynamic with core group of adventurers
+- Supporting NPCs provide occasional messages and context
+- Messages appear to be in-universe communication (chat logs, messages)
+- Story follows a cohesive narrative with consistent character presence
+
+================================================================================
+JSON OUTPUT STRUCTURE
+================================================================================
+{
+  "source": "Dungeon Crawler Carl - Book 3",
+  "extraction_date": "2026-02-22",
+  "total_chunks": 415,
+  "total_npcs": 16,
+  "npcs": [
+    {
+      "name": "NPC Name",
+      "type": "Character Type",
+      "description": "Primary description",
+      "additional_context": ["context snippet 1", "context snippet 2"],
+      "mentions_in_chunks": [0, 1, 2, ...],
+      "mention_count": 314
+    }
+  ]
+}
+
+================================================================================
+FILES GENERATED
+================================================================================
+Primary Output:
+  - world-state/campaigns/dungeon-crawler-carl/extracted/npcs.json (33 KB)
+
+Script Used:
+  - extract_npcs_v3.py (production version)
+
+================================================================================ 
