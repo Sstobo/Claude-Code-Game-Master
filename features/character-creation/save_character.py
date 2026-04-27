@@ -129,6 +129,7 @@ def save_character(character_data):
         "flaws": character_data.get('flaws', ''),
         "ideals": character_data.get('ideals', ''),
         "traits": character_data.get('traits', ''),
+        "spells": character_data.get('spells', {"cantrips": [], "level_1": []}),
         "notes": character_data.get('notes', []),
         "gold": character_data.get('gold', 0),
         "xp": character_data.get('xp', {"current": 0, "next_level": 300})
