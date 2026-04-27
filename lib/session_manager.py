@@ -190,7 +190,8 @@ class SessionManager(EntityManager):
         md_file = self.campaign_dir / "session-history.md"
 
         lines = []
-        lines.append("# Session History - Dungeon Crawler Carl Campaign")
+        campaign_name = campaign.get('name', campaign.get('campaign_name', 'Unknown Campaign'))
+        lines.append(f"# Session History - {campaign_name}")
         lines.append("")
 
         # Get full campaign and character data
@@ -679,13 +680,37 @@ class SessionManager(EntityManager):
         else:
             lines.append("- *(No formal consequence trackers running — see Recent Activity for narrative threads)*")
 
-        # Known loose ends from session-log heuristics
+        # Extract loose ends from session log by scanning for known markers
         if self.session_log.exists():
             log_content = self.session_log.read_text()
-            if 'Nemedian agent' in log_content and 'loose end' in log_content.lower():
-                lines.append("- [ ] **The Nemedian Agent** — The original employer who hired Grom to retrieve the box is still alive and unaware of the deal with the Serpent Tongue. Could become a complication.")
-            if 'Khemet' in log_content:
-                lines.append("- [ ] **Khemet's Daughter's Wedding** — Ticking clock: 3 nights from the start of the campaign. Grom must deliver the cursed box to Khemet at the wedding and collect 500g balance from the Serpent Tongue.")
+            # Look for "Loose ends:" / "loose end" lines in the log
+            for line in log_content.split('\n'):
+                stripped = line.strip()
+                if stripped.lower().startswith('**loose end') or stripped.lower().startswith('loose end'):
+                    # Extract the loose end description after the colon/separator
+                    for sep in [':', '—', '-']:
+                        if sep in stripped:
+                            text = stripped.split(sep, 1)[1].strip().lstrip('* ')
+                            if text:
+                                lines.append(f"- [ ] {text}")
+                            break
+                elif stripped.lower().startswith('- loose end') or stripped.lower().startswith('* loose end'):
+                    text = stripped.lstrip('-* ').strip()
+                    if text.lower().startswith('loose end'):
+                        text = text.split(':', 1)[-1].split('—', 1)[-1].strip()
+                    if text:
+                        lines.append(f"- [ ] {text}")
+            # Also scan for ticking clocks (phrases like "in X days" / "in X nights" near deadlines)
+            clock_keywords = ['in \\d+ night', 'in \\d+ day', 'in \\d+ hour', 'countdown', 'deadline', 'within \\d+']
+            import re
+            for line in log_content.split('\n'):
+                stripped = line.strip()
+                if any(re.search(k, stripped, re.IGNORECASE) for k in clock_keywords):
+                    # Don't duplicate if it's already in a loose-end line
+                    is_duplicate = any(stripped in existing for existing in lines[-5:])
+                    if not is_duplicate and len(stripped) > 15:
+                        # Prefix with context from nearby lines
+                        lines.append(f"- [ ] (ticking clock) {stripped[:200]}")
         lines.append("")
 
         # ===== KEY DECISIONS & NARRATIVE DIRECTION =====
