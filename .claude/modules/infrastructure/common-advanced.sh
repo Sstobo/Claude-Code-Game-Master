@@ -10,13 +10,16 @@
 # Returns 0 if enabled, 1 if disabled
 _module_enabled() {
     local module_id="$1"
+    # Convert MSYS2 path (e.g. /c/Users/...) to Windows path for Python
+    local py_root
+    py_root=$(cygpath -m "$PROJECT_ROOT" 2>/dev/null || echo "$PROJECT_ROOT")
     local enabled
     enabled=$(uv run python -c "
 import sys
-sys.path.insert(0, '$PROJECT_ROOT/.claude/modules')
+sys.path.insert(0, '${py_root}/.claude/modules')
 from module_loader import ModuleLoader
 loader = ModuleLoader()
-print('1' if loader.is_module_enabled('$module_id') else '0')
+print('1' if loader.is_module_enabled('${module_id}') else '0')
 " 2>/dev/null)
     [ "$enabled" = "1" ]
 }

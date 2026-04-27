@@ -190,12 +190,12 @@ class SessionManager(EntityManager):
         md_file = self.campaign_dir / "session-history.md"
 
         lines = []
+        # Get full campaign and character data
+        campaign = self.json_ops.load_json(self.campaign_file) or {}
         campaign_name = campaign.get('name', campaign.get('campaign_name', 'Unknown Campaign'))
         lines.append(f"# Session History - {campaign_name}")
         lines.append("")
 
-        # Get full campaign and character data
-        campaign = self.json_ops.load_json(self.campaign_file) or {}
         character = {}
         if self.character_file.exists():
             try:

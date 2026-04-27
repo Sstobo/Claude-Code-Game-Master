@@ -3,6 +3,9 @@
 
 source "$(dirname "$0")/common.sh"
 
+# Source module middleware dispatch
+source "$PROJECT_ROOT/.claude/modules/infrastructure/common-advanced.sh" 2>/dev/null || true
+
 if [ "$#" -lt 1 ]; then
     echo "Usage: dm-session.sh <action> [args]"
     echo ""
@@ -28,6 +31,9 @@ if [ "$#" -lt 1 ]; then
     echo "  dm-session.sh context"
     exit 1
 fi
+
+# Let module middleware intercept (world-travel handles move, npc-enhancements post-hooks)
+dispatch_middleware "dm-session.sh" "$@" && exit $?
 
 ACTION="$1"
 shift
@@ -58,6 +64,15 @@ case "$ACTION" in
                 fi
             fi
         fi
+
+        # DM rules-loading reminder (model-agnostic safety net for cold-start agents)
+        echo ""
+        echo "────────────────────────────────────────────────────────────"
+        echo "DM RULES (load once per session):"
+        echo "  bash .claude/modules/infrastructure/dm-active-modules-rules.sh > /tmp/dm-rules.md"
+        echo "  Then read /tmp/dm-rules.md (output format, narration, options)."
+        echo "  End every turn with 3-5 contextual [Letter]options."
+        echo "────────────────────────────────────────────────────────────"
         ;;
 
     end)
@@ -181,6 +196,9 @@ case "$ACTION" in
         exit 1
         ;;
 esac
+
+# Run module post-hooks (npc-enhancements auto-extraction, etc.)
+dispatch_middleware_post "dm-session.sh" "$ACTION" "$@"
 
 # Propagate Python exit code
 exit $?

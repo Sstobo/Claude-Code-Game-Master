@@ -84,6 +84,215 @@
       "architecture": "Middleware hooks into dm-player.sh (show custom stats), dm-consequence.sh (threshold effects). Post-hook on dm-time.sh reads --elapsed and ticks stats after CORE updates time. Zero hardcoded stat names — all defined in campaign_rules.time_effects.",
       "replaces": []
     },
+    "firearms-combat": {
+      "id": "firearms-combat",
+      "name": "Firearms Combat System",
+      "version": "1.0.0",
+      "author": "DM System Core",
+      "description": "Automated firearms combat resolver with penetration mechanics, RPM simulation, and fire mode support for modern/STALKER campaigns",
+      "category": "combat",
+      "genre_tags": [
+        "survival",
+        "modern",
+        "scifi",
+        "horror"
+      ],
+      "tags": [
+        "firearms",
+        "combat",
+        "ballistics",
+        "stalker",
+        "modern"
+      ],
+      "enabled_by_default": false,
+      "dependencies": [],
+      "incompatible_with": [],
+      "middleware": [],
+      "features": [
+        "Full-auto fire mode with RPM-based shot calculation",
+        "Penetration vs Protection damage scaling",
+        "Subclass bonuses (Стрелок sharpshooter)",
+        "Critical hit mechanics (2× dice on nat 20)",
+        "Multi-target distribution",
+        "Auto XP tracking",
+        "Test mode for dry runs"
+      ],
+      "adds_to_core": {
+        "tools": [
+          "dm-combat.sh"
+        ],
+        "commands": {
+          "dm-combat.sh resolve": "Resolve firearms combat with auto-damage calculation"
+        },
+        "data_fields": {
+          "campaign_rules": {
+            "firearms_system": {
+              "weapons": {
+                "AK-74": {
+                  "damage": "2d8+2",
+                  "pen": 6,
+                  "rpm": 650,
+                  "ammo_type": "5.45x39mm"
+                }
+              },
+              "fire_modes": {
+                "full_auto": {
+                  "penalty_per_shot": -2,
+                  "penalty_per_shot_sharpshooter": -1
+                }
+              }
+            }
+          }
+        }
+      },
+      "use_cases": [
+        "STALKER campaigns with Svoboda/Долговцы firefights",
+        "Fallout-style wasteland combat",
+        "Modern military operations",
+        "Cyberpunk gunfights",
+        "Zombie apocalypse firearms survival"
+      ],
+      "architecture": "Standalone tool. DM calls dm-combat.sh resolve when firearms combat occurs. No middleware — does not intercept CORE tools.",
+      "replaces": []
+    },
+    "inventory-system": {
+      "id": "inventory-system",
+      "name": "Inventory System",
+      "version": "1.0.0",
+      "author": "DM System",
+      "description": "Unified inventory manager with atomic transactions, stackable items, and unique item tracking",
+      "category": "character-mechanics",
+      "genre_tags": [
+        "fantasy",
+        "survival",
+        "scifi",
+        "modern",
+        "horror"
+      ],
+      "tags": [
+        "inventory",
+        "items",
+        "loot",
+        "equipment"
+      ],
+      "enabled_by_default": true,
+      "dependencies": [],
+      "incompatible_with": [],
+      "middleware": [
+        "dm-inventory.sh"
+      ],
+      "features": [
+        "Atomic add/remove transactions (no partial failures)",
+        "Stackable items with quantity tracking",
+        "Unique item IDs for rare/named items",
+        "Weight and slot capacity support",
+        "Loot tables integration"
+      ],
+      "adds_to_core": {
+        "tools": [
+          "dm-inventory.sh"
+        ],
+        "commands": {
+          "dm-inventory.sh add <item> [qty]": "Add item to inventory",
+          "dm-inventory.sh remove <item> [qty]": "Remove item from inventory",
+          "dm-inventory.sh show": "Show full inventory",
+          "dm-inventory.sh transfer <item> <from> <to>": "Transfer item between characters"
+        },
+        "data_fields": {
+          "character.json": {
+            "inventory": []
+          }
+        }
+      },
+      "use_cases": [
+        "Any campaign with item management",
+        "Loot-heavy dungeon crawls",
+        "Survival resource tracking",
+        "Trading and economy systems",
+        "Party shared inventory"
+      ],
+      "architecture": "Middleware intercepts dm-inventory.sh CORE calls and handles all item operations. No dependency on other modules.",
+      "replaces": []
+    },
+    "npc-enhancements": {
+      "id": "npc-enhancements",
+      "name": "NPC Enhancements",
+      "version": "1.0.0",
+      "author": "DM System Core",
+      "description": "Structured NPC relationships, faction tagging, auto-extraction from session logs, and first-encounter prompts. Keeps npcs.json populated and connected.",
+      "category": "narrative",
+      "genre_tags": [
+        "fantasy",
+        "horror",
+        "scifi",
+        "modern",
+        "survival"
+      ],
+      "tags": [
+        "npcs",
+        "relationships",
+        "factions",
+        "extraction",
+        "narrative"
+      ],
+      "enabled_by_default": true,
+      "dependencies": [],
+      "incompatible_with": [],
+      "middleware": [
+        "dm-npc.sh",
+        "dm-session.sh"
+      ],
+      "post_middleware": [
+        "dm-session.sh.post"
+      ],
+      "features": [
+        "Bidirectional NPC-to-NPC relationship tracking (ally, enemy, mentor, rival, etc.)",
+        "Faction/group tagging with filtered member listing",
+        "Auto-extraction of new NPC names from session log text",
+        "First-encounter prompt on session save/end",
+        "Relationship and faction display in narrative summary and DM context"
+      ],
+      "adds_to_core": {
+        "tools": [],
+        "commands": {
+          "dm-npc.sh relate <a> <b> <type> [notes]": "Set bidirectional relationship between NPCs",
+          "dm-npc.sh unrelate <a> <b>": "Remove relationship between NPCs",
+          "dm-npc.sh relations <name>": "Show all relationships for an NPC",
+          "dm-npc.sh tag-faction <name> <faction1> [...": "Add faction tags to NPC",
+          "dm-npc.sh untag-faction <name> <faction1> [...": "Remove faction tags from NPC",
+          "dm-npc.sh list-factions": "List all known factions",
+          "dm-npc.sh faction-members <faction>": "List all NPCs in a faction"
+        },
+        "data_fields": {
+          "npcs.json": {
+            "<any_npc>": {
+              "relationships": {
+                "<other_name>": {
+                  "type": "ally",
+                  "notes": "..."
+                }
+              },
+              "factions": [
+                "Guild Name"
+              ],
+              "attitude_history": [
+                {
+                  "attitude": "friendly",
+                  "timestamp": "..."
+                }
+              ],
+              "first_encounter": {
+                "session": 1,
+                "location": "...",
+                "summary": "..."
+              }
+            }
+          }
+        }
+      },
+      "architecture": "Middleware hooks into dm-npc.sh for relationship/faction CLI commands, dm-session.sh post-hooks for auto-extraction and first-encounter prompts on session end/save.",
+      "replaces": []
+    },
     "world-travel": {
       "id": "world-travel",
       "name": "World Travel (Navigation + Encounters)",
@@ -208,136 +417,6 @@
       "replaces": [
         "movement"
       ]
-    },
-    "inventory-system": {
-      "id": "inventory-system",
-      "name": "Inventory System",
-      "version": "1.0.0",
-      "author": "DM System",
-      "description": "Unified inventory manager with atomic transactions, stackable items, and unique item tracking",
-      "category": "character-mechanics",
-      "genre_tags": [
-        "fantasy",
-        "survival",
-        "scifi",
-        "modern",
-        "horror"
-      ],
-      "tags": [
-        "inventory",
-        "items",
-        "loot",
-        "equipment"
-      ],
-      "enabled_by_default": true,
-      "dependencies": [],
-      "incompatible_with": [],
-      "middleware": [
-        "dm-inventory.sh"
-      ],
-      "features": [
-        "Atomic add/remove transactions (no partial failures)",
-        "Stackable items with quantity tracking",
-        "Unique item IDs for rare/named items",
-        "Weight and slot capacity support",
-        "Loot tables integration"
-      ],
-      "adds_to_core": {
-        "tools": [
-          "dm-inventory.sh"
-        ],
-        "commands": {
-          "dm-inventory.sh add <item> [qty]": "Add item to inventory",
-          "dm-inventory.sh remove <item> [qty]": "Remove item from inventory",
-          "dm-inventory.sh show": "Show full inventory",
-          "dm-inventory.sh transfer <item> <from> <to>": "Transfer item between characters"
-        },
-        "data_fields": {
-          "character.json": {
-            "inventory": []
-          }
-        }
-      },
-      "use_cases": [
-        "Any campaign with item management",
-        "Loot-heavy dungeon crawls",
-        "Survival resource tracking",
-        "Trading and economy systems",
-        "Party shared inventory"
-      ],
-      "architecture": "Middleware intercepts dm-inventory.sh CORE calls and handles all item operations. No dependency on other modules.",
-      "replaces": []
-    },
-    "firearms-combat": {
-      "id": "firearms-combat",
-      "name": "Firearms Combat System",
-      "version": "1.0.0",
-      "author": "DM System Core",
-      "description": "Automated firearms combat resolver with penetration mechanics, RPM simulation, and fire mode support for modern/STALKER campaigns",
-      "category": "combat",
-      "genre_tags": [
-        "survival",
-        "modern",
-        "scifi",
-        "horror"
-      ],
-      "tags": [
-        "firearms",
-        "combat",
-        "ballistics",
-        "stalker",
-        "modern"
-      ],
-      "enabled_by_default": false,
-      "dependencies": [],
-      "incompatible_with": [],
-      "middleware": [],
-      "features": [
-        "Full-auto fire mode with RPM-based shot calculation",
-        "Penetration vs Protection damage scaling",
-        "Subclass bonuses (Стрелок sharpshooter)",
-        "Critical hit mechanics (2× dice on nat 20)",
-        "Multi-target distribution",
-        "Auto XP tracking",
-        "Test mode for dry runs"
-      ],
-      "adds_to_core": {
-        "tools": [
-          "dm-combat.sh"
-        ],
-        "commands": {
-          "dm-combat.sh resolve": "Resolve firearms combat with auto-damage calculation"
-        },
-        "data_fields": {
-          "campaign_rules": {
-            "firearms_system": {
-              "weapons": {
-                "AK-74": {
-                  "damage": "2d8+2",
-                  "pen": 6,
-                  "rpm": 650,
-                  "ammo_type": "5.45x39mm"
-                }
-              },
-              "fire_modes": {
-                "full_auto": {
-                  "penalty_per_shot": -2,
-                  "penalty_per_shot_sharpshooter": -1
-                }
-              }
-            }
-          }
-        }
-      },
-      "use_cases": [
-        "STALKER campaigns with Svoboda/Долговцы firefights",
-        "Fallout-style wasteland combat",
-        "Modern military operations",
-        "Cyberpunk gunfights",
-        "Zombie apocalypse firearms survival"
-      ],
-      "architecture": "Standalone tool. DM calls dm-combat.sh resolve when firearms combat occurs. No middleware — does not intercept CORE tools.",
-      "replaces": []
     }
   }
 }
