@@ -462,8 +462,131 @@ class SessionManager(EntityManager):
         with open(save_path, 'w', encoding='utf-8') as f:
             json.dump(save_data, f, indent=2, ensure_ascii=False)
 
+        # Auto-generate narrative summary for DM handoff
+        self._generate_narrative_summary(name)
+
         print(f"[SUCCESS] Save created: {filename}")
         return filename
+
+    def _generate_narrative_summary(self, save_name: str) -> None:
+        """Generate a narrative campaign summary for DM handoff after save"""
+        import json
+        campaign = self.json_ops.load_json(self.campaign_file) or {}
+        char = {}
+        if self.character_file.exists():
+            try:
+                with open(self.character_file, 'r', encoding='utf-8') as f:
+                    char = json.load(f)
+            except (ValueError, IOError):
+                pass
+
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        locations = self.json_ops.load_json("locations.json") or {}
+        facts = self.json_ops.load_json("facts.json") or {}
+        consequences = self.json_ops.load_json("consequences.json") or {}
+
+        session_num = self._get_session_number()
+        location = campaign.get('player_position', {}).get('current_location', 'Unknown')
+        time_of_day = campaign.get('time', {}).get('time_of_day', campaign.get('time_of_day', ''))
+        current_date = campaign.get('time', {}).get('current_date', campaign.get('current_date', ''))
+
+        lines = []
+        lines.append(f"# Campaign Summary — {campaign.get('campaign_name', campaign.get('name', 'Unnamed'))}")
+        lines.append("")
+        lines.append(f"*Auto-generated from save: {save_name}*")
+        lines.append("")
+        lines.append(f"**Session:** #{session_num} | **Location:** {location} | **Time:** {time_of_day}, {current_date}")
+        lines.append("")
+
+        # Character
+        if char:
+            name = char.get('name', 'Unknown')
+            race = char.get('race', '?')
+            cls = char.get('class', '?')
+            level = char.get('level', 1)
+            hp = char.get('hp', {})
+            lines.append(f"## Character: {name}")
+            lines.append(f"Level {level} {race} {cls} | HP: {hp.get('current', 0)}/{hp.get('max', 0)} | AC: {char.get('ac', '?')}")
+            lines.append(f"Gold: {char.get('gold', 0)} gp | XP: {char.get('xp', {}).get('current', 0)}")
+            spells = char.get('spells', {})
+            if spells:
+                cantrips = spells.get('cantrips', [])
+                leveled = spells.get('level_1', [])
+                if cantrips:
+                    lines.append(f"Cantrips: {', '.join(cantrips)}")
+                if leveled:
+                    lines.append(f"Spells: {', '.join(leveled)}")
+            lines.append("")
+
+        # Key NPCs
+        if npcs and isinstance(npcs, dict):
+            lines.append("## Known NPCs")
+            for npc_name, npc_data in npcs.items():
+                if isinstance(npc_data, dict) and not npc_data.get('is_party_member'):
+                    desc = npc_data.get('description', npc_data.get('role', ''))
+                    status = npc_data.get('status', npc_data.get('attitude', 'neutral'))
+                    location_npc = npc_data.get('location', '')
+                    loc_str = f" at {location_npc}" if location_npc else ""
+                    lines.append(f"- **{npc_name}** — {desc} ({status}){loc_str}")
+            lines.append("")
+
+        # Locations
+        if locations and isinstance(locations, dict):
+            lines.append("## Known Locations")
+            for loc_name, loc_data in list(locations.items())[:10]:
+                desc = loc_data.get('description', '') if isinstance(loc_data, dict) else ''
+                marker = " **[CURRENT]**" if loc_name == location else ""
+                if desc:
+                    lines.append(f"- **{loc_name}**{marker} — {desc[:120]}")
+                else:
+                    lines.append(f"- **{loc_name}**{marker}")
+            lines.append("")
+
+        # Active threads from consequences
+        pending = []
+        if isinstance(consequences, dict):
+            for cid, cdata in consequences.items():
+                if isinstance(cdata, dict) and cdata.get('status', 'pending') == 'pending':
+                    pending.append(cdata)
+        if pending:
+            lines.append("## Active Threads")
+            for c in pending[:5]:
+                event = c.get('event', c.get('description', '?'))
+                trigger = c.get('trigger', '?')
+                lines.append(f"- {event} *(trigger: {trigger})*")
+            lines.append("")
+
+        # Recent session log entries
+        if self.session_log.exists():
+            content = self.session_log.read_text()
+            entries = []
+            current_entry = []
+            in_session = False
+            for line in content.split('\n'):
+                if line.startswith('## '):
+                    if current_entry:
+                        entries.append('\n'.join(current_entry))
+                    current_entry = [line]
+                    in_session = True
+                elif in_session:
+                    current_entry.append(line)
+            if current_entry:
+                entries.append('\n'.join(current_entry))
+
+            if entries:
+                lines.append("## Recent Activity")
+                for entry in entries[-3:]:
+                    lines.append(entry)
+                    lines.append("")
+
+        lines.append("---")
+        lines.append(f"*Generated: {self.get_timestamp()}*")
+
+        summary_path = self.campaign_dir / "narrative-summary.md"
+        with open(summary_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines))
+
+        print(f"[INFO] Narrative summary written to {summary_path}")
 
     def restore_save(self, name: str) -> bool:
         """
