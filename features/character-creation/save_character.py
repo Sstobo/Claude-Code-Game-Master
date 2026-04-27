@@ -149,7 +149,7 @@ def save_character(character_data):
         file_path = characters_dir / f"{char_id}.json"
 
     try:
-        with open(file_path, 'w') as f:
+        with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(character, f, indent=2, ensure_ascii=False)
 
         return {
