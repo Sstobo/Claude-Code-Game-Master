@@ -222,16 +222,15 @@ class PlayerManager(EntityManager):
             char['level'] = new_level
 
         # Update next level threshold
-        next_threshold = rs.xp_threshold(new_level + 1)
-        if next_threshold is None:
-            next_threshold = current_xp  # at cap
+        _raw_threshold = rs.xp_threshold(new_level + 1)
+        next_threshold = _raw_threshold if _raw_threshold is not None else current_xp
+        cap_marker = _raw_threshold if _raw_threshold is not None else 'MAX'
         char['xp']['next_level'] = next_threshold
 
         # Save character
         if not self._save_character(name, char):
             return {'success': False}
 
-        cap_marker = next_threshold if rs.xp_threshold(new_level + 1) is not None else 'MAX'
         result = {
             'success': True,
             'name': char.get('name', name),
