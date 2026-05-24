@@ -165,42 +165,6 @@ valid, error = Validators.validate_dice("1d7")
 # Returns: (False, "Invalid die size. Valid sizes: [4, 6, 8, 10, 12, 20, 100]")
 ```
 
-##### `validate_damage_type(damage_type: str) -> Tuple[bool, Optional[str]]`
-Validate D&D damage types.
-- **Valid types**: acid, bludgeoning, cold, fire, force, lightning, necrotic, piercing, poison, psychic, radiant, slashing, thunder
-- **Example**:
-```python
-valid, error = Validators.validate_damage_type("fire")
-# Returns: (True, None)
-```
-
-##### `validate_skill(skill: str) -> Tuple[bool, Optional[str]]`
-Validate D&D skills.
-- **Valid skills**: acrobatics, animal handling, arcana, athletics, deception, history, insight, intimidation, investigation, medicine, nature, perception, performance, persuasion, religion, sleight of hand, stealth, survival
-- **Example**:
-```python
-valid, error = Validators.validate_skill("perception")
-# Returns: (True, None)
-```
-
-##### `validate_alignment(alignment: str) -> Tuple[bool, Optional[str]]`
-Validate D&D alignments.
-- **Valid alignments**: lawful good, neutral good, chaotic good, lawful neutral, true neutral, chaotic neutral, lawful evil, neutral evil, chaotic evil, unaligned
-- **Note**: "neutral" is accepted as "true neutral"
-- **Example**:
-```python
-valid, error = Validators.validate_alignment("chaotic good")
-# Returns: (True, None)
-```
-
-##### `validate_condition(condition: str) -> Tuple[bool, Optional[str]]`
-Validate D&D conditions.
-- **Valid conditions**: blinded, charmed, deafened, exhaustion, frightened, grappled, incapacitated, invisible, paralyzed, petrified, poisoned, prone, restrained, stunned, unconscious
-- **Example**:
-```python
-valid, error = Validators.validate_condition("paralyzed")
-# Returns: (True, None)
-```
 
 ##### `validate_ability(ability: str) -> Tuple[bool, Optional[str]]`
 Validate D&D ability scores.
