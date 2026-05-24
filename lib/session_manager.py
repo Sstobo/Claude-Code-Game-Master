@@ -18,6 +18,7 @@ if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
 from entity_manager import EntityManager
+import lib  # noqa: F401 — ensures lib/__init__.py runs (registers DnD5eRuleset)
 from lib import ruleset
 
 
