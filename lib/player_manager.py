@@ -13,34 +13,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
+from lib import ruleset
 
 
 class PlayerManager(EntityManager):
     """Manage player character operations. Inherits from EntityManager for common functionality."""
-
-    # D&D 5e XP thresholds for levels 1-20
-    XP_THRESHOLDS = [
-        0,       # Level 1
-        300,     # Level 2
-        900,     # Level 3
-        2700,    # Level 4
-        6500,    # Level 5
-        14000,   # Level 6
-        23000,   # Level 7
-        34000,   # Level 8
-        48000,   # Level 9
-        64000,   # Level 10
-        85000,   # Level 11
-        100000,  # Level 12
-        120000,  # Level 13
-        140000,  # Level 14
-        165000,  # Level 15
-        195000,  # Level 16
-        225000,  # Level 17
-        265000,  # Level 18
-        305000,  # Level 19
-        355000,  # Level 20
-    ]
 
     def __init__(self, world_state_dir: Optional[str] = None, require_active_campaign: bool = True):
         super().__init__(world_state_dir, require_active_campaign)
@@ -117,17 +94,18 @@ class PlayerManager(EntityManager):
         return self.json_ops.save_json(str(char_path), data)
 
     def _normalize_xp(self, char: Dict) -> Dict:
-        """Normalize XP to object format {current, next_level}"""
+        """Normalize XP to object format {current, next_level} using the active ruleset."""
         xp = char.get('xp', 0)
         level = char.get('level', 1)
+        rs = ruleset.get()
 
         if isinstance(xp, int):
-            # Old format: plain integer
-            next_threshold = self.XP_THRESHOLDS[level] if level < 20 else xp
+            next_threshold = rs.xp_threshold(level + 1)
+            if next_threshold is None:
+                next_threshold = xp  # at cap
             char['xp'] = {'current': xp, 'next_level': next_threshold}
         elif not isinstance(xp, dict):
-            # Invalid format, reset
-            char['xp'] = {'current': 0, 'next_level': self.XP_THRESHOLDS[1]}
+            char['xp'] = {'current': 0, 'next_level': rs.xp_threshold(2)}
 
         return char
 
@@ -235,41 +213,43 @@ class PlayerManager(EntityManager):
         current_xp = char['xp']['current']
         current_level = char.get('level', 1)
 
-        # Check for level up
-        new_level = current_level
-        while new_level < 20 and current_xp >= self.XP_THRESHOLDS[new_level]:
-            new_level += 1
+        # Check for level up using the active ruleset
+        rs = ruleset.get()
+        new_level = rs.level_for_xp(current_xp)
 
         leveled_up = new_level > current_level
         if leveled_up:
             char['level'] = new_level
 
         # Update next level threshold
-        next_threshold = self.XP_THRESHOLDS[new_level] if new_level < 20 else current_xp
+        next_threshold = rs.xp_threshold(new_level + 1)
+        if next_threshold is None:
+            next_threshold = current_xp  # at cap
         char['xp']['next_level'] = next_threshold
 
         # Save character
         if not self._save_character(name, char):
             return {'success': False}
 
+        cap_marker = next_threshold if rs.xp_threshold(new_level + 1) is not None else 'MAX'
         result = {
             'success': True,
             'name': char.get('name', name),
             'xp_gained': amount,
             'current_xp': current_xp,
-            'next_level_xp': next_threshold if new_level < 20 else 'MAX',
+            'next_level_xp': cap_marker,
             'level_up': leveled_up,
             'old_level': current_level,
-            'new_level': new_level
+            'new_level': new_level,
         }
 
         # Print result
         if leveled_up:
             print(f"LEVEL_UP {char.get('name', name)} gained {amount} XP and leveled up to Level {new_level}!")
-            print(f"XP: {current_xp}/{next_threshold if new_level < 20 else 'MAX'}")
+            print(f"XP: {current_xp}/{cap_marker}")
         else:
             print(f"XP_GAIN {char.get('name', name)} gained {amount} XP!")
-            print(f"XP: {current_xp}/{next_threshold if new_level < 20 else 'MAX'}")
+            print(f"XP: {current_xp}/{cap_marker}")
 
         return result
 
