@@ -11,9 +11,14 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 # Add lib directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
+_lib_dir = Path(__file__).parent
+_project_root = _lib_dir.parent
+sys.path.insert(0, str(_lib_dir))
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
 
 from entity_manager import EntityManager
+from lib import ruleset
 
 
 class SessionManager(EntityManager):
@@ -360,71 +365,15 @@ class SessionManager(EntityManager):
             except (ValueError, IOError):
                 pass
 
-        if char:
-            name = char.get('name', 'Unknown')
-            level = char.get('level', 1)
-            race = char.get('race', '?')
-            cls = char.get('class', '?')
-            hp = char.get('hp', {})
-            hp_cur = hp.get('current', 0)
-            hp_max = hp.get('max', 0)
-            ac = char.get('ac', '?')
-            xp = char.get('xp', {})
-            if isinstance(xp, dict):
-                xp_val = xp.get('current', 0)
-            else:
-                xp_val = xp
-            gold = char.get('gold', 0)
-            conditions = char.get('conditions', [])
-            cond_str = ', '.join(conditions) if conditions else '(none)'
-            lines.append(f"{name} - Level {level} {race} {cls} | HP: {hp_cur}/{hp_max} | AC: {ac} | XP: {xp_val} | Gold: {gold}")
-            lines.append(f"Conditions: {cond_str}")
-        else:
-            lines.append("No character found.")
+        lines.append(ruleset.get().format_character_block(char or {}))
 
         # --- Party Members ---
         lines.append("")
         lines.append("--- PARTY MEMBERS ---")
         npcs = self.json_ops.load_json("npcs.json") or {}
-        party = {n: d for n, d in npcs.items() if isinstance(d, dict) and d.get('is_party_member')}
-
-        if party:
-            party_items = list(party.items())
-            max_party = len(party_items) if full else 8
-            shown_party = party_items[:max_party]
-            for npc_name, npc_data in shown_party:
-                sheet = npc_data.get('character_sheet', {})
-                hp = sheet.get('hp', {'current': 10, 'max': 10})
-                ac = sheet.get('ac', 10)
-                level = sheet.get('level', 1)
-                race = sheet.get('race', 'Unknown')
-                cls = sheet.get('class', 'Commoner')
-                conditions = sheet.get('conditions', [])
-                cond_str = f" [{', '.join(conditions)}]" if conditions else ""
-                desc = self._truncate(npc_data.get('description', ''), 180, full)
-
-                lines.append(f"{npc_name} (Lvl {level} {race} {cls}) HP: {hp['current']}/{hp['max']} AC: {ac}{cond_str}")
-                if desc:
-                    lines.append(f"  {desc}")
-
-                # Recent events
-                events = npc_data.get('events', [])
-                if events:
-                    recent = events[-3:] if full else events[-2:]
-                    event_strs = []
-                    for ev in recent:
-                        if isinstance(ev, dict):
-                            event_strs.append(f"\"{self._truncate(ev.get('event', ''), 120, full)}\"")
-                        else:
-                            event_strs.append(f"\"{self._truncate(str(ev), 120, full)}\"")
-                    lines.append(f"  Recent: {' -> '.join(event_strs)}")
-                lines.append("")
-            if not full and len(party_items) > max_party:
-                lines.append(f"... and {len(party_items) - max_party} more party members (use --full)")
-                lines.append("")
-        else:
-            lines.append("(none)")
-            lines.append("")
+        party = {n: d for n, d in npcs.items()
+                 if isinstance(d, dict) and d.get('is_party_member')}
+        lines.append(ruleset.get().format_party_context_block(party, full))
 
         # --- Pending Consequences ---
         lines.append("--- PENDING CONSEQUENCES ---")

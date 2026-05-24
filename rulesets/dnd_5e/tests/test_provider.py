@@ -12,19 +12,6 @@ def test_import_registers_dnd5e_provider():
     assert p.name == "dnd_5e"
 
 
-@pytest.mark.parametrize(
-    "method_name,args",
-    [
-        ("format_character_block", ({},)),
-        ("format_party_context_block", ({}, False)),
-    ],
-)
-def test_placeholder_methods_raise_not_implemented(method_name, args):
-    p = DnD5eRuleset()
-    with pytest.raises(NotImplementedError):
-        getattr(p, method_name)(*args)
-
-
 class TestVocab:
     def test_validate_skill_valid(self):
         p = DnD5eRuleset()
@@ -145,6 +132,50 @@ class TestSheet:
         sheet = {'xp': 100}
         p.set_field(sheet, 'xp', '-50')
         assert sheet['xp'] == 0
+
+
+class TestContext:
+    def test_format_character_block_flat_shape(self):
+        p = DnD5eRuleset()
+        char = {
+            'name': 'PC', 'level': 3, 'race': 'Elf', 'class': 'Wizard',
+            'hp': {'current': 18, 'max': 20}, 'ac': 12, 'xp': 900, 'gold': 50,
+            'conditions': [],
+        }
+        out = p.format_character_block(char)
+        assert 'PC' in out
+        assert 'Level 3' in out
+        assert '18/20' in out
+        assert 'AC: 12' in out
+
+    def test_format_character_block_empty_returns_string(self):
+        p = DnD5eRuleset()
+        out = p.format_character_block({})
+        assert isinstance(out, str)
+
+    def test_format_party_context_block_wrapped_shape(self):
+        p = DnD5eRuleset()
+        party = {
+            'Carl': {
+                'description': 'a dwarf',
+                'is_party_member': True,
+                'character_sheet': {
+                    'hp': {'current': 25, 'max': 25}, 'ac': 18,
+                    'level': 5, 'race': 'Dwarf', 'class': 'Cleric',
+                    'conditions': [],
+                },
+                'events': [{'event': 'healed party'}],
+            }
+        }
+        out = p.format_party_context_block(party, full=False)
+        assert 'Carl' in out
+        assert 'Lvl 5 Dwarf Cleric' in out
+        assert '25/25' in out
+
+    def test_format_party_context_block_empty(self):
+        p = DnD5eRuleset()
+        out = p.format_party_context_block({}, full=False)
+        assert isinstance(out, str)
 
 
 class TestXP:

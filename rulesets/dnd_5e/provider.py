@@ -5,6 +5,7 @@ by delegating to sibling modules (sheet, xp, vocab, context).
 """
 from typing import Any, Dict, Optional, Tuple
 
+from . import context as _context
 from . import sheet as _sheet
 from . import vocab
 from . import xp as _xp
@@ -32,10 +33,10 @@ class DnD5eRuleset:
         return _sheet.format_party_summary(party)
 
     def format_character_block(self, character: Dict[str, Any]) -> str:
-        raise NotImplementedError
+        return _context.format_character_block(character)
 
     def format_party_context_block(self, party: Dict[str, Dict], full: bool) -> str:
-        raise NotImplementedError
+        return _context.format_party_context_block(party, full)
 
     def xp_threshold(self, level: int) -> Optional[int]:
         return _xp.xp_threshold(level)
