@@ -2,6 +2,21 @@ import pytest
 import json
 from pathlib import Path
 
+from lib import ruleset as _ruleset
+
+
+@pytest.fixture(autouse=True)
+def _snapshot_ruleset_provider():
+    """Snapshot lib.ruleset._provider before each test, restore after.
+
+    pytest runs the suite in one process; side-effecting imports (rulesets.dnd_5e)
+    leave global state. Without snapshotting, a test that clears _provider would
+    poison every following test.
+    """
+    saved = _ruleset._provider
+    yield
+    _ruleset._provider = saved
+
 
 @pytest.fixture
 def minimal_campaign(tmp_path):

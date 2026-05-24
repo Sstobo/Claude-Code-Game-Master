@@ -2,11 +2,18 @@
 import pytest
 
 from lib import ruleset
+from lib import ruleset as _ruleset
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def _clear_provider():
-    """Local snapshot — module-level autouse in tests/conftest.py is added later."""
+    """Clear _provider to None before test, restore after.
+
+    Originally autouse=True; converted to explicit fixture now that
+    tests/conftest.py's _snapshot_ruleset_provider handles session-level
+    snapshotting. test_bootstrap_registers_dnd5e_by_default must NOT clear
+    the provider — it verifies the session-start bootstrap state.
+    """
     saved = ruleset._provider
     ruleset._provider = None
     yield
@@ -33,26 +40,38 @@ class _StubProvider:
     def validate_damage_type(self, d): ...
 
 
-def test_get_without_register_raises_runtime_error():
+def test_get_without_register_raises_runtime_error(_clear_provider):
     with pytest.raises(RuntimeError, match="No ruleset registered"):
         ruleset.get()
 
 
-def test_is_registered_reflects_state():
+def test_is_registered_reflects_state(_clear_provider):
     assert ruleset.is_registered() is False
     ruleset.register(_StubProvider())
     assert ruleset.is_registered() is True
 
 
-def test_register_then_get_returns_provider():
+def test_register_then_get_returns_provider(_clear_provider):
     p = _StubProvider()
     ruleset.register(p)
     assert ruleset.get() is p
 
 
-def test_re_register_replaces_provider():
+def test_re_register_replaces_provider(_clear_provider):
     p1 = _StubProvider()
     p2 = _StubProvider()
     ruleset.register(p1)
     ruleset.register(p2)
     assert ruleset.get() is p2
+
+
+def test_bootstrap_registers_dnd5e_by_default():
+    """After plain `import lib`, the default DnD5e provider is registered.
+
+    The autouse fixture in tests/conftest.py preserves whatever was registered
+    at session start.
+    """
+    import lib  # noqa: F401
+    from rulesets.dnd_5e.provider import DnD5eRuleset
+    assert _ruleset.is_registered()
+    assert isinstance(_ruleset.get(), DnD5eRuleset)
