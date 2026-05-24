@@ -12,10 +12,25 @@ def test_import_registers_dnd5e_provider():
     assert p.name == "dnd_5e"
 
 
-def test_placeholder_methods_raise_not_implemented():
+@pytest.mark.parametrize(
+    "method_name,args",
+    [
+        ("init_sheet", ({},)),
+        ("update_hp", ({}, 0)),
+        ("update_xp", ({}, 0)),
+        ("set_field", ({}, "f", "v")),
+        ("format_npc_sheet", ({},)),
+        ("format_party_summary", ({},)),
+        ("format_character_block", ({},)),
+        ("format_party_context_block", ({}, False)),
+        ("xp_threshold", (1,)),
+        ("level_for_xp", (0,)),
+    ],
+)
+def test_placeholder_methods_raise_not_implemented(method_name, args):
     p = DnD5eRuleset()
     with pytest.raises(NotImplementedError):
-        p.init_sheet({})
+        getattr(p, method_name)(*args)
 
 
 class TestVocab:
@@ -45,6 +60,7 @@ class TestVocab:
         p = DnD5eRuleset()
         ok, err = p.validate_alignment("very confused")
         assert ok is False
+        assert "Invalid alignment" in err
 
     def test_validate_condition_valid(self):
         p = DnD5eRuleset()
