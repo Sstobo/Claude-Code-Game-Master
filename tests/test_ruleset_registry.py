@@ -2,7 +2,6 @@
 import pytest
 
 from lib import ruleset
-from lib import ruleset as _ruleset
 
 
 @pytest.fixture
@@ -73,5 +72,5 @@ def test_bootstrap_registers_dnd5e_by_default():
     """
     import lib  # noqa: F401
     from rulesets.dnd_5e.provider import DnD5eRuleset
-    assert _ruleset.is_registered()
-    assert isinstance(_ruleset.get(), DnD5eRuleset)
+    assert ruleset.is_registered()
+    assert isinstance(ruleset.get(), DnD5eRuleset)
