@@ -1,0 +1,49 @@
+"""Ruleset registry — the interface lib uses to delegate system-specific behavior.
+
+The 5E implementation lives in `rulesets/dnd_5e/` and registers itself on import.
+Alternate rulesets register the same way via `register()`.
+
+The `Ruleset` protocol is a typing artifact — `typing.Protocol` is not enforced
+at runtime even with `@runtime_checkable`. The contract is enforced by tests
+calling each hook with realistic inputs.
+"""
+from typing import Any, Dict, Optional, Protocol, Tuple
+
+
+class Ruleset(Protocol):
+    name: str
+
+    def init_sheet(self, npc_data: Dict[str, Any]) -> None: ...
+    def update_hp(self, sheet: Dict[str, Any], delta: int) -> Dict[str, Any]: ...
+    def update_xp(self, sheet: Dict[str, Any], delta: int) -> Dict[str, Any]: ...
+    def set_field(self, sheet: Dict[str, Any], field: str, value: Any) -> bool: ...
+    def format_npc_sheet(self, npc_data: Dict[str, Any]) -> Optional[str]: ...
+    def format_party_summary(self, party: Dict[str, Dict]) -> str: ...
+    def format_character_block(self, character: Dict[str, Any]) -> str: ...
+    def format_party_context_block(self, party: Dict[str, Dict], full: bool) -> str: ...
+    def xp_threshold(self, level: int) -> Optional[int]: ...
+    def level_for_xp(self, xp: int) -> int: ...
+    def validate_skill(self, skill: str) -> Tuple[bool, Optional[str]]: ...
+    def validate_alignment(self, alignment: str) -> Tuple[bool, Optional[str]]: ...
+    def validate_condition(self, condition: str) -> Tuple[bool, Optional[str]]: ...
+    def validate_damage_type(self, damage_type: str) -> Tuple[bool, Optional[str]]: ...
+
+
+_provider: Optional[Ruleset] = None
+
+
+def register(provider: Ruleset) -> None:
+    global _provider
+    _provider = provider
+
+
+def get() -> Ruleset:
+    if _provider is None:
+        raise RuntimeError(
+            "No ruleset registered. lib/__init__.py should import the default ruleset."
+        )
+    return _provider
+
+
+def is_registered() -> bool:
+    return _provider is not None
