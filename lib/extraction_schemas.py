@@ -11,12 +11,7 @@ NPC_SCHEMA = {
     "attitude": "",  # enum: friendly/neutral/hostile/suspicious/helpful
     "location_tags": [],  # Where they appear in the module
     "events": [],  # Optional: notable events or quests
-    "stats": {  # Optional combat stats
-        "ac": None,
-        "hp": None,
-        "cr": None,
-        "abilities": []
-    },
+    "stats": {},  # Opaque ruleset-specific stats — extractors emit whatever they find
     "dialogue": [],  # Optional: notable quotes or conversation topics
     "source": ""  # Document name/section
 }
