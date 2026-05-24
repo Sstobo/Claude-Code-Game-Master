@@ -1,7 +1,7 @@
 """DnD5eRuleset — implements lib.ruleset.Ruleset protocol.
 
-Phase 1: all hooks raise NotImplementedError. Subsequent phases fill in hooks
-by delegating to sibling modules (sheet, xp, vocab, context).
+All 14 hooks are implemented, delegating to sibling modules:
+sheet (HP/XP/stats), vocab (validators), xp (XP table), context (formatters).
 """
 from typing import Any, Dict, Optional, Tuple
 
