@@ -5,6 +5,8 @@ by delegating to sibling modules (sheet, xp, vocab, context).
 """
 from typing import Any, Dict, Optional, Tuple
 
+from . import vocab
+
 
 class DnD5eRuleset:
     name = "dnd_5e"
@@ -40,13 +42,13 @@ class DnD5eRuleset:
         raise NotImplementedError
 
     def validate_skill(self, skill: str) -> Tuple[bool, Optional[str]]:
-        raise NotImplementedError
+        return vocab.validate_skill(skill)
 
     def validate_alignment(self, alignment: str) -> Tuple[bool, Optional[str]]:
-        raise NotImplementedError
+        return vocab.validate_alignment(alignment)
 
     def validate_condition(self, condition: str) -> Tuple[bool, Optional[str]]:
-        raise NotImplementedError
+        return vocab.validate_condition(condition)
 
     def validate_damage_type(self, damage_type: str) -> Tuple[bool, Optional[str]]:
-        raise NotImplementedError
+        return vocab.validate_damage_type(damage_type)
