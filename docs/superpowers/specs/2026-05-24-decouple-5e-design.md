@@ -2,376 +2,376 @@
 
 **Date:** 2026-05-24
 **Branch:** `refactor/decouple-5E`
-**Scope:** Mechanical decoupling of 5E from `lib/`. Thematic content out of scope per user priority.
-**Status:** Revised after adversarial review (2026-05-24). Notable revisions:
-- Substrate wiring split into its own Phase 0 (the middleware dispatch system is dormant today, not just "called but inert").
-- Added migration story for legacy campaigns.
-- Added minimal ruleset enforcement at the module-loader (last-ruleset disable + incompatible_with activation check).
-- `session_manager.py` added to scope.
-- Dropped the "data-only XP fallback" — full extraction.
-- `status`/`list` now use pre-dispatch with module-owned routing, not post-hook append.
+**Scope:** Logical decoupling of 5E mechanics from `lib/`. Thematic content out of scope per user priority.
+**Status:** Rewritten after second adversarial review revealed a wrong architectural direction. Previous draft proposed reviving deleted bash middleware (commit `b0a8960` removed it deliberately). This revision uses an in-process Python registry — no bash middleware involved, no `tools/` changes, no `module_loader` changes.
 
 ## Problem
 
-`lib/` is documented in CLAUDE.md as "upstream CORE only — no custom features." Several modules in it bake in D&D 5E assumptions:
+`lib/` is documented in `CLAUDE.md` as "upstream CORE only — no custom features." Several modules in it bake in D&D 5E assumptions:
 
-- `lib/npc_manager.py` — `PARTY_MEMBER_DEFAULTS` hardcodes STR/DEX/CON/INT/WIS/CHA, AC, HP, attack_bonus, damage. Methods `set_npc_stat`, `update_npc_hp`, `update_npc_xp`, `format_party_status` assume 5E sheet shape.
+- `lib/npc_manager.py` — `PARTY_MEMBER_DEFAULTS` hardcodes STR/DEX/CON/INT/WIS/CHA, AC, HP, attack_bonus, damage. Methods `set_npc_stat`, `update_npc_hp`, `update_npc_xp`, `format_party_status` assume the 5E sheet shape.
 - `lib/player_manager.py` — `XP_THRESHOLDS` (lines 22-43) and level-up logic (lines 126, 130, 240-261) baked in.
 - `lib/validators.py` — `validate_skill`, `validate_alignment`, `validate_condition`, `validate_damage_type` use 5E word lists.
 - `lib/schemas.py` — `validate_npc` checks `character_sheet.hp` is a `{current, max}` dict.
 - `lib/extraction_schemas.py` — NPC extraction schema has explicit `hp` slot.
-- `lib/session_manager.py` (lines 365-406) — `get_full_context` reads `character.level/race/class/hp/ac/xp` and `npc.character_sheet.hp/ac/level` directly to format the CHARACTER and PARTY MEMBERS sections of session context.
+- `lib/session_manager.py:365-406` — `get_full_context` reads `character.level/race/class/hp/ac/xp` and `npc.character_sheet.hp/ac/level` to format CHARACTER and PARTY MEMBERS context blocks.
 
-`features/` (character-creation, spells, rules, gear, loot, dnd-api) is already 5E-isolated — SRD-API integrations with no dispatch into core tools. Out of scope for this refactor.
+`features/` (character-creation, spells, rules, gear, loot, dnd-api) is already 5E-isolated — SRD-API integrations with no dispatch into core tools. Out of scope.
 
-### Middleware substrate status
+### Why not bash middleware
 
-CLAUDE.md and TODO.md describe a middleware system where CORE tools delegate to modules via `dispatch_middleware`. **Audit finding: this is aspirational, not active.** `grep -rn dispatch_middleware tools/` returns zero matches. The implementation exists in `.claude/modules/infrastructure/common-advanced.sh` (lines 27, 48, 64) but no `tools/` script sources that file or calls the dispatch functions. World-travel's middleware (`.claude/modules/world-travel/middleware/dm-session.sh`) is dead code at runtime — `tools/dm-session.sh` calls `lib/session_manager.py` directly.
+The middleware substrate (`.claude/modules/infrastructure/common-advanced.sh` — `dispatch_middleware`, `dispatch_middleware_post`, `dispatch_middleware_help`) exists but is dormant: `grep -rn dispatch_middleware tools/` returns zero matches. Commit `b0a8960` ("refactor: vanilla/advanced mode separation") deliberately stripped the middleware wiring from `tools/common.sh` to revert CORE to upstream shape. Reviving it would re-divergence CORE from upstream and undo a deliberate architectural decision by the upstream author.
 
-This refactor therefore must wire the substrate, not extend it.
+The user intends to contribute this work upstream. Restoring middleware would require arguing against the upstream author's own deletion. An in-process Python registry adds a thin abstraction inside `lib/` without touching `tools/`, `module_loader.py`, or any deleted infrastructure — easier defense at upstream review.
+
+### Why not physical isolation in lib/rulesets/
+
+Considered: `lib/rulesets/dnd_5e/` as a sub-package of lib that lib imports by default. Rejected because the user's stated goal is *logical* decoupling. A sub-package of lib that lib imports is still a hard dependency of CORE on 5E — it just renames the file. Logical decoupling requires lib/ to depend only on an interface, with the 5E implementation reachable but not imported by lib/.
 
 ## Goal
 
-Strip 5E specifics from `lib/`. Move them to a new `.claude/modules/dnd-5e/` ruleset module. Activate the existing middleware dispatch substrate. No new abstractions.
+Strip 5E specifics from `lib/`. Move them to a `rulesets/dnd_5e/` Python package that registers as the active ruleset via a registry interface in `lib/ruleset.py`. `lib/` calls the registered provider via hook methods. Alternate rulesets register the same way.
 
 ## Non-Goals
 
-- Inventing a `GameSystem` ABC, `Ruleset` protocol, or rule-engine registry.
+- Bash middleware revival or any change to `tools/`, `tools/common.sh`, `module_loader.py`, or `.claude/modules/infrastructure/`.
 - Refactoring `features/`.
 - Touching `lib/dice.py` (notation is generic).
 - Touching thematic content (plot hooks, narrator styles, etc.).
 - Building an alternate ruleset right now. The design must *enable* one, not ship one.
-- Auditing the RAG layer for residual coupling — noted as follow-up.
+- Auditing the RAG layer for residual 5E coupling — noted as follow-up.
+- Reorganizing the vanilla/advanced command split. Registry works in both unchanged.
 
 ## Architecture
 
-### Two slots, both already exist
+### Three components
 
-1. **`lib/` — system-agnostic core**: entities (NPCs, locations, plots, sessions, time), generic validators (name, dice notation, attitude), opaque storage for system-specific data.
-2. **`.claude/modules/dnd-5e/` — ruleset module**: 5E character sheet, XP table + level-up, condition/skill/alignment vocab, party-member promotion semantics, formatting that knows about HP/AC/STR.
+1. **`lib/ruleset.py`** — registry + `Ruleset` protocol. Pure interface, zero 5E knowledge.
+2. **`rulesets/dnd_5e/`** — 5E provider. Implements the protocol. Auto-registers on import.
+3. **Bootstrap** — `lib/__init__.py` imports `rulesets.dnd_5e` so the default ruleset is always available when lib is loaded. Campaign-specific override via `campaign-overview.json["ruleset"]` is a follow-up; not implemented in this refactor.
 
-Tools in `tools/` route through `dispatch_middleware` first, then fall through to core lib. Modules can intercept any action and short-circuit.
-
-### Module dispatch — convention
-
-The dispatch contract (`common-advanced.sh:27-44`) is:
-
-- Module middleware exit 0 → handled, short-circuit core.
-- Module middleware exit 1 → declined, fall through to next module / core fallback.
-- `_module_enabled` gate per-module.
-
-**Convention codified by this design**: a module's middleware file for a tool MUST exit 1 for any action it does not explicitly handle. The `dnd-5e` middleware will own most `dm-npc.sh` actions after decoupling (~9 of 14); the few it does not own (`create`, `update`, `enhance`, `tag-*`, `list` after sheet merge) fall through. Module authors who write `exit 0` on unknown actions silently swallow core actions.
-
-Every tool that calls `dispatch_middleware` MUST also call `dispatch_middleware_help` in its help block. No exceptions — paired rule.
-
-### Ruleset vs. add-on module
-
-Module-loader fields cover everything needed:
-
-| Need | Field | Value for `dnd-5e` |
-|---|---|---|
-| Active by default in new campaigns | `enabled_by_default` | `true` |
-| Categorization (load-bearing, see enforcement below) | `category` | `"ruleset"` |
-| Exactly one ruleset active | `incompatible_with` | `[]` initially (no alt rulesets); future rulesets list `dnd-5e` here |
-| Hard dependency from other modules | `dependencies` | other modules may require `dnd-5e` if they assume HP/AC |
-
-#### Ruleset enforcement (~10 lines in `module_loader.set_campaign_module`)
-
-Two checks, both keyed off `category == "ruleset"`:
-
-1. **Last-ruleset disable check**: when disabling a module with `category: "ruleset"`, refuse if no other enabled module has `category: "ruleset"`. Error: `[ERROR] Cannot disable last active ruleset. Enable another ruleset first.`
-2. **Symmetric activation check**: when activating a module with `category: "ruleset"`, check `incompatible_with` already enforced by the loader. The new ingredient: also refuse if another `category: "ruleset"` is already active and the new one does not list it in `incompatible_with` (defensive — two rulesets can't be silently co-active).
-
-`category` becomes load-bearing once these checks land. Documentation must reflect this.
-
-### Migration for existing campaigns
-
-The substrate has never been wired, so existing campaigns have whatever `campaign-overview.json` they were created with. Three cases:
-
-| Campaign state | `modules` key behavior | Action |
-|---|---|---|
-| `modules` key absent | `get_campaign_modules` writes `get_default_modules()` on first read (existing behavior, line 130-133) | Phase 1 default includes `dnd-5e: true`. No additional code needed. |
-| `modules` key present and contains `dnd-5e` | Honored as-is | No action. |
-| `modules` key present but missing `dnd-5e` (created during v1 module era, before this refactor) | Module remains disabled silently → 5E commands would fail | **Backfill (this design)** |
-
-**Backfill logic** lives in `module_loader.get_campaign_modules`. On every read:
+### Registry interface (`lib/ruleset.py`)
 
 ```python
-mods = data.get("modules", {})
-if "modules" in data and "dnd-5e" not in mods:
-    # Pre-existing campaign that predates dnd-5e module.
-    # Backfill iff campaign has 5E-shape data.
-    if _has_5e_shape(campaign_dir):
-        mods["dnd-5e"] = True
-        data["modules"] = mods
-        self._save_overview(path, data)
+# lib/ruleset.py
+from typing import Protocol, Optional, Any, Dict
+
+class Ruleset(Protocol):
+    name: str
+    def init_sheet(self, npc_data: Dict[str, Any]) -> None: ...
+    def update_hp(self, sheet: Dict[str, Any], delta: int) -> Dict[str, Any]: ...
+    def update_xp(self, sheet: Dict[str, Any], delta: int) -> Dict[str, Any]: ...
+    def set_field(self, sheet: Dict[str, Any], field: str, value: Any) -> bool: ...
+    def format_npc_sheet(self, npc_data: Dict[str, Any]) -> Optional[str]: ...
+    def format_party_summary(self, party: Dict[str, Dict]) -> str: ...
+    def format_character_block(self, character: Dict[str, Any]) -> str: ...
+    def format_party_context_block(self, party: Dict[str, Dict], full: bool) -> str: ...
+    def xp_threshold(self, level: int) -> Optional[int]: ...
+    def level_for_xp(self, xp: int) -> int: ...
+    def validate_skill(self, skill: str) -> tuple[bool, Optional[str]]: ...
+    def validate_alignment(self, alignment: str) -> tuple[bool, Optional[str]]: ...
+    def validate_condition(self, condition: str) -> tuple[bool, Optional[str]]: ...
+    def validate_damage_type(self, damage_type: str) -> tuple[bool, Optional[str]]: ...
+    def normalize_extracted_stats(self, stats: Dict[str, Any]) -> Dict[str, Any]: ...
+
+_provider: Optional[Ruleset] = None
+
+def register(provider: Ruleset) -> None:
+    global _provider
+    _provider = provider
+
+def get() -> Ruleset:
+    if _provider is None:
+        raise RuntimeError(
+            "No ruleset registered. lib/__init__.py should import the default ruleset."
+        )
+    return _provider
+
+def is_registered() -> bool:
+    return _provider is not None
 ```
 
-`_has_5e_shape(campaign_dir)` returns true if:
-- `npcs.json` contains any entry with `is_party_member: true` or `character_sheet`, OR
-- `character.json` exists with any of `hp`, `ac`, `level` fields populated.
+Single global provider per Python process. lib bootstrap registers default; alternate rulesets call `register()` to swap.
 
-Backfill is idempotent: once `dnd-5e` is written into `modules`, the check short-circuits. If the user later disables it explicitly (`dnd-5e: false`), the check also short-circuits (key present, value false ≠ absent).
+Hook surface ~15 methods. Not the full 5E API — only what lib needs to call. Methods that are purely internal to 5E (e.g., a `roll_initiative` helper) live in `rulesets/dnd_5e/` and are never called from lib.
+
+### Provider (`rulesets/dnd_5e/`)
+
+```
+rulesets/
+├── __init__.py                 (empty)
+└── dnd_5e/
+    ├── __init__.py             (registers provider on import)
+    ├── provider.py             (DnD5eRuleset class implementing protocol)
+    ├── sheet.py                (PARTY_MEMBER_DEFAULTS, init/update/set/format)
+    ├── xp.py                   (XP_THRESHOLDS, level_for_xp, xp_threshold)
+    ├── vocab.py                (validate_skill/alignment/condition/damage_type, word lists)
+    ├── context.py              (format_character_block, format_party_context_block)
+    └── tests/
+        └── test_provider.py
+```
+
+`rulesets/dnd_5e/__init__.py`:
+
+```python
+from lib.ruleset import register
+from .provider import DnD5eRuleset
+
+register(DnD5eRuleset())
+```
+
+Side-effecting import — registration happens at import time. Convention noted in the file's docstring.
+
+### Bootstrap (`lib/__init__.py`)
+
+Currently empty (0 bytes). Becomes:
+
+```python
+# lib/__init__.py
+# Bootstrap default ruleset. Side-effecting import — registers DnD5eRuleset
+# with lib.ruleset. Alternate rulesets can call lib.ruleset.register() to swap.
+import rulesets.dnd_5e  # noqa: F401
+```
+
+Project root must be on sys.path for `rulesets.dnd_5e` to import. The existing `sys.path.insert(0, str(Path(__file__).parent))` in each `lib/*.py` ensures lib/ is importable but not the project root. Two paths:
+
+- Adjust the sys.path insertion in lib/* to also include `Path(__file__).parent.parent` (project root). Small one-line addition where the existing insertion lives.
+- Or: when invoked via tools/, `$PYTHON_CMD` already runs from project root (since `tools/common.sh` resolves `PROJECT_ROOT`); use `uv run python lib/npc_manager.py` from project root and Python's default cwd-on-path resolves `rulesets`.
+
+Default: `uv run python` from PROJECT_ROOT (tools already do this). Verify in Phase 1 that `import rulesets.dnd_5e` succeeds from `lib/__init__.py` under the tool invocation paths. If not, add the parent insertion.
 
 ### What moves where
 
-#### NPC manager (`lib/npc_manager.py` — 948 lines)
+#### `lib/npc_manager.py` (948 lines)
 
-**Stays in lib** (system-agnostic NPC management):
-- `create_npc`, `update_npc`, `get_npc_status` (returns raw dict, no party-section formatting), `enhance_npc`
+**Stays in lib** (system-agnostic):
+- `create_npc`, `update_npc`, `get_npc_status`, `enhance_npc`
 - Tag management: `tag_location`, `untag_location`, `tag_quest`, `untag_quest`, `get_tags`
-- `set_party_member_flag(name, bool)` — new minimal method, just toggles `is_party_member`. No sheet logic.
-- Opaque `character_sheet` dict storage (lib does not interpret contents)
-- Equipment list as `list[str]` (no slot/weight semantics — `inventory-system` module owns those)
-- Conditions list as `list[str]` (validation moves out)
-- `list_npcs` returns raw dicts; module merges sheet info on output
-- `create_batch`
+- `is_party_member` flag toggle
+- Opaque `character_sheet` dict storage (lib doesn't interpret contents)
+- Equipment list, conditions list (vocab validation moves out; storage stays)
+- `list_npcs`, `create_batch`
 
-**Moves to `.claude/modules/dnd-5e/lib/npc_5e.py`**:
+**Becomes hook calls in lib**:
+- `promote_to_party_member` keeps the `is_party_member = True` toggle, calls `ruleset.init_sheet(npc_data)` for the sheet
+- `update_npc_hp` → `ruleset.update_hp(sheet, amount)`
+- `update_npc_xp` → `ruleset.update_xp(sheet, amount)`
+- `set_npc_stat` → `ruleset.set_field(sheet, field, value)`
+- `format_npc_status` party-member section → `ruleset.format_npc_sheet(npc_data)` (returns None if NPC isn't a party member or ruleset has no formatting for the state)
+- `format_party_status` → `ruleset.format_party_summary(party)`
+
+**Moves to `rulesets/dnd_5e/sheet.py`**:
 - `PARTY_MEMBER_DEFAULTS`
-- `promote_to_party_member` 5E sheet init (calls core `set_party_member_flag(true)` first, then writes sheet)
-- `update_npc_hp` (HP-as-{current,max} semantics)
-- `update_npc_xp`
-- `set_npc_stat` field semantics (`ac`, `level`, `class`, `race`, `attack_bonus`, `damage`, `hp_max`)
-- `update_npc_equipment`, `update_npc_condition`, `update_npc_feature` (5E vocab validation)
-- 5E formatting for `format_npc_status` (party member section)
-- `format_party_status`
+- The actual sheet initialization, HP-as-{current,max} update logic, field-name semantics (`ac`, `level`, `class`, `race`, `attack_bonus`, `damage`, `hp_max`), 5E formatters
 
-**Tool routing**: `tools/dm-npc.sh` adds the dispatch call after `require_active_campaign`. Module ships `middleware/dm-npc.sh` that handles `promote`, `hp`, `xp`, `set`, `equip`, `unequip`, `condition`, `feature`, `party`, `status`, `list`. The middleware exits 1 for `create`, `update`, `enhance`, `tag-*` → core fallback.
+`update_npc_equipment`, `update_npc_condition`, `update_npc_feature`: equipment list mutations are generic (list of strings). Vocab validation (is "poisoned" a valid condition?) calls `ruleset.validate_condition(c)`. The mutation stays in lib.
 
-For `status`: module middleware calls core `get_npc_status` (raw data), formats system-agnostic block, appends 5E sheet section if party member, prints combined, exits 0.
+#### `lib/player_manager.py` (766 lines)
 
-For `list`: module middleware calls core `list_npcs`, merges per-entry sheet info into the JSON before printing.
-
-Pre-dispatch model is uniform — no `.post` hooks for output assembly.
-
-#### Player manager (`lib/player_manager.py` — 766 lines)
-
-XP coupling sized: 5 sites total (`XP_THRESHOLDS` definition at line 22-43, references at lines 126, 130, 240, 248). Tractable. Full extraction.
+XP coupling: 5 sites (`XP_THRESHOLDS` at line 22-43; references at 126, 130, 240, 248). Tractable.
 
 **Stays in lib**:
-- Character file load/save (single-`character.json` mode + legacy `characters/` dir mode)
-- Generic getters/setters that don't interpret 5E fields
+- Character file load/save (single-`character.json` + legacy `characters/` dir)
+- Generic getters/setters
+- Method skeleton for XP grant + level-up; calls `ruleset.xp_threshold(level)` and `ruleset.level_for_xp(xp)` for the table consultation
 
-**Moves to `.claude/modules/dnd-5e/lib/player_5e.py`**:
-- `XP_THRESHOLDS` table
-- Level-up logic (the `while new_level < 20 and current_xp >= XP_THRESHOLDS[new_level]` loop and surrounding)
-- Any method that consults XP threshold or computes level
+**Moves to `rulesets/dnd_5e/xp.py`**:
+- `XP_THRESHOLDS` array
+- `xp_threshold(level) -> int`, `level_for_xp(xp) -> int`
+- Any 5E-specific level-up side effects (none in current code beyond next-threshold computation)
 
-`tools/dm-player.sh` gets `dispatch_middleware "dm-player.sh" ...` wiring. Module ships `middleware/dm-player.sh` for XP/level actions.
+#### `lib/session_manager.py:365-406`
 
-#### Session manager context (`lib/session_manager.py:365-406`)
+`get_full_context` interleaves CHARACTER and PARTY MEMBERS blocks (5E-formatted) into session context.
 
-`get_full_context` interleaves a CHARACTER block and a PARTY MEMBERS block into session context output. Both read 5E sheet fields directly.
+**Approach**: lib emits the generic skeleton (header, time, recent events, locations, plot threads). Where the CHARACTER / PARTY blocks belong, lib calls `ruleset.format_character_block(character)` and `ruleset.format_party_context_block(party, full=...)`. Each returns a string (possibly empty if the ruleset has no opinion).
 
-**Approach**: pre-dispatch via `tools/dm-session.sh context`. Core `get_full_context` returns only system-agnostic blocks (header, time, recent events, locations, plot threads — and emits sentinel markers like `<!--RULESET:CHARACTER-->` and `<!--RULESET:PARTY-->` at the points where the ruleset-formatted blocks belong). Module's `middleware/dm-session.sh` (extending world-travel's existing `move`-handler to also handle `context`) intercepts `context`, calls core to get the skeleton, then renders the CHARACTER and PARTY sections at the sentinels using its own 5E formatter. Exit 0.
+**Moves to `rulesets/dnd_5e/context.py`**:
+- 5E CHARACTER block formatter (HP/AC/Level/Race/Class/XP/Gold line, Conditions line)
+- 5E PARTY MEMBERS block formatter (per-NPC `Lvl Race Class HP/AC` lines + recent events)
 
-If `dnd-5e` is disabled (alt ruleset active or none): that module's middleware fills the sentinels. If no ruleset is active (only possible if user defied the enforcement): sentinels are stripped, no character block rendered.
-
-#### Validators (`lib/validators.py`)
+#### `lib/validators.py`
 
 **Stays in lib**:
-- `validate_name`
-- `validate_attitude` (friendly/neutral/hostile — universal RPG concept)
-- `validate_dice` (notation parser, system-agnostic)
+- `validate_name`, `validate_attitude`, `validate_dice`
 
-**Moves to `.claude/modules/dnd-5e/lib/validators_5e.py`**:
-- `validate_skill`, `validate_alignment`, `validate_condition`, `validate_damage_type`
+**Moves to `rulesets/dnd_5e/vocab.py`**:
+- `validate_skill`, `validate_alignment`, `validate_condition`, `validate_damage_type` with their 5E word lists
 
-Verified zero callers in `lib/`, `tools/`, `features/`, `.claude/modules/`. Pure orphan extraction.
+Verified zero callers in `lib/`, `tools/`, `features/`, `.claude/modules/`. If a hidden caller surfaces in a deprecated path, restore a stub that delegates: `def validate_skill(s): return get_ruleset().validate_skill(s)`. Default position: clean removal.
 
-#### Schemas (`lib/schemas.py`)
+#### `lib/schemas.py`
 
-`validate_npc` currently checks `character_sheet.hp` is a dict (lines ~79-95). After refactor: treat `character_sheet` as opaque dict (no type-shape check). 5E module performs HP-shape validation in `npc_5e.py` on `promote`/`set`/`hp` paths.
+`validate_npc` checks `character_sheet.hp` shape. Replace with: `character_sheet` must be a dict if present (no inner-shape check). 5E sheet shape validation runs in `rulesets/dnd_5e/sheet.py` on the action paths that touch it (init, hp update, set field).
 
-**Accepted looseness**: direct JSON edits, batch creates that bypass the module, or extraction outputs land in `npcs.json` without HP-shape validation. The module re-validates at first action that touches the sheet. Per YAGNI, no separate validation-hook dispatch added.
+**Accepted looseness**: direct JSON edits, batch creates that don't go through 5E sheet methods, extraction outputs can land in `npcs.json` without HP-shape validation. The ruleset re-validates at first action that touches the sheet. Per YAGNI, no separate validation-hook added.
 
-#### Extraction schemas (`lib/extraction_schemas.py`)
+#### `lib/extraction_schemas.py`
 
-NPC schema's `hp` slot becomes opaque `stats: dict`. The shape is unconstrained — extractors emit whatever they find. **The 5E module's NPC initialization (`promote_to_party_member` or first-use normalization) is responsible for translating extracted `stats` dict into the 5E sheet shape.** Without that normalization step, downstream 5E code would have to parse unconstrained input — moving the responsibility into the ruleset module keeps the contract clean.
+NPC schema's `hp` slot becomes `stats: dict` (opaque shape). Extractors emit whatever they find. `ruleset.normalize_extracted_stats(stats)` converts to provider-specific sheet shape on consumption — called by `rulesets/dnd_5e/sheet.py` when constructing a sheet from extraction output.
 
 ### Wiring summary
 
 ```
-tools/dm-npc.sh
-  ├── require_active_campaign
-  ├── dispatch_middleware "dm-npc.sh" "$ACTION" "$@" && exit $?   ← Phase 0
-  └── (core fallback: lib/npc_manager.py — system-agnostic actions only)
-
-tools/common.sh
-  └── source "$PROJECT_ROOT/.claude/modules/infrastructure/common-advanced.sh"   ← Phase 0
-
-.claude/modules/dnd-5e/
-  ├── module.json                       (category: ruleset, enabled_by_default: true)
-  ├── middleware/
-  │   ├── dm-npc.sh                     (promote/hp/xp/set/equip/condition/feature/party/status/list)
-  │   ├── dm-player.sh                  (XP/level actions)
-  │   └── dm-session.sh                 (context renderer — extends or coexists with world-travel's same-name file*)
-  ├── lib/
-  │   ├── npc_5e.py
-  │   ├── player_5e.py
-  │   └── validators_5e.py
-  └── config/
-      ├── xp_thresholds.json
-      ├── skills.json
-      ├── conditions.json
-      ├── alignments.json
-      └── damage_types.json
+Claude
+  └── bash tools/dm-npc.sh promote "Carl"          (UNCHANGED tool)
+       └── uv run python lib/npc_manager.py promote Carl
+            ├── import lib.ruleset                  (Python in-process)
+            ├── import rulesets.dnd_5e              (via lib/__init__.py side-effect)
+            │   └── lib.ruleset.register(DnD5eRuleset())
+            ├── set is_party_member=True
+            └── lib.ruleset.get().init_sheet(npc_data)
+                 └── rulesets/dnd_5e/sheet.py writes PARTY_MEMBER_DEFAULTS
 ```
 
-*Note on the `dm-session.sh` collision: world-travel already has `middleware/dm-session.sh` for `move`. dispatch iterates all matching middlewares; world-travel handles `move`, declines others (exit 1); dnd-5e handles `context`, declines others. Both modules co-exist on the same tool. Document this in `world-travel/middleware/dm-session.sh` once Phase 0 lands — it currently assumes it owns the file.
+No bash dispatch. No `tools/` change. No `module_loader.py` change. No `common.sh` change.
 
-### Extension to alternate rulesets — what this enables
+### Extension to alternate rulesets
 
-A future `modules/savage-worlds/` would:
-- Declare `"category": "ruleset"`, `"incompatible_with": ["dnd-5e"]`, `"enabled_by_default": false`
-- Ship its own `middleware/dm-npc.sh`, `dm-player.sh`, `dm-session.sh` for sheet/XP/context rendering
-- Ship its own `validators_*.py` for its vocab
-- Optionally provide a migration tool for converting 5E sheets to its format
+A future `rulesets/savage_worlds/` package implements `Ruleset` protocol and calls `lib.ruleset.register(SavageWorldsRuleset())`. To activate: change the import in `lib/__init__.py` (manual swap), or extend bootstrap to read `campaign-overview.json["ruleset"]` and import accordingly. The second option is the natural follow-up but is out of scope for this refactor — current scope ships with hardcoded default.
 
-No core changes required. That's the test of whether decoupling is real.
+Existing `.claude/modules/` system is orthogonal to the ruleset registry. Modules (custom-stats, world-travel, inventory-system, firearms-combat) continue to participate via their existing patterns (rules.md text loading + standalone CLI). The registry handles only the lib-internal CORE-to-ruleset hook surface.
 
 ## Data Flow
 
-### `dm-npc.sh promote "Carl"` after refactor
+### `dm-npc.sh promote "Carl"`
 
-1. Bash: `require_active_campaign` (core)
-2. Bash: `dispatch_middleware "dm-npc.sh" "promote" "Carl"`
-3. Loader checks `dnd-5e` is enabled → invokes `modules/dnd-5e/middleware/dm-npc.sh promote Carl`
-4. Module: calls `lib/npc_manager.py set-party-member Carl true` (core flag toggle), then `modules/dnd-5e/lib/npc_5e.py init-sheet Carl` (5E sheet)
-5. Exit 0
+1. `tools/dm-npc.sh promote Carl` → `uv run python lib/npc_manager.py promote Carl`
+2. Python startup: `import lib.npc_manager` → `import lib` → `lib/__init__.py` runs → `import rulesets.dnd_5e` → side-effect `register(DnD5eRuleset())`
+3. `npc_manager.py promote()`:
+   - `npcs[name]['is_party_member'] = True`
+   - `lib.ruleset.get().init_sheet(npcs[name])` → DnD5e writes `character_sheet` from defaults
+   - Save
 
-### `dm-npc.sh create "Grim" "blacksmith" "friendly"` after refactor
+### `dm-npc.sh create "Grim" "blacksmith" "friendly"`
 
-1. `require_active_campaign`
-2. `dispatch_middleware` — dnd-5e middleware doesn't handle `create` → exit 1
-3. No other modules respond → return 1 to core
-4. Core: `lib/npc_manager.py create` — system-agnostic NPC entry, no `character_sheet`
+1. `tools/dm-npc.sh create ...` → Python entry point
+2. `npc_manager.py create()`:
+   - Generic NPC entry written. No sheet. Ruleset not consulted (create is system-agnostic).
 
-### `dm-npc.sh status "Carl"` after refactor
+### `dm-npc.sh status "Carl"`
 
-1. `dispatch_middleware` for `status` → dnd-5e middleware:
-   - Calls `lib/npc_manager.py get-status-raw Carl` (returns dict)
-   - Formats system-agnostic block (description, attitude, tags, recent events)
-   - If `is_party_member`, calls `npc_5e.py format-sheet Carl` and appends
-   - Prints combined, exit 0
+1. Python entry point
+2. `npc_manager.py format_npc_status(name)`:
+   - Generic block: description, attitude, tags, events
+   - If `is_party_member`: appends `ruleset.format_npc_sheet(npc_data)` output (DnD5e returns the HP/AC/Stats/Equipment/Conditions/Features section as string; non-5E rulesets return their own or None)
 
-### `dm-session.sh context` after refactor
+### `dm-session.sh context`
 
-1. `dispatch_middleware "dm-session.sh" context` → dnd-5e middleware:
-   - Calls `lib/session_manager.py get-full-context-skeleton` (no CHARACTER/PARTY sections; sentinels in place)
-   - Calls `npc_5e.format-character-block`, `npc_5e.format-party-block`
-   - Substitutes sentinels, prints, exit 0
-2. World-travel's middleware/dm-session.sh saw `context` first, declined (exit 1) → dispatch continued to dnd-5e.
+1. Python entry point
+2. `session_manager.get_full_context(full)`:
+   - Generic header, time, recent events, locations, plot threads
+   - `ruleset.format_character_block(character)` inserted where CHARACTER section belongs
+   - `ruleset.format_party_context_block(party, full)` inserted where PARTY MEMBERS section belongs
 
 ## Error Handling
 
-- If `dnd-5e` disabled (e.g., user explicitly disabled it post-refactor without enabling a replacement): the last-ruleset enforcement (M1) blocks the disable. So this state is unreachable through the loader. If the user hand-edits `campaign-overview.json` to bypass: 5E commands fall through to core, core has no `promote/hp/etc.` handlers → tool prints `[ERROR] No active ruleset handles this command. Enable a ruleset module.` Exit 1.
-- Module middleware failures preserve exit code; user sees the module's error.
-- Existing 5E NPCs in `npcs.json` with populated `character_sheet`: no migration needed (sheet stays as opaque dict in core storage; module reads/writes via same path).
+- If no ruleset registered (bootstrap failure): `lib.ruleset.get()` raises `RuntimeError("No ruleset registered ...")`. Surfaces immediately on any action that consults the ruleset. Better than silent fallback to nothing.
+- If ruleset method returns None for a formatter call: lib treats as "no opinion, omit section." Consistent across all formatter hooks.
+- Existing 5E NPCs in `npcs.json` with populated `character_sheet`: no migration needed. `character_sheet` is opaque storage in lib; DnD5e ruleset reads/writes the same shape.
 
 ## Testing
 
-- **Existing test suite must pass with `dnd-5e` enabled** at every phase boundary. Primary correctness check.
-- **Phase 0 specifically**: audit test fixtures for `world-travel: true`. Wiring the substrate activates world-travel's middleware for the first time. If any fixture relies on world-travel's middleware being inert, that fixture fails. **Mitigation**: run `dm-session.sh move <loc>` end-to-end with world-travel enabled before merging Phase 0. If world-travel's middleware is broken/stale, decide: fix it in Phase 0 or temporarily skip its middleware loading.
-- **New test (Phase 1)**: disable `dnd-5e` for a test campaign by direct JSON edit (since enforcement prevents loader-based disable when last ruleset). Confirm `dm-npc.sh create/list/status/tag-*` still work; `promote/hp/set/etc.` print the no-ruleset error and exit 1. Confirm enforcement: `dm-module.sh deactivate dnd-5e` refuses with the "last ruleset" message.
-- **Migration test**: create a fixture campaign with `modules: {"world-travel": true}` (5E data present, no `dnd-5e` key). Read via `get_campaign_modules`. Assert `dnd-5e: true` backfilled. Re-read. Assert no double-backfill (idempotent).
-- **Lib purity check** (CI grep): `grep -rE "(\\bhp\\b|\\bAC\\b|STR|DEX|CON|INT|WIS|CHA|attack_bonus|XP_THRESHOLDS)" lib/` returns only opaque-dict storage references and string literals in deprecated/migration comments, no semantics.
-- **Validator extraction check**: `validate_skill`, `validate_alignment`, `validate_condition`, `validate_damage_type` removed from `lib/validators.py`. No import errors anywhere.
+- **Existing test suite must pass at every phase boundary** with default DnD5e ruleset registered. Primary correctness check. Behavior should match pre-refactor.
+- **Registry contract test**: register a mock ruleset, confirm `get()` returns it. Re-register, confirm it replaces. `is_registered()` reflects state.
+- **No-ruleset test**: clear registration in a fixture, call `npc_manager.promote_to_party_member` — confirm `RuntimeError` raised (not silent failure).
+- **Provider unit tests**: in `rulesets/dnd_5e/tests/`, exercise sheet init, HP update bounds, XP-to-level computation, vocab validation. Independent of lib.
+- **Vocab extraction check**: `validate_skill`, `validate_alignment`, `validate_condition`, `validate_damage_type` removed from `lib/validators.py`. No import errors.
+- **Lib purity check** (CI grep, post-Phase 5): `grep -rnE "(PARTY_MEMBER_DEFAULTS|XP_THRESHOLDS|charmed|frightened|acrobatics|lawful good|bludgeoning)" lib/` returns zero matches.
 
 ## Implementation Plan (Phased)
 
 Each phase commits independently. Tests pass at every boundary.
 
-### Phase 0 — substrate wiring (project-wide blast radius, isolated commit)
-- `tools/common.sh` sources `.claude/modules/infrastructure/common-advanced.sh`.
-- Add `dispatch_middleware "<tool>" "$ACTION" "$@" && exit $?` after `require_active_campaign` to: `dm-npc.sh`, `dm-player.sh`, `dm-session.sh`, `dm-location.sh`.
-- Add `dispatch_middleware_help "<tool>"` to each of those tools' help blocks (paired rule).
-- Audit world-travel: run `dm-session.sh move` end-to-end with world-travel enabled. Confirm behavior is what its docs claim. Fix any regression here, not in later phases.
-- All tests pass.
+### Phase 1 — registry + skeleton provider + bootstrap
 
-**Risk-isolated commit. Bisect anchor. If anything breaks weeks later, this is where it started.**
+- Create `lib/ruleset.py` with `Ruleset` protocol, `register`, `get`, `is_registered`. Empty protocol methods documented but no implementations needed yet — protocol is a typing artifact.
+- Create `rulesets/__init__.py` (empty) and `rulesets/dnd_5e/__init__.py` registering a placeholder `DnD5eRuleset` class whose methods raise `NotImplementedError`.
+- Add `import rulesets.dnd_5e` to `lib/__init__.py`. Verify import path resolves from tools/ invocations (Python `cwd` is project root via `uv run python`).
+- Tests pass — no code calls hook methods yet.
 
-### Phase 1 — dnd-5e skeleton + migration + enforcement
-- Create `.claude/modules/dnd-5e/` with `module.json` declaring `enabled_by_default: true`, `category: ruleset`.
-- No middleware files yet (or stub files that `exit 1` for all actions). Behavior unchanged.
-- Add `category: "ruleset"` to existing modules' `module.json` where applicable — none currently apply, so this is a no-op for now (documentation update only in `module.json` schema notes).
-- Add backfill logic to `module_loader.get_campaign_modules` (B2).
-- Add last-ruleset enforcement + symmetric activation check to `module_loader.set_campaign_module` (M1).
-- Tests pass. Migration test added.
+Sized small. Risk: import path resolution. Mitigation: bootstrap test in Phase 1 that runs `bash tools/dm-npc.sh list` (existing command) and confirms no `ImportError`.
 
-### Phase 2 — validators
-- Move `validate_skill`, `validate_alignment`, `validate_condition`, `validate_damage_type` from `lib/validators.py` to `modules/dnd-5e/lib/validators_5e.py`. Backed by JSON config files in `modules/dnd-5e/config/`.
-- Delete from `lib/validators.py`. No callers to update (verified zero matches repo-wide).
+### Phase 2 — validators extraction
+
+- Move `validate_skill`, `validate_alignment`, `validate_condition`, `validate_damage_type` from `lib/validators.py` to `rulesets/dnd_5e/vocab.py`.
+- Implement the four `validate_*` methods on `DnD5eRuleset`, delegating to vocab module.
+- Delete from `lib/validators.py`. Confirmed zero callers.
 - Tests pass.
 
-### Phase 3 — NPC 5E methods
-- Move `PARTY_MEMBER_DEFAULTS` + 5E methods to `modules/dnd-5e/lib/npc_5e.py`.
-- Strip from `lib/npc_manager.py`; leave `set_party_member_flag(name, bool)` and opaque `character_sheet` storage. Add raw-data getters (`get_status_raw`, `list_npcs_raw`) for module consumption.
-- Implement `modules/dnd-5e/middleware/dm-npc.sh` (pre-dispatch for `promote/hp/xp/set/equip/condition/feature/party/status/list`; `exit 1` for unhandled actions).
+### Phase 3 — NPC sheet operations
+
+- Move `PARTY_MEMBER_DEFAULTS` and the 5E logic of `promote_to_party_member`, `update_npc_hp`, `update_npc_xp`, `set_npc_stat`, `format_npc_status`, `format_party_status` from `lib/npc_manager.py` to `rulesets/dnd_5e/sheet.py`.
+- In `lib/npc_manager.py`, replace 5E inline logic with hook calls. Keep `is_party_member` toggle and opaque `character_sheet` storage in lib.
+- Implement matching methods on `DnD5eRuleset`.
+- `update_npc_equipment` / `condition` / `feature`: lib does list mutation; ruleset validates vocab. Vocab calls already added in Phase 2.
 - Tests pass.
 
-### Phase 4 — player XP + session_manager context (bundled)
-- Extract `XP_THRESHOLDS` + level-up logic from `lib/player_manager.py` to `modules/dnd-5e/lib/player_5e.py`. Sized at 5 sites; full extraction.
-- Strip CHARACTER and PARTY MEMBERS sections from `lib/session_manager.py:get_full_context`. Emit sentinels where the ruleset-formatted blocks belong.
-- Implement `modules/dnd-5e/middleware/dm-player.sh` (XP/level actions) and `modules/dnd-5e/middleware/dm-session.sh` (context renderer; declines `move` so world-travel handles it).
-- Tests pass. World-travel + dnd-5e co-existence on `dm-session.sh` verified.
+### Phase 4 — player XP + session context (bundled)
 
-### Phase 5 — schemas + extraction schemas
-- `lib/schemas.py:validate_npc` treats `character_sheet` as opaque dict. HP-shape check removed.
-- `lib/extraction_schemas.py` NPC schema's `hp` slot → `stats: dict` (opaque).
-- 5E module's `npc_5e.py` handles `stats` normalization on first-touch.
-- Tests pass. Lib purity grep check added to CI.
+- Move `XP_THRESHOLDS` and level-up logic from `lib/player_manager.py` to `rulesets/dnd_5e/xp.py`. Implement `xp_threshold`, `level_for_xp` on DnD5e provider. `player_manager` methods consult `ruleset.xp_threshold()` / `level_for_xp()` for the table.
+- Strip CHARACTER and PARTY MEMBERS formatting from `lib/session_manager.py:get_full_context`. Replace with `ruleset.format_character_block(...)` / `format_party_context_block(...)` calls.
+- Implement the two formatters in `rulesets/dnd_5e/context.py` and wire to provider.
+- Tests pass.
+
+Bundled because the data formats touched (character sheet + party sheet) are produced in Phase 3 and consumed here.
+
+### Phase 5 — schemas + extraction
+
+- `lib/schemas.py`: `validate_npc` checks `character_sheet` is a dict if present, drops inner-shape check.
+- `lib/extraction_schemas.py`: NPC `hp` slot → `stats: dict` (opaque). Document that ruleset normalizes.
+- DnD5e provider gains `normalize_extracted_stats` implementation: maps extracted dict to 5E sheet shape.
+- Lib purity grep added to CI.
+- Tests pass.
 
 ## File Touch Inventory
 
-Per user requirement of minimal refactor, full count:
-
 **Modified**:
-- `lib/npc_manager.py` (Phase 3 — large delta, ~half the methods move)
-- `lib/player_manager.py` (Phase 4 — 5 XP sites)
-- `lib/session_manager.py` (Phase 4 — `get_full_context` strip)
+- `lib/__init__.py` (Phase 1 — bootstrap import; currently empty)
+- `lib/ruleset.py` (Phase 1 — NEW; listed here for clarity though technically new)
 - `lib/validators.py` (Phase 2 — 4 functions removed)
+- `lib/npc_manager.py` (Phase 3 — 5E inline logic replaced with hook calls; ~half of methods affected)
+- `lib/player_manager.py` (Phase 4 — XP table + level-up consult hooks)
+- `lib/session_manager.py` (Phase 4 — `get_full_context` formatter delegation)
 - `lib/schemas.py` (Phase 5 — relax NPC validation)
-- `lib/extraction_schemas.py` (Phase 5 — `hp` → `stats`)
-- `tools/common.sh` (Phase 0 — source common-advanced.sh)
-- `tools/dm-npc.sh`, `tools/dm-player.sh`, `tools/dm-session.sh`, `tools/dm-location.sh` (Phase 0 — dispatch + help wiring)
-- `.claude/modules/module_loader.py` (Phase 1 — backfill + enforcement)
-- `.claude/modules/world-travel/middleware/dm-session.sh` (Phase 4 — declare co-existence with dnd-5e)
-- `tests/conftest.py` or per-test fixtures (test additions)
-- `docs/python-modules-api.md` (update with module dispatch contract)
+- `lib/extraction_schemas.py` (Phase 5 — `hp` → opaque `stats`)
+- `tests/conftest.py` or per-test fixtures (registry fixture additions)
 
 **New**:
-- `.claude/modules/dnd-5e/module.json`
-- `.claude/modules/dnd-5e/middleware/dm-npc.sh`
-- `.claude/modules/dnd-5e/middleware/dm-player.sh`
-- `.claude/modules/dnd-5e/middleware/dm-session.sh`
-- `.claude/modules/dnd-5e/lib/npc_5e.py`
-- `.claude/modules/dnd-5e/lib/player_5e.py`
-- `.claude/modules/dnd-5e/lib/validators_5e.py`
-- `.claude/modules/dnd-5e/config/xp_thresholds.json`
-- `.claude/modules/dnd-5e/config/skills.json`
-- `.claude/modules/dnd-5e/config/conditions.json`
-- `.claude/modules/dnd-5e/config/alignments.json`
-- `.claude/modules/dnd-5e/config/damage_types.json`
+- `lib/ruleset.py`
+- `rulesets/__init__.py`
+- `rulesets/dnd_5e/__init__.py`
+- `rulesets/dnd_5e/provider.py`
+- `rulesets/dnd_5e/sheet.py`
+- `rulesets/dnd_5e/xp.py`
+- `rulesets/dnd_5e/vocab.py`
+- `rulesets/dnd_5e/context.py`
+- `rulesets/dnd_5e/tests/test_provider.py`
 
-Total: ~13 modified + ~12 new = ~25 files touched across 6 phases. That's the honest size of "decouple 5E while wiring a dormant substrate" — not the ~16 the first draft implied.
+**Untouched**:
+- `tools/*` (no change)
+- `tools/common.sh` (no change)
+- `.claude/modules/module_loader.py` (no change)
+- `.claude/modules/infrastructure/common-advanced.sh` (still dormant, fine)
+- `lib/dice.py`, `lib/colors.py`, generic entity managers' generic methods
+
+Total: ~7 modified + ~8 new = ~15 files. Smaller than the bash-middleware design (~25) and zero divergence from upstream `tools/`.
 
 ## Risks & Mitigations
 
 | Risk | Mitigation |
 |---|---|
-| Phase 0 wiring activates dormant world-travel middleware → unexpected behavior | World-travel canary test in Phase 0 acceptance criteria. Fix or skip its middleware loading in Phase 0, not later. |
-| Legacy campaign loses 5E commands after upgrade | Backfill in `get_campaign_modules` (B2), idempotent. Tested. |
-| User disables `dnd-5e` and breaks campaign | Last-ruleset enforcement at loader (M1). Hand-edited JSON bypass surfaces clear error message. |
-| Validator removal breaks an import not caught by grep | Phase 2 is small + tested. Run full test suite. If a hidden caller exists, restore stub that imports from module. |
-| `lib/schemas.py` validation loss on direct JSON edits | Accepted looseness; module re-validates on first action. No separate validation-hook dispatch added per YAGNI. |
-| Player manager XP extraction larger than expected | Sized at 5 sites — verified. If discovery during Phase 4 reveals more coupling, escalate phase scope before merging. |
-| World-travel and dnd-5e collide on `dm-session.sh` middleware | Dispatch iterates all matching middlewares; each declines actions it doesn't own. Both modules document co-existence. |
-| RAG / context-injection paths read 5E fields directly | Out of scope this refactor. Tracked as follow-up. Grep audit (`grep -rE "(character_sheet|\bhp\b|\bac\b|\bxp\b)" lib/ tools/ --include="*.py" --include="*.sh"`) post-Phase-5 to confirm scope of follow-up. |
+| `import rulesets.dnd_5e` fails because project root not on sys.path | Phase 1 acceptance: bootstrap test that runs existing CLI commands and confirms no `ImportError`. If broken, add `Path(__file__).parent.parent` to sys.path inserts that already exist in `lib/*.py`. |
+| Side-effecting import (`__init__.py` registers on import) is fragile to import-order changes | Tolerable — the only entry point that imports lib is the lib/ Python files invoked by tools. Documented at top of `rulesets/dnd_5e/__init__.py`. Failure mode is loud (`RuntimeError` from `get()`), not silent. |
+| Tests run in different process configurations and lose registration | Each Python process boots fresh via `uv run python`; `lib/__init__.py` runs on first `import lib.*`. Registration is idempotent (last `register()` wins). Add fixture in `conftest.py` to reset between tests if cross-contamination surfaces. |
+| Validator removal breaks an import not caught by grep | Phase 2 ships in isolation. If a hidden caller surfaces, restore stub: `def validate_skill(s): return get_ruleset().validate_skill(s)`. |
+| Validation looseness on direct JSON edits / extraction output | Accepted per YAGNI. Ruleset re-validates on first action that touches the sheet. |
+| `Ruleset` protocol surface grows during implementation | Each phase adds the methods that phase needs; protocol is documented as "what lib currently calls," not "everything a ruleset might want." Resist adding methods speculatively. |
+| RAG / context-injection paths read 5E fields directly | Out of scope. Tracked as follow-up. `grep -rnE "(character_sheet|\bhp\b|\bac\b|\bxp\b)" lib/ tools/ --include="*.py" --include="*.sh"` post-Phase-5 confirms residual scope. |
+| Upstream maintainer rejects the registry pattern as unwanted abstraction | The PR makes the case: alternate rulesets become possible without `lib/` changes. If still rejected, the design lives as a downstream patch — registry pattern adds one file (`lib/ruleset.py`) plus a one-line `lib/__init__.py`; minimal cherry-pick surface. |
 
 ## YAGNI Boundary
 
-This design adds zero new abstractions. The module-loader is the plugin registry. Middleware dispatch is the hook system. `category: "ruleset"` is a string field read by ~10 lines of enforcement code, not a new type.
+This design adds one abstraction: the `Ruleset` protocol with ~15 hook methods, scoped exactly to what `lib/` currently calls. No `Ruleset` ABC inheritance hierarchy. No system-aware UI prompts. No multi-system character conversion. No middleware revival.
 
-A future need for richer ruleset orchestration (multi-system character conversion, system-aware UI prompts) can introduce abstractions when the need is concrete. Not now.
+`campaign-overview.json["ruleset"]` field for per-campaign ruleset selection is the natural next step but **not in this refactor**. Default DnD5e bootstrap covers all current campaigns. Adding the field is ~5 lines in `lib/__init__.py` once a second ruleset actually exists.
