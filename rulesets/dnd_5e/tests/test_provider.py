@@ -15,12 +15,6 @@ def test_import_registers_dnd5e_provider():
 @pytest.mark.parametrize(
     "method_name,args",
     [
-        ("init_sheet", ({},)),
-        ("update_hp", ({}, 0)),
-        ("update_xp", ({}, 0)),
-        ("set_field", ({}, "f", "v")),
-        ("format_npc_sheet", ({},)),
-        ("format_party_summary", ({},)),
         ("format_character_block", ({},)),
         ("format_party_context_block", ({}, False)),
         ("xp_threshold", (1,)),
@@ -71,3 +65,72 @@ class TestVocab:
         p = DnD5eRuleset()
         ok, _ = p.validate_damage_type("fire")
         assert ok is True
+
+
+class TestSheet:
+    def test_init_sheet_writes_defaults(self):
+        p = DnD5eRuleset()
+        npc = {'description': 'Carl', 'attitude': 'friendly'}
+        p.init_sheet(npc)
+        sheet = npc['character_sheet']
+        assert sheet['hp'] == {'current': 10, 'max': 10}
+        assert sheet['ac'] == 10
+        assert sheet['level'] == 1
+        assert sheet['stats'] == {'str': 10, 'dex': 10, 'con': 10,
+                                  'int': 10, 'wis': 10, 'cha': 10}
+        assert sheet['xp'] == 0
+
+    def test_init_sheet_isolates_nested_dicts(self):
+        """Repeated init_sheet calls must not share mutable references."""
+        p = DnD5eRuleset()
+        a, b = {}, {}
+        p.init_sheet(a)
+        p.init_sheet(b)
+        a['character_sheet']['hp']['current'] = 1
+        assert b['character_sheet']['hp']['current'] == 10
+
+    def test_update_hp_clamps_to_max_and_zero(self):
+        p = DnD5eRuleset()
+        sheet = {'hp': {'current': 5, 'max': 10}}
+        p.update_hp(sheet, 100)
+        assert sheet['hp']['current'] == 10
+        p.update_hp(sheet, -100)
+        assert sheet['hp']['current'] == 0
+
+    def test_update_xp_clamps_at_zero(self):
+        p = DnD5eRuleset()
+        sheet = {'xp': 50}
+        p.update_xp(sheet, -100)
+        assert sheet['xp'] == 0
+
+    def test_set_field_numeric(self):
+        p = DnD5eRuleset()
+        sheet = {'hp': {'current': 10, 'max': 10}, 'ac': 10}
+        assert p.set_field(sheet, 'ac', '15') is True
+        assert sheet['ac'] == 15
+
+    def test_set_field_hp_max_heals_overflow(self):
+        p = DnD5eRuleset()
+        sheet = {'hp': {'current': 20, 'max': 20}}
+        p.set_field(sheet, 'hp_max', '10')
+        assert sheet['hp']['max'] == 10
+        assert sheet['hp']['current'] == 10
+
+    def test_set_field_unknown_returns_false(self):
+        p = DnD5eRuleset()
+        sheet = {'hp': {'current': 10, 'max': 10}}
+        assert p.set_field(sheet, 'bogus', 'x') is False
+
+    def test_format_npc_sheet_returns_string(self):
+        p = DnD5eRuleset()
+        npc = {'description': 'd', 'attitude': 'a'}
+        p.init_sheet(npc)
+        out = p.format_npc_sheet(npc)
+        assert isinstance(out, str)
+        assert 'HP' in out
+        assert 'AC' in out
+
+    def test_format_party_summary_empty(self):
+        p = DnD5eRuleset()
+        out = p.format_party_summary({})
+        assert isinstance(out, str)
