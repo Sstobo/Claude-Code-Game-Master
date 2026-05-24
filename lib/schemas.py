@@ -76,11 +76,10 @@ def validate_npc(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     else:
         errors.append(f"NPC '{name}': tags must be a dict or list")
 
-    # Validate character sheet if party member
-    if data.get('is_party_member') and data.get('character_sheet'):
-        sheet = data['character_sheet']
-        if not isinstance(sheet.get('hp'), dict):
-            errors.append(f"NPC '{name}': character_sheet.hp must be a dict with current/max")
+    # Validate character sheet if party member (opaque dict — ruleset interprets shape)
+    if data.get('is_party_member') and 'character_sheet' in data:
+        if not isinstance(data['character_sheet'], dict):
+            errors.append(f"NPC '{name}': character_sheet must be a dict")
 
     return len(errors) == 0, errors
 
@@ -241,53 +240,17 @@ def validate_campaign_overview(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
 
 
 def validate_character(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
-    """Validate player character data against schema.
+    """Validate player character data — system-agnostic top-level checks only.
 
-    Args:
-        data: Character data dictionary
-
-    Returns:
-        Tuple of (is_valid, list of error messages)
+    Sheet-shaped fields (hp, ac, abilities, etc.) are opaque to lib. The active
+    ruleset re-validates them on action paths.
     """
     errors = []
 
-    # Required fields
     required = ['name', 'race', 'class', 'level']
     for field in required:
         if not data.get(field):
             errors.append(f"Character: missing {field}")
-
-    # Validate numeric fields
-    numeric_fields = ['level', 'ac', 'proficiency_bonus', 'speed']
-    for field in numeric_fields:
-        if field in data and not isinstance(data[field], (int, float)):
-            errors.append(f"Character: {field} must be a number")
-
-    # Validate XP (can be number or {current, next_level} object)
-    xp = data.get('xp')
-    if xp is not None:
-        if isinstance(xp, dict):
-            for key in ['current', 'next_level']:
-                if key in xp and not isinstance(xp[key], (int, float)):
-                    errors.append(f"Character: xp.{key} must be a number")
-        elif not isinstance(xp, (int, float)):
-            errors.append("Character: xp must be a number or dict with current/next_level")
-
-    # Validate HP structure
-    hp = data.get('hp', {})
-    if isinstance(hp, dict):
-        for key in ['current', 'max']:
-            if key in hp and not isinstance(hp[key], (int, float)):
-                errors.append(f"Character: hp.{key} must be a number")
-    elif hp:
-        errors.append("Character: hp must be a dict with current/max")
-
-    # Validate abilities
-    abilities = data.get('abilities', {})
-    if isinstance(abilities, dict):
-        for stat in ['str', 'dex', 'con', 'int', 'wis', 'cha']:
-            if stat in abilities and not isinstance(abilities[stat], (int, float)):
-                errors.append(f"Character: abilities.{stat} must be a number")
 
     return len(errors) == 0, errors
 
