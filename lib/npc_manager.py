@@ -12,25 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
-
-
-# Default character sheet for new party members
-PARTY_MEMBER_DEFAULTS = {
-    "race": "Unknown",
-    "class": "Commoner",
-    "level": 1,
-    "hp": {"current": 10, "max": 10},
-    "ac": 10,
-    "stats": {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10},
-    "saves": {"str": 0, "dex": 0, "con": 0, "int": 0, "wis": 0, "cha": 0},
-    "skills": {},
-    "attack_bonus": 2,
-    "damage": "1d6",
-    "equipment": [],
-    "features": [],
-    "conditions": [],
-    "xp": 0
-}
+from lib import ruleset
 
 
 class NPCManager(EntityManager):
@@ -136,41 +118,12 @@ class NPCManager(EntityManager):
         lines.append(f"Description: {npc.get('description', 'No description')}")
         lines.append(f"Attitude: {npc.get('attitude', 'unknown')}")
 
-        # Party member status
+        # Party member status (delegated to ruleset)
         if npc.get('is_party_member'):
-            lines.append("")
-            lines.append("--- PARTY MEMBER ---")
-            sheet = npc.get('character_sheet', {})
-
-            # Core stats
-            hp = sheet.get('hp', {'current': 10, 'max': 10})
-            lines.append(f"HP: {hp['current']}/{hp['max']} | AC: {sheet.get('ac', 10)}")
-            lines.append(f"Level {sheet.get('level', 1)} {sheet.get('race', 'Unknown')} {sheet.get('class', 'Commoner')}")
-            lines.append(f"Attack: +{sheet.get('attack_bonus', 2)} | Damage: {sheet.get('damage', '1d6')}")
-            lines.append(f"XP: {sheet.get('xp', 0)}")
-
-            # Ability scores
-            stats = sheet.get('stats', {})
-            if stats:
-                stat_line = " | ".join([f"{k.upper()}: {v}" for k, v in stats.items()])
-                lines.append(f"Stats: {stat_line}")
-
-            # Equipment
-            equipment = sheet.get('equipment', [])
-            if equipment:
-                lines.append(f"Equipment: {', '.join(equipment)}")
-            else:
-                lines.append("Equipment: None")
-
-            # Features
-            features = sheet.get('features', [])
-            if features:
-                lines.append(f"Features: {', '.join(features)}")
-
-            # Conditions
-            conditions = sheet.get('conditions', [])
-            if conditions:
-                lines.append(f"Conditions: {', '.join(conditions)}")
+            block = ruleset.get().format_npc_sheet(npc)
+            if block:
+                lines.append("")
+                lines.append(block)
 
         # Tags
         tags = npc.get('tags', {})
@@ -325,7 +278,8 @@ class NPCManager(EntityManager):
     def promote_to_party_member(self, name: str) -> bool:
         """
         Promote an NPC to party member status with default character sheet.
-        If NPC was previously a party member (demoted), restores existing stats.
+        Idempotent: if NPC already has a character_sheet (was previously demoted),
+        restores it without re-initializing.
         """
         valid, error = self.validators.validate_name(name)
         if not valid:
@@ -341,34 +295,19 @@ class NPCManager(EntityManager):
             print(f"[INFO] {name} is already a party member")
             return True
 
-        # Check if NPC already has a character sheet (was previously a party member)
-        existing_sheet = npcs[name].get('character_sheet')
-
         npcs[name]['is_party_member'] = True
 
-        if existing_sheet:
-            # Restore existing character sheet (NPC was previously demoted)
-            hp = existing_sheet.get('hp', {'current': 10, 'max': 10})
-            ac = existing_sheet.get('ac', 10)
-            if self._save_entities(self.npcs_file, npcs):
-                print(f"[SUCCESS] {name} rejoined the party (HP: {hp['current']}/{hp['max']}, AC: {ac})")
-                return True
-        else:
-            # Create new character sheet with defaults
-            npcs[name]['character_sheet'] = PARTY_MEMBER_DEFAULTS.copy()
-            # Deep copy nested structures
-            npcs[name]['character_sheet']['hp'] = PARTY_MEMBER_DEFAULTS['hp'].copy()
-            npcs[name]['character_sheet']['stats'] = PARTY_MEMBER_DEFAULTS['stats'].copy()
-            npcs[name]['character_sheet']['saves'] = PARTY_MEMBER_DEFAULTS['saves'].copy()
-            npcs[name]['character_sheet']['skills'] = PARTY_MEMBER_DEFAULTS['skills'].copy()
-            npcs[name]['character_sheet']['equipment'] = PARTY_MEMBER_DEFAULTS['equipment'].copy()
-            npcs[name]['character_sheet']['features'] = PARTY_MEMBER_DEFAULTS['features'].copy()
-            npcs[name]['character_sheet']['conditions'] = PARTY_MEMBER_DEFAULTS['conditions'].copy()
+        # Idempotency guard: only init if no existing sheet.
+        if 'character_sheet' not in npcs[name]:
+            ruleset.get().init_sheet(npcs[name])
 
-            if self._save_entities(self.npcs_file, npcs):
-                print(f"[SUCCESS] {name} is now a party member (HP: 10/10, AC: 10)")
-                return True
-
+        if self._save_entities(self.npcs_file, npcs):
+            sheet = npcs[name].get('character_sheet', {})
+            hp = sheet.get('hp', {'current': 10, 'max': 10})
+            ac = sheet.get('ac', 10)
+            print(f"[SUCCESS] {name} is now a party member "
+                  f"(HP: {hp['current']}/{hp['max']}, AC: {ac})")
+            return True
         return False
 
     def demote_from_party_member(self, name: str) -> bool:
@@ -405,41 +344,35 @@ class NPCManager(EntityManager):
                 if data.get('is_party_member')}
 
     def update_npc_hp(self, name: str, amount: int) -> bool:
-        """
-        Update an NPC's HP (party members only).
-        Positive amount heals, negative amount damages.
-        """
+        """Update party-member HP via the active ruleset."""
         npcs, name = self._load_party_member(name)
         if npcs is None:
             return False
 
-        sheet = npcs[name].get('character_sheet', {})
-        hp = sheet.get('hp', {'current': 10, 'max': 10})
-
-        old_hp = hp['current']
-        hp['current'] = max(0, min(hp['max'], hp['current'] + amount))
-        npcs[name]['character_sheet']['hp'] = hp
+        sheet = npcs[name].setdefault('character_sheet', {})
+        old_hp = sheet.get('hp', {'current': 10, 'max': 10}).get('current', 10)
+        ruleset.get().update_hp(sheet, amount)
+        new_hp = sheet['hp']['current']
+        hp_max = sheet['hp']['max']
 
         if self._save_entities(self.npcs_file, npcs):
             action = "healed" if amount > 0 else "damaged"
-            print(f"[SUCCESS] {name} {action}: {old_hp} → {hp['current']}/{hp['max']} HP")
-            if hp['current'] == 0:
+            print(f"[SUCCESS] {name} {action}: {old_hp} → {new_hp}/{hp_max} HP")
+            if new_hp == 0:
                 print(f"[WARNING] {name} is at 0 HP!")
             return True
         return False
 
     def update_npc_xp(self, name: str, amount: int) -> bool:
-        """
-        Update an NPC's XP (party members only).
-        """
+        """Update party-member XP via the active ruleset."""
         npcs, name = self._load_party_member(name)
         if npcs is None:
             return False
 
-        sheet = npcs[name].get('character_sheet', {})
+        sheet = npcs[name].setdefault('character_sheet', {})
         old_xp = sheet.get('xp', 0)
-        new_xp = max(0, old_xp + amount)
-        npcs[name]['character_sheet']['xp'] = new_xp
+        ruleset.get().update_xp(sheet, amount)
+        new_xp = sheet['xp']
 
         if self._save_entities(self.npcs_file, npcs):
             print(f"[SUCCESS] {name} XP: {old_xp} → {new_xp}")
@@ -447,52 +380,14 @@ class NPCManager(EntityManager):
         return False
 
     def set_npc_stat(self, name: str, field: str, value: Any) -> bool:
-        """
-        Set a character sheet field for a party member NPC.
-        Supported fields: ac, level, class, race, attack_bonus, damage, hp_max
-        """
+        """Set a sheet field via the active ruleset."""
         npcs, name = self._load_party_member(name)
         if npcs is None:
             return False
 
-        sheet = npcs[name].get('character_sheet', {})
-
-        # Handle special fields - sanitize numeric values first
-        def parse_int(val, field_name):
-            """Parse integer value with defensive handling."""
-            try:
-                # Strip whitespace and convert
-                cleaned = str(val).strip()
-                return int(cleaned)
-            except ValueError:
-                print(f"[ERROR] Invalid integer value for {field_name}: '{val}'")
-                return None
-
-        if field == 'hp_max':
-            parsed = parse_int(value, 'hp_max')
-            if parsed is None:
-                return False
-            sheet['hp']['max'] = parsed
-            # Also heal to new max if current > new max
-            if sheet['hp']['current'] > sheet['hp']['max']:
-                sheet['hp']['current'] = sheet['hp']['max']
-        elif field == 'attack':
-            parsed = parse_int(value, 'attack')
-            if parsed is None:
-                return False
-            sheet['attack_bonus'] = parsed
-        elif field in ['ac', 'level', 'xp']:
-            parsed = parse_int(value, field)
-            if parsed is None:
-                return False
-            sheet[field] = parsed
-        elif field in ['class', 'race', 'damage']:
-            sheet[field] = str(value)
-        else:
-            print(f"[ERROR] Unknown field: {field}")
-            print("Valid fields: ac, level, class, race, attack, damage, hp_max")
+        sheet = npcs[name].setdefault('character_sheet', {})
+        if not ruleset.get().set_field(sheet, field, value):
             return False
-
         npcs[name]['character_sheet'] = sheet
 
         if self._save_entities(self.npcs_file, npcs):
@@ -603,43 +498,8 @@ class NPCManager(EntityManager):
         return False
 
     def format_party_status(self) -> str:
-        """
-        Format a summary of all party members with their combat stats.
-        """
-        party = self.get_party_members()
-        if not party:
-            return "No party members. Use 'dm-npc.sh promote \"Name\"' to add NPCs to the party."
-
-        lines = ["=== PARTY MEMBERS ===", ""]
-        for name, data in party.items():
-            sheet = data.get('character_sheet', {})
-            hp = sheet.get('hp', {'current': 10, 'max': 10})
-            ac = sheet.get('ac', 10)
-            level = sheet.get('level', 1)
-            char_class = sheet.get('class', 'Commoner')
-            conditions = sheet.get('conditions', [])
-
-            # Status line
-            status = f"{name} - Lvl {level} {char_class}"
-            hp_str = f"HP: {hp['current']}/{hp['max']}"
-            ac_str = f"AC: {ac}"
-
-            # Warning for low HP
-            if hp['current'] == 0:
-                hp_str += " [DOWN!]"
-            elif hp['current'] <= hp['max'] // 4:
-                hp_str += " [CRITICAL]"
-
-            # Conditions
-            cond_str = ""
-            if conditions:
-                cond_str = f" [{', '.join(conditions)}]"
-
-            lines.append(f"  {status}")
-            lines.append(f"    {hp_str} | {ac_str}{cond_str}")
-            lines.append("")
-
-        return "\n".join(lines)
+        """Format a summary of all party members via the active ruleset."""
+        return ruleset.get().format_party_summary(self.get_party_members())
 
     def list_npcs(self, filter_attitude: Optional[str] = None,
                   filter_location: Optional[str] = None,
