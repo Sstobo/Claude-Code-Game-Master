@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from . import sheet as _sheet
 from . import vocab
+from . import xp as _xp
 
 
 class DnD5eRuleset:
@@ -37,10 +38,10 @@ class DnD5eRuleset:
         raise NotImplementedError
 
     def xp_threshold(self, level: int) -> Optional[int]:
-        raise NotImplementedError
+        return _xp.xp_threshold(level)
 
     def level_for_xp(self, xp: int) -> int:
-        raise NotImplementedError
+        return _xp.level_for_xp(xp)
 
     def validate_skill(self, skill: str) -> Tuple[bool, Optional[str]]:
         return vocab.validate_skill(skill)
