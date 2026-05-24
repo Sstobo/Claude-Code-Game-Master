@@ -134,3 +134,16 @@ class TestSheet:
         p = DnD5eRuleset()
         out = p.format_party_summary({})
         assert isinstance(out, str)
+
+    def test_set_field_hp_max_no_existing_hp(self):
+        p = DnD5eRuleset()
+        sheet = {}
+        assert p.set_field(sheet, 'hp_max', '8') is True
+        assert sheet['hp']['max'] == 8
+        assert sheet['hp']['current'] == 8
+
+    def test_set_field_xp_clamps_at_zero(self):
+        p = DnD5eRuleset()
+        sheet = {'xp': 100}
+        p.set_field(sheet, 'xp', '-50')
+        assert sheet['xp'] == 0

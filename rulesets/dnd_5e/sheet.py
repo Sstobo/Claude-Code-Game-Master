@@ -42,7 +42,7 @@ def update_xp(sheet: Dict[str, Any], delta: int) -> Dict[str, Any]:
     return sheet
 
 
-def _parse_int(val, field_name):
+def _parse_int(val: Any, field_name: str) -> Optional[int]:
     try:
         return int(str(val).strip())
     except ValueError:
@@ -56,9 +56,12 @@ def set_field(sheet: Dict[str, Any], field: str, value: Any) -> bool:
         parsed = _parse_int(value, 'hp_max')
         if parsed is None:
             return False
-        sheet['hp']['max'] = parsed
-        if sheet['hp']['current'] > sheet['hp']['max']:
-            sheet['hp']['current'] = sheet['hp']['max']
+        if 'hp' not in sheet:
+            sheet['hp'] = {'current': parsed, 'max': parsed}
+        else:
+            sheet['hp']['max'] = parsed
+            if sheet['hp']['current'] > sheet['hp']['max']:
+                sheet['hp']['current'] = sheet['hp']['max']
         return True
     if field == 'attack':
         parsed = _parse_int(value, 'attack')
@@ -70,7 +73,7 @@ def set_field(sheet: Dict[str, Any], field: str, value: Any) -> bool:
         parsed = _parse_int(value, field)
         if parsed is None:
             return False
-        sheet[field] = parsed
+        sheet[field] = max(0, parsed) if field == 'xp' else parsed
         return True
     if field in ('class', 'race', 'damage'):
         sheet[field] = str(value)
