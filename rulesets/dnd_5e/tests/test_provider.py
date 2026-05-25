@@ -104,12 +104,6 @@ class TestSheet:
         p.update_hp(sheet, -100)
         assert sheet['hp']['current'] == 0
 
-    def test_update_xp_clamps_at_zero(self):
-        p = DnD5eRuleset()
-        sheet = {'xp': 50}
-        p.update_xp(sheet, -100)
-        assert sheet['xp'] == 0
-
     def test_set_field_numeric(self):
         p = DnD5eRuleset()
         sheet = {'hp': {'current': 10, 'max': 10}, 'ac': 10}
@@ -345,33 +339,3 @@ class TestCharacterSummary:
         assert len(out) > 0
 
 
-class TestXP:
-    def test_xp_threshold_level_1_is_zero(self):
-        p = DnD5eRuleset()
-        assert p.xp_threshold(1) == 0
-
-    def test_xp_threshold_level_2(self):
-        p = DnD5eRuleset()
-        assert p.xp_threshold(2) == 300
-
-    def test_xp_threshold_level_20(self):
-        p = DnD5eRuleset()
-        assert p.xp_threshold(20) == 355000
-
-    def test_xp_threshold_above_cap_returns_none(self):
-        p = DnD5eRuleset()
-        assert p.xp_threshold(21) is None
-
-    def test_level_for_xp_starting(self):
-        p = DnD5eRuleset()
-        assert p.level_for_xp(0) == 1
-        assert p.level_for_xp(299) == 1
-
-    def test_level_for_xp_boundary(self):
-        p = DnD5eRuleset()
-        assert p.level_for_xp(300) == 2
-        assert p.level_for_xp(900) == 3
-
-    def test_level_for_xp_caps_at_20(self):
-        p = DnD5eRuleset()
-        assert p.level_for_xp(10_000_000) == 20

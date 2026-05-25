@@ -1,7 +1,7 @@
 """DnD5eRuleset — implements lib.ruleset.Ruleset protocol.
 
-All 14 hooks are implemented, delegating to sibling modules:
-sheet (HP/XP/stats), vocab (validators), xp (XP table), context (formatters).
+Delegates to sibling modules:
+sheet (HP/stats), vocab (validators), xp (advancement table), context (formatters).
 """
 from typing import Any, Dict, Optional, Tuple
 
@@ -20,9 +20,6 @@ class DnD5eRuleset:
     def update_hp(self, sheet: Dict[str, Any], delta: int) -> Dict[str, Any]:
         return _sheet.update_hp(sheet, delta)
 
-    def update_xp(self, sheet: Dict[str, Any], delta: int) -> Dict[str, Any]:
-        return _sheet.update_xp(sheet, delta)
-
     def set_field(self, sheet: Dict[str, Any], field: str, value: Any) -> bool:
         return _sheet.set_field(sheet, field, value)
 
@@ -40,12 +37,6 @@ class DnD5eRuleset:
 
     def format_party_context_block(self, party: Dict[str, Dict], full: bool) -> str:
         return _context.format_party_context_block(party, full)
-
-    def xp_threshold(self, level: int) -> Optional[int]:
-        return _xp.xp_threshold(level)
-
-    def level_for_xp(self, xp: int) -> int:
-        return _xp.level_for_xp(xp)
 
     def normalize_advancement(self, char: Dict[str, Any]) -> None:
         _xp.normalize_advancement(char)

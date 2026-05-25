@@ -46,11 +46,6 @@ def update_hp(sheet: Dict[str, Any], delta: int) -> Dict[str, Any]:
     return {'old': old_current, 'new': new_current, 'max': max_hp, 'status': status}
 
 
-def update_xp(sheet: Dict[str, Any], delta: int) -> Dict[str, Any]:
-    sheet['xp'] = max(0, sheet.get('xp', 0) + delta)
-    return sheet
-
-
 def _parse_int(val: Any, field_name: str) -> Optional[int]:
     try:
         return int(str(val).strip())
