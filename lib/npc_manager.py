@@ -350,15 +350,12 @@ class NPCManager(EntityManager):
             return False
 
         sheet = npcs[name].setdefault('character_sheet', {})
-        old_hp = sheet.get('hp', {'current': 10, 'max': 10}).get('current', 10)
-        ruleset.get().update_hp(sheet, amount)
-        new_hp = sheet['hp']['current']
-        hp_max = sheet['hp']['max']
+        result = ruleset.get().update_hp(sheet, amount)
 
         if self._save_entities(self.npcs_file, npcs):
             action = "healed" if amount > 0 else "damaged"
-            print(f"[SUCCESS] {name} {action}: {old_hp} → {new_hp}/{hp_max} HP")
-            if new_hp == 0:
+            print(f"[SUCCESS] {name} {action}: {result['old']} → {result['new']}/{result['max']} HP")
+            if result['status'] == 'UNCONSCIOUS':
                 print(f"[WARNING] {name} is at 0 HP!")
             return True
         return False

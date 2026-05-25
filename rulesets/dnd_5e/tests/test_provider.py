@@ -155,6 +155,38 @@ class TestSheet:
         p.set_field(sheet, 'xp', '-50')
         assert sheet['xp'] == 0
 
+    def test_update_hp_returns_result_dict(self):
+        p = DnD5eRuleset()
+        sheet = {'hp': {'current': 5, 'max': 10}}
+        result = p.update_hp(sheet, 3)
+        assert result == {'old': 5, 'new': 8, 'max': 10, 'status': None}
+
+    def test_update_hp_status_unconscious(self):
+        p = DnD5eRuleset()
+        sheet = {'hp': {'current': 5, 'max': 10}}
+        result = p.update_hp(sheet, -10)
+        assert result['new'] == 0
+        assert result['status'] == 'UNCONSCIOUS'
+
+    def test_update_hp_status_bloodied(self):
+        p = DnD5eRuleset()
+        sheet = {'hp': {'current': 10, 'max': 20}}
+        result = p.update_hp(sheet, -6)
+        assert result['new'] == 4  # <= 20 // 4 = 5
+        assert result['status'] == 'BLOODIED'
+
+    def test_update_hp_status_none_when_healthy(self):
+        p = DnD5eRuleset()
+        sheet = {'hp': {'current': 5, 'max': 20}}
+        result = p.update_hp(sheet, 5)
+        assert result['status'] is None
+
+    def test_update_hp_still_mutates_sheet(self):
+        p = DnD5eRuleset()
+        sheet = {'hp': {'current': 5, 'max': 10}}
+        p.update_hp(sheet, 3)
+        assert sheet['hp']['current'] == 8  # sheet still mutated
+
 
 class TestContext:
     def test_format_character_block_flat_shape(self):

@@ -32,9 +32,18 @@ def init_sheet(npc_data: Dict[str, Any]) -> None:
 
 def update_hp(sheet: Dict[str, Any], delta: int) -> Dict[str, Any]:
     hp = sheet.get('hp', {'current': 10, 'max': 10})
-    hp['current'] = max(0, min(hp['max'], hp['current'] + delta))
+    old_current = hp['current']
+    max_hp = hp['max']
+    new_current = max(0, min(max_hp, old_current + delta))
+    hp['current'] = new_current
     sheet['hp'] = hp
-    return sheet
+    if new_current == 0:
+        status: Optional[str] = 'UNCONSCIOUS'
+    elif new_current <= max_hp // 4:
+        status = 'BLOODIED'
+    else:
+        status = None
+    return {'old': old_current, 'new': new_current, 'max': max_hp, 'status': status}
 
 
 def update_xp(sheet: Dict[str, Any], delta: int) -> Dict[str, Any]:

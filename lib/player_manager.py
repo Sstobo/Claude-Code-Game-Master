@@ -299,41 +299,28 @@ class PlayerManager(EntityManager):
             print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
 
-        hp = char.get('hp', {})
-        current_hp = hp.get('current', 0)
-        max_hp = hp.get('max', 0)
+        result = ruleset.get().update_hp(char, amount)
 
-        # Apply change and clamp between 0 and max
-        new_hp = max(0, min(current_hp + amount, max_hp))
-        char['hp']['current'] = new_hp
-
-        # Save character
         if not self._save_character(name, char):
             return {'success': False}
 
         char_name = char.get('name', name)
-
-        # Determine status
         if amount < 0:
             print(f"DAMAGE {char_name} took {abs(amount)} damage!")
         else:
             print(f"HEAL {char_name} healed {amount} HP!")
-
-        print(f"HP: {new_hp}/{max_hp}")
-
-        if new_hp == 0:
-            print("STATUS: UNCONSCIOUS")
-        elif new_hp <= max_hp // 4:
-            print("STATUS: BLOODIED")
+        print(f"HP: {result['new']}/{result['max']}")
+        if result['status']:
+            print(f"STATUS: {result['status']}")
 
         return {
             'success': True,
             'name': char_name,
             'hp_change': amount,
-            'current_hp': new_hp,
-            'max_hp': max_hp,
-            'unconscious': new_hp == 0,
-            'bloodied': 0 < new_hp <= max_hp // 4
+            'current_hp': result['new'],
+            'max_hp': result['max'],
+            'unconscious': result['new'] == 0,
+            'bloodied': result['status'] == 'BLOODIED',
         }
 
     def modify_gold(self, name: str, amount: Optional[int] = None) -> Dict[str, Any]:
