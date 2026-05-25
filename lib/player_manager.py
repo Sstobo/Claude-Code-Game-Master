@@ -124,46 +124,29 @@ class PlayerManager(EntityManager):
         return sorted(players)
 
     def show_player(self, name: str) -> Optional[str]:
-        """Get formatted player summary"""
+        """Get formatted player summary."""
         char = self._load_character(name)
         if not char:
             print(f"[ERROR] Character '{name}' not found")
             return None
-
-        hp = char.get('hp', {})
-        gold = char.get('gold', 0)
-        summary = f"{char.get('name', name)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
-        conditions = char.get('conditions', [])
-        if conditions:
-            summary += f" | Conditions: {', '.join(conditions)}"
-        return summary
+        return ruleset.get().format_character_summary(char)
 
     def show_all_players(self) -> List[str]:
-        """Get summaries for all players"""
+        """Get summaries for all players."""
         summaries = []
 
-        # New format: single character.json
         if self._is_using_single_character():
             char = self._load_character()
             if char:
-                hp = char.get('hp', {})
-                gold = char.get('gold', 0)
-                summaries.append(
-                    f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
-                )
+                summaries.append(ruleset.get().format_character_summary(char))
             return summaries
 
-        # Legacy format: scan characters/ directory
         if self.characters_dir.exists():
             for char_file in self.characters_dir.glob("*.json"):
                 try:
                     with open(char_file, 'r', encoding='utf-8') as f:
                         char = json.load(f)
-                    hp = char.get('hp', {})
-                    gold = char.get('gold', 0)
-                    summaries.append(
-                        f"{char.get('name', char_file.stem)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
-                    )
+                    summaries.append(ruleset.get().format_character_summary(char))
                 except (json.JSONDecodeError, IOError):
                     continue
         return summaries
