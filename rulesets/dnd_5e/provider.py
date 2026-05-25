@@ -64,3 +64,6 @@ class DnD5eRuleset:
 
     def validate_damage_type(self, damage_type: str) -> Tuple[bool, Optional[str]]:
         return vocab.validate_damage_type(damage_type)
+
+    def validate_ability(self, ability: str) -> Tuple[bool, Optional[str]]:
+        return vocab.validate_ability(ability)

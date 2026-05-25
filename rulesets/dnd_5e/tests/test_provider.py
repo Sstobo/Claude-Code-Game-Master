@@ -51,6 +51,28 @@ class TestVocab:
         ok, _ = p.validate_damage_type("fire")
         assert ok is True
 
+    def test_validate_ability_full_name(self):
+        p = DnD5eRuleset()
+        ok, err = p.validate_ability("strength")
+        assert ok is True
+        assert err is None
+
+    def test_validate_ability_abbreviation(self):
+        p = DnD5eRuleset()
+        ok, err = p.validate_ability("str")
+        assert ok is True
+
+    def test_validate_ability_case_insensitive(self):
+        p = DnD5eRuleset()
+        ok, _ = p.validate_ability("WISDOM")
+        assert ok is True
+
+    def test_validate_ability_invalid(self):
+        p = DnD5eRuleset()
+        ok, err = p.validate_ability("luck")
+        assert ok is False
+        assert "Invalid ability" in err
+
 
 class TestSheet:
     def test_init_sheet_writes_defaults(self):

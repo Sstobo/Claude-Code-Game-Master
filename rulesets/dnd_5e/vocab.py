@@ -62,3 +62,14 @@ def validate_damage_type(damage_type: str) -> Tuple[bool, Optional[str]]:
     if d not in _DAMAGE_TYPES:
         return False, f"Invalid damage type. Valid types: {', '.join(_DAMAGE_TYPES)}"
     return True, None
+
+
+_ABILITIES = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']
+_ABILITY_ABBREVS = ['str', 'dex', 'con', 'int', 'wis', 'cha']
+
+
+def validate_ability(ability: str) -> Tuple[bool, Optional[str]]:
+    a = ability.lower().strip()
+    if a not in _ABILITIES and a not in _ABILITY_ABBREVS:
+        return False, f"Invalid ability. Valid abilities: {', '.join(_ABILITIES)}"
+    return True, None
