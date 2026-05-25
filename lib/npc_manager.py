@@ -302,11 +302,10 @@ class NPCManager(EntityManager):
             ruleset.get().init_sheet(npcs[name])
 
         if self._save_entities(self.npcs_file, npcs):
-            sheet = npcs[name].get('character_sheet', {})
-            hp = sheet.get('hp', {'current': 10, 'max': 10})
-            ac = sheet.get('ac', 10)
-            print(f"[SUCCESS] {name} is now a party member "
-                  f"(HP: {hp['current']}/{hp['max']}, AC: {ac})")
+            print(f"[SUCCESS] {name} is now a party member")
+            sheet_summary = ruleset.get().format_npc_sheet(npcs[name])
+            if sheet_summary:
+                print(sheet_summary)
             return True
         return False
 
@@ -361,18 +360,16 @@ class NPCManager(EntityManager):
         return False
 
     def update_npc_xp(self, name: str, amount: int) -> bool:
-        """Update party-member XP via the active ruleset."""
+        """Update party-member advancement via the active ruleset."""
         npcs, name = self._load_party_member(name)
         if npcs is None:
             return False
 
         sheet = npcs[name].setdefault('character_sheet', {})
-        old_xp = sheet.get('xp', 0)
-        ruleset.get().update_xp(sheet, amount)
-        new_xp = sheet['xp']
+        result = ruleset.get().advance(sheet, amount)
 
         if self._save_entities(self.npcs_file, npcs):
-            print(f"[SUCCESS] {name} XP: {old_xp} → {new_xp}")
+            print(f"[SUCCESS] {name} {result['summary']}")
             return True
         return False
 
