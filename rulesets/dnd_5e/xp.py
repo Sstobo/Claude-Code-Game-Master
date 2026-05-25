@@ -66,7 +66,7 @@ def advance(char: Dict[str, Any], amount: int) -> Dict[str, Any]:
     old_xp = char['xp']['current']
     char['xp']['current'] = old_xp + amount
     current_xp = char['xp']['current']
-    new_level = level_for_xp(current_xp)
+    new_level = max(level_for_xp(current_xp), old_level)
     level_changed = new_level > old_level
     if level_changed:
         char['level'] = new_level
