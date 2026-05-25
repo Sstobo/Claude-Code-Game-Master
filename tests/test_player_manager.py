@@ -195,20 +195,20 @@ class TestModifyXp:
         result = mgr.award_xp("Hero", 150)
         assert result["success"] is True
         assert result["current_xp"] == 150
-        assert result["xp_gained"] == 150
+        assert result["amount"] == 150  # was xp_gained
 
     def test_xp_level_up(self, tmp_path):
         ws, camp = make_campaign(tmp_path)
         mgr = PlayerManager(ws)
         result = mgr.award_xp("Hero", 300)
-        assert result["level_up"] is True
+        assert result["level_changed"] is True  # was level_up
         assert result["new_level"] == 2
 
     def test_xp_no_level_up_below_threshold(self, tmp_path):
         ws, camp = make_campaign(tmp_path)
         mgr = PlayerManager(ws)
         result = mgr.award_xp("Hero", 100)
-        assert result["level_up"] is False
+        assert result["level_changed"] is False  # was level_up
         assert result["new_level"] == 1
 
     def test_xp_persisted(self, tmp_path):

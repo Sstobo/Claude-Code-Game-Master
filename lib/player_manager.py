@@ -94,19 +94,7 @@ class PlayerManager(EntityManager):
         return self.json_ops.save_json(str(char_path), data)
 
     def _normalize_xp(self, char: Dict) -> Dict:
-        """Normalize XP to object format {current, next_level} using the active ruleset."""
-        xp = char.get('xp', 0)
-        level = char.get('level', 1)
-        rs = ruleset.get()
-
-        if isinstance(xp, int):
-            next_threshold = rs.xp_threshold(level + 1)
-            if next_threshold is None:
-                next_threshold = xp  # at cap
-            char['xp'] = {'current': xp, 'next_level': next_threshold}
-        elif not isinstance(xp, dict):
-            char['xp'] = {'current': 0, 'next_level': rs.xp_threshold(2)}
-
+        ruleset.get().normalize_advancement(char)
         return char
 
     def get_player(self, name: Optional[str] = None) -> Optional[Dict]:
@@ -196,98 +184,32 @@ class PlayerManager(EntityManager):
         return False
 
     def award_xp(self, name: str, amount: int) -> Dict[str, Any]:
-        """
-        Award XP to character and check for level up
-        Returns dict with xp_gained, new_total, level_up, new_level
-        """
+        """Award XP to character and check for level up."""
         char = self._load_character(name)
         if not char:
             print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
 
-        # Normalize XP structure
-        char = self._normalize_xp(char)
+        ruleset.get().normalize_advancement(char)
+        result = ruleset.get().advance(char, amount)
 
-        # Add XP
-        char['xp']['current'] += amount
-        current_xp = char['xp']['current']
-        current_level = char.get('level', 1)
-
-        # Check for level up using the active ruleset
-        rs = ruleset.get()
-        new_level = rs.level_for_xp(current_xp)
-
-        leveled_up = new_level > current_level
-        if leveled_up:
-            char['level'] = new_level
-
-        # Update next level threshold
-        _raw_threshold = rs.xp_threshold(new_level + 1)
-        next_threshold = _raw_threshold if _raw_threshold is not None else current_xp
-        cap_marker = _raw_threshold if _raw_threshold is not None else 'MAX'
-        char['xp']['next_level'] = next_threshold
-
-        # Save character
         if not self._save_character(name, char):
             return {'success': False}
 
-        result = {
-            'success': True,
-            'name': char.get('name', name),
-            'xp_gained': amount,
-            'current_xp': current_xp,
-            'next_level_xp': cap_marker,
-            'level_up': leveled_up,
-            'old_level': current_level,
-            'new_level': new_level,
-        }
-
-        # Print result
-        if leveled_up:
-            print(f"LEVEL_UP {char.get('name', name)} gained {amount} XP and leveled up to Level {new_level}!")
-            print(f"XP: {current_xp}/{cap_marker}")
-        else:
-            print(f"XP_GAIN {char.get('name', name)} gained {amount} XP!")
-            print(f"XP: {current_xp}/{cap_marker}")
-
-        return result
+        print(result['summary'])
+        return {**result, 'success': True, 'name': char.get('name', name)}
 
     def get_xp_status(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get XP and level status for character"""
+        """Get XP and level status for character."""
         char = self._load_character(name)
         if not char:
             print(f"[ERROR] Character '{name}' not found")
             return None
 
-        # Normalize XP structure
-        char = self._normalize_xp(char)
+        ruleset.get().normalize_advancement(char)
         self._save_character(name, char)
-
-        current_xp = char['xp']['current']
-        current_level = char.get('level', 1)
-        next_level_xp = char['xp']['next_level']
-
-        # Check if ready to level up
-        ready_to_level = current_xp >= next_level_xp and current_level < 20
-        remaining = next_level_xp - current_xp if not ready_to_level else 0
-
-        char_name = char.get('name', name)
-        print(f"{char_name} - Level {current_level}")
-        print(f"XP: {current_xp}/{next_level_xp}")
-
-        if ready_to_level:
-            print("READY_TO_LEVEL_UP")
-        else:
-            print(f"Next level in: {remaining} XP")
-
-        return {
-            'name': char_name,
-            'level': current_level,
-            'current_xp': current_xp,
-            'next_level_xp': next_level_xp,
-            'ready_to_level': ready_to_level,
-            'xp_remaining': remaining
-        }
+        print(ruleset.get().advancement_status(char))
+        return {'success': True, 'name': char.get('name', name)}
 
     def modify_hp(self, name: str, amount: int) -> Dict[str, Any]:
         """
