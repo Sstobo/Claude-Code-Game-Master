@@ -7,6 +7,7 @@
 
 ## Architecture
 - `lib/` — upstream CORE only. No custom features.
+- `rulesets/` — system-specific ruleset implementations (e.g. `rulesets/dnd_5e/`)
 - `tools/` — thin bash wrappers + `dispatch_middleware` for module hooks
 - `.claude/modules/` — all custom features as self-contained modules
 - `.claude/rules/dm-rules.md` — game rules (loaded by `/dm` skill only)
@@ -20,13 +21,14 @@ Each module in `.claude/modules/<name>/`:
 
 ## Dev commands
 ```bash
-uv run pytest                    # run all tests
-bash tools/dm-module.sh list     # list active modules
-git diff upstream/main -- lib/   # check CORE purity
+uv run pytest                      # run all tests
+bash tools/dm-module.sh list       # list active modules
+git diff upstream/main -- lib/     # check CORE purity
+bash tools/audit-lib-purity.sh    # audit lib/ for residual system-specific vocab
 ```
 
 ## Rules
 - CORE tools delegate to modules via `dispatch_middleware "tool.sh" "$ACTION" "$@" && exit $?`
-- `lib/` diff from upstream: only `ensure_ascii=False`, `require_active_campaign`, `name=None` auto-detect
-- Never add features to `lib/` — put them in modules
+- `lib/` diff from upstream: `ensure_ascii=False`, `require_active_campaign`, `name=None` auto-detect, plus `lib/ruleset.py` (Ruleset protocol + registry — interface only, implementations go in `rulesets/`)
+- Never add game features to `lib/` — put them in modules or `rulesets/`
 - `/dm` loads game rules from `.claude/rules/dm-rules.md` via skill
