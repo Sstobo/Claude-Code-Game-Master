@@ -44,6 +44,15 @@ class DnD5eRuleset:
     def level_for_xp(self, xp: int) -> int:
         return _xp.level_for_xp(xp)
 
+    def normalize_advancement(self, char: Dict[str, Any]) -> None:
+        _xp.normalize_advancement(char)
+
+    def advance(self, char: Dict[str, Any], amount: int) -> Dict[str, Any]:
+        return _xp.advance(char, amount)
+
+    def advancement_status(self, char: Dict[str, Any]) -> str:
+        return _xp.advancement_status(char)
+
     def validate_skill(self, skill: str) -> Tuple[bool, Optional[str]]:
         return vocab.validate_skill(skill)
 

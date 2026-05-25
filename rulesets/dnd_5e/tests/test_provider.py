@@ -178,6 +178,90 @@ class TestContext:
         assert isinstance(out, str)
 
 
+class TestAdvancement:
+    def test_normalize_advancement_int_becomes_dict(self):
+        p = DnD5eRuleset()
+        char = {'xp': 0, 'level': 1}
+        p.normalize_advancement(char)
+        assert isinstance(char['xp'], dict)
+        assert char['xp']['current'] == 0
+        assert char['xp']['next_level'] == 300  # Level 2 threshold
+
+    def test_normalize_advancement_already_dict_is_noop(self):
+        p = DnD5eRuleset()
+        char = {'xp': {'current': 150, 'next_level': 300}, 'level': 1}
+        p.normalize_advancement(char)
+        assert char['xp']['current'] == 150  # unchanged
+
+    def test_normalize_advancement_level20_cap(self):
+        p = DnD5eRuleset()
+        char = {'xp': 355000, 'level': 20}
+        p.normalize_advancement(char)
+        assert char['xp']['current'] == 355000
+        assert char['xp']['next_level'] == 355000  # at cap, equals current
+
+    def test_advance_accumulates_xp(self):
+        p = DnD5eRuleset()
+        char = {'xp': 0, 'level': 1}
+        result = p.advance(char, 150)
+        assert result['amount'] == 150
+        assert result['current_xp'] == 150
+        assert result['level_changed'] is False
+        assert result['old_level'] == 1
+        assert result['new_level'] == 1
+
+    def test_advance_triggers_level_up(self):
+        p = DnD5eRuleset()
+        char = {'xp': 0, 'level': 1}
+        result = p.advance(char, 300)
+        assert result['level_changed'] is True
+        assert result['old_level'] == 1
+        assert result['new_level'] == 2
+        assert char['level'] == 2
+
+    def test_advance_mutates_xp_dict(self):
+        p = DnD5eRuleset()
+        char = {'xp': 0, 'level': 1}
+        p.advance(char, 200)
+        assert isinstance(char['xp'], dict)
+        assert char['xp']['current'] == 200
+
+    def test_advance_summary_no_level_up(self):
+        p = DnD5eRuleset()
+        char = {'xp': 0, 'level': 1}
+        result = p.advance(char, 150)
+        assert 'summary' in result
+        assert '150' in result['summary']
+
+    def test_advance_summary_level_up(self):
+        p = DnD5eRuleset()
+        char = {'xp': 0, 'level': 1}
+        result = p.advance(char, 300)
+        assert 'Level up' in result['summary'] or 'level' in result['summary'].lower()
+
+    def test_advance_caps_at_level_20(self):
+        p = DnD5eRuleset()
+        char = {'xp': 354999, 'level': 19}
+        result = p.advance(char, 1_000_000)
+        assert result['new_level'] == 20
+        assert char['level'] == 20
+
+    def test_advancement_status_below_cap(self):
+        p = DnD5eRuleset()
+        char = {'xp': 150, 'level': 1}
+        status = p.advancement_status(char)
+        assert 'Level 1' in status
+        assert '150' in status
+        assert '300' in status  # next_level threshold
+
+    def test_advancement_status_at_cap(self):
+        p = DnD5eRuleset()
+        char = {'xp': 355000, 'level': 20}
+        status = p.advancement_status(char)
+        assert 'Level 20' in status
+        assert 'MAX' in status
+
+
 class TestXP:
     def test_xp_threshold_level_1_is_zero(self):
         p = DnD5eRuleset()
