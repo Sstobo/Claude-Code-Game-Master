@@ -74,22 +74,6 @@ class Validators:
 
 
     @staticmethod
-    def validate_ability(ability: str) -> Tuple[bool, Optional[str]]:
-        """
-        Validate D&D ability score name
-        Returns: (is_valid, error_message)
-        """
-        valid_abilities = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']
-        # Also accept abbreviations
-        abbreviations = ['str', 'dex', 'con', 'int', 'wis', 'cha']
-
-        ability_lower = ability.lower().strip()
-        if ability_lower not in valid_abilities and ability_lower not in abbreviations:
-            return False, f"Invalid ability. Valid abilities: {', '.join(valid_abilities)}"
-
-        return True, None
-
-    @staticmethod
     def validate_quest_priority(priority: str) -> Tuple[bool, Optional[str]]:
         """
         Validate quest priority level
@@ -186,7 +170,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='Input validation')
     parser.add_argument('type', choices=[
-        'name', 'attitude', 'dice', 'ability', 'priority', 'time',
+        'name', 'attitude', 'dice', 'priority', 'time',
         'plot_type', 'plot_status'
     ])
     parser.add_argument('value', help='Value to validate')
@@ -199,7 +183,6 @@ def main():
         'name': validator.validate_name,
         'attitude': validator.validate_attitude,
         'dice': validator.validate_dice,
-        'ability': validator.validate_ability,
         'priority': validator.validate_quest_priority,
         'time': validator.validate_time_of_day,
         'plot_type': validator.validate_plot_type,
