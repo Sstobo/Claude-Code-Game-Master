@@ -284,6 +284,35 @@ class TestAdvancement:
         assert 'MAX' in status
 
 
+class TestCharacterSummary:
+    def test_format_character_summary_basic(self):
+        p = DnD5eRuleset()
+        char = {
+            'name': 'Tara', 'race': 'Elf', 'class': 'Ranger',
+            'level': 3, 'hp': {'current': 18, 'max': 22},
+            'gold': 75, 'conditions': [],
+        }
+        out = p.format_character_summary(char)
+        assert out == "Tara - Elf Ranger Level 3 (HP: 18/22, Gold: 75)"
+
+    def test_format_character_summary_with_conditions(self):
+        p = DnD5eRuleset()
+        char = {
+            'name': 'Brom', 'race': 'Human', 'class': 'Fighter',
+            'level': 1, 'hp': {'current': 5, 'max': 12},
+            'gold': 0, 'conditions': ['poisoned', 'prone'],
+        }
+        out = p.format_character_summary(char)
+        assert "Brom - Human Fighter Level 1 (HP: 5/12, Gold: 0)" in out
+        assert "Conditions: poisoned, prone" in out
+
+    def test_format_character_summary_missing_fields(self):
+        p = DnD5eRuleset()
+        out = p.format_character_summary({})
+        assert isinstance(out, str)
+        assert len(out) > 0
+
+
 class TestXP:
     def test_xp_threshold_level_1_is_zero(self):
         p = DnD5eRuleset()

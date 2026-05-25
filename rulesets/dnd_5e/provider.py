@@ -32,6 +32,9 @@ class DnD5eRuleset:
     def format_party_summary(self, party: Dict[str, Dict]) -> str:
         return _sheet.format_party_summary(party)
 
+    def format_character_summary(self, char: Dict[str, Any]) -> str:
+        return _sheet.format_character_summary(char)
+
     def format_character_block(self, character: Dict[str, Any]) -> str:
         return _context.format_character_block(character)
 

@@ -148,3 +148,19 @@ def format_party_summary(party: Dict[str, Dict]) -> str:
         lines.append("")
 
     return "\n".join(lines)
+
+
+def format_character_summary(char: Dict[str, Any]) -> str:
+    """One-liner for CLI display: name, race, class, level, HP, gold."""
+    hp = char.get('hp', {})
+    gold = char.get('gold', 0)
+    summary = (
+        f"{char.get('name', 'Unknown')} - "
+        f"{char.get('race', '?')} {char.get('class', '?')} "
+        f"Level {char.get('level', 1)} "
+        f"(HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
+    )
+    conditions = char.get('conditions', [])
+    if conditions:
+        summary += f" | Conditions: {', '.join(conditions)}"
+    return summary
