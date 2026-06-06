@@ -46,3 +46,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T16:56Z  done: cap-extraction-30 — dm-extract.sh cap, top-N by importance, main cast preserved  [ss-7q3w9z]
 - 2026-06-06T16:58Z  done: import-integrity-gate — canonicalize cross-refs via alias resolver, strict fail on unresolved  [ss-7q3w9z]
 - 2026-06-06T17:04Z  done: enhancer-relevance-gate — force-include name-bearing, drop below-floor, persist scores+name-match frac, flag zero-hit  [ss-7q3w9z]
+- 2026-06-06T17:08Z  done: missing-location-reconcile — stub/drop unresolved location refs; location-kind unresolved 176→0  [ss-7q3w9z]

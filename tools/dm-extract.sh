@@ -28,6 +28,8 @@ Commands:
                             agent wrapper keys into the flat {name:...} runtime shape
   cap [campaign] [limit]    Cap each type to top-N (default 30) by importance
                             (mention-frequency + plot-reference/party boost)
+  reconcile [campaign]      Stub or drop location refs that don't resolve to a node
+                            (runs before the integrity gate)
   integrity [campaign] [--no-strict]  Canonicalize cross-refs to real keys;
                             fail on unresolved (strict by default)
   merge [campaign] [--cleanup]  Combine results from all extraction agents
@@ -484,6 +486,21 @@ case "$1" in
 
     cap)
         cap_extracted "$2" "$3"
+        ;;
+
+    reconcile)
+        # Stub or drop location references that don't resolve to a real node.
+        campaign_name="$2"
+        if [ -z "$campaign_name" ]; then
+            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
+        fi
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        if [ ! -d "$CAMPAIGN_DIR" ]; then
+            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
+        fi
+        echo "Reconciling missing locations: $campaign_name"
+        echo "================================="
+        $PYTHON_CMD "$LIB_DIR/location_reconcile.py" "$CAMPAIGN_DIR"
         ;;
 
     integrity)
