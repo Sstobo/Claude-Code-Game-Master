@@ -24,8 +24,6 @@ region (raw ASCII passthrough, ANSI color allowed) plus **auto-derived** panels 
 PARTY, HERE, and COMBAT — read live from existing state files. Auto panels need zero
 agent effort (same philosophy as the HUD); the agent only ever writes the freeform scene.
 
-Full design captured in `/Users/seanstobo/.claude/plans/cached-toasting-wilkinson.md`.
-
 ## User Stories
 
 1. As a player, I want a second pane that shows the current scene/map and party status, so the game feels like a cockpit instead of a scrolling log.

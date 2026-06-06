@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from extraction_cap import load_corpus
 
 _WORD_RE = re.compile(r"[a-z0-9]+")
+_CHUNK_RE = re.compile(r"chunks?\s*_?(\d+)", re.IGNORECASE)
 
 
 def _snippet(text: str, words: int = 6) -> str:
@@ -24,8 +25,31 @@ def _snippet(text: str, words: int = 6) -> str:
     return " ".join(toks[:words])
 
 
+def _source_chunk_index(plot: dict) -> int | None:
+    """Lowest chunk number cited in the plot's `source` field, or None.
+
+    Extractor agents stamp each plot with provenance like "... (chunks 251-253)"
+    or "(chunk 277)". The smallest cited chunk number is a deterministic, reliable
+    ordering key — and the PRIMARY one we sort by. It is far more robust than
+    fuzzy-matching a paraphrased description against the corpus: that match
+    silently fails (find -> -1) whenever the agent reworded the source, which
+    pins the plot to the end of the arc, while any single coincidental match
+    leapfrogs every unmatched plot regardless of true story order. Source chunks
+    also stay within the right story; raw corpus position can match a namesake
+    passage in a different tale of a multi-story collection.
+    """
+    src = plot.get("source")
+    if not isinstance(src, str):
+        return None
+    nums = [int(m) for m in _CHUNK_RE.findall(src)]
+    return min(nums) if nums else None
+
+
 def _earliest_index(plot: dict, corpus: str) -> int:
-    """Earliest position in the corpus where this plot's description/name appears."""
+    """Earliest position in the corpus where this plot's description/name appears.
+
+    Fallback ordering signal only — used when a plot cites no source chunk.
+    """
     candidates = [_snippet(plot.get("description", "")), _snippet(plot.get("name", ""))]
     best = len(corpus) + 1
     for snip in candidates:
@@ -37,6 +61,19 @@ def _earliest_index(plot: dict, corpus: str) -> int:
     return best
 
 
+def _order_key(index_in_dict: int, plot: dict, corpus: str) -> tuple:
+    """Sort key for arc ordering: cited source chunk first, then corpus
+    position, then original extraction order. Plots with no cited chunk sort
+    after those that have one (float('inf')), but stay deterministically ordered
+    by the remaining keys rather than leapfrogging on a fuzzy match."""
+    chunk_idx = _source_chunk_index(plot)
+    return (
+        chunk_idx if chunk_idx is not None else float("inf"),
+        _earliest_index(plot, corpus),
+        index_in_dict,
+    )
+
+
 def derive_spine(plots: dict, corpus: str) -> dict:
     """Assign sequence + depends_on to MAIN plots; return the campaign story_spine.
 
@@ -44,8 +81,9 @@ def derive_spine(plots: dict, corpus: str) -> dict:
     """
     mains = [(name, p) for name, p in (plots or {}).items()
              if isinstance(p, dict) and str(p.get("type", "")).lower() == "main"]
-    # Order by earliest source appearance; stable on ties by original order.
-    ordered = sorted(enumerate(mains), key=lambda ip: (_earliest_index(ip[1][1], corpus), ip[0]))
+    # Order by cited source chunk (reliable), then corpus position, then original
+    # order. See _order_key / _source_chunk_index for why chunk citation is primary.
+    ordered = sorted(enumerate(mains), key=lambda ip: _order_key(ip[0], ip[1][1], corpus))
     arc = []
     prev = None
     for seq, (_, (name, plot)) in enumerate(ordered, start=1):

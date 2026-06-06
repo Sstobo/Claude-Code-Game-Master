@@ -51,6 +51,51 @@ def test_apply_spine_persists_to_overview(tmp_path):
     assert ov["story_spine"]["arc"] == ["Escape", "Decode"]
 
 
+def test_source_chunk_drives_order_when_descriptions_are_paraphrases():
+    """Regression: extractor descriptions are paraphrases absent from the corpus,
+    so corpus.find() returns -1 for all but one plot whose snippet coincidentally
+    matches. The old logic pinned the unmatched plots to the end and let the lone
+    coincidental match leapfrog to seq 1 — rooting the arc on the story's ENDING.
+    With source-chunk citations the arc must follow the cited chunk order."""
+    plots = {
+        # Listed end-first to prove dict/extraction order doesn't save us, and the
+        # ending's description is the ONLY one that appears verbatim in the corpus.
+        "Ending": {"type": "main", "description": "he sets her aflame and sails on",
+                   "source": "Part 5 (chunk 277)"},
+        "Opening": {"type": "main", "description": "flees the city after a killing",
+                    "source": "Part 1 (chunks 251-253)"},
+        "Middle": {"type": "main", "description": "lured up the poison river",
+                   "source": "Part 2 (chunk 260)"},
+    }
+    corpus = "he sets her aflame and sails on"  # only the Ending paraphrase matches
+    spine = derive_spine(plots, corpus)
+    assert spine["arc"] == ["Opening", "Middle", "Ending"]
+    assert plots["Opening"]["sequence"] == 1
+    assert plots["Ending"]["sequence"] == 3
+    assert plots["Ending"]["depends_on"] == ["Middle"]
+
+
+def test_source_chunk_range_uses_lowest_number():
+    """A cited range like 'chunks 255-257' orders by its start (255)."""
+    plots = {
+        "Later": {"type": "main", "description": "zzz", "source": "chunks 255-257"},
+        "Earlier": {"type": "main", "description": "yyy", "source": "chunk 251"},
+    }
+    spine = derive_spine(plots, "no paraphrase matches here")
+    assert spine["arc"] == ["Earlier", "Later"]
+
+
+def test_falls_back_to_corpus_when_no_source_chunk():
+    """Plots without a cited chunk still order by corpus appearance (legacy path)."""
+    plots = {
+        "Finale": {"type": "main", "description": "overload at the end"},
+        "Opening": {"type": "main", "description": "escape at the start"},
+    }
+    corpus = "escape at the start ... overload at the end"
+    spine = derive_spine(plots, corpus)
+    assert spine["arc"] == ["Opening", "Finale"]
+
+
 def test_story_threads_honor_sequence(dcc_world):
     import json as _json
     from pathlib import Path
