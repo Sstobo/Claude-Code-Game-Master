@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from json_ops import JsonOperations
 from validators import Validators
 from campaign_manager import CampaignManager
+from entity_aliases import resolve_entity_name
 
 
 class EntityManager:
@@ -131,24 +132,23 @@ class EntityManager:
     def _get_entity(self, filename: str, name: str) -> Optional[dict]:
         """Get a single entity by name.
 
-        Returns the entity dict if found, None otherwise.
-        """
-        entities = self._load_entities(filename)
-        return entities.get(name)
-
-    def _find_entity_name(self, filename: str, name: str) -> Optional[str]:
-        """Find actual entity key using case-insensitive matching.
-
-        Returns the actual key name if found (exact match preferred), None otherwise.
+        Exact match first, then alias-aware resolution (case/title/parenthetical
+        drift, explicit `aliases`). Returns the entity dict if found, else None.
         """
         entities = self._load_entities(filename)
         if name in entities:
-            return name
-        name_lower = name.lower()
-        for key in entities:
-            if key.lower() == name_lower:
-                return key
-        return None
+            return entities[name]
+        key = resolve_entity_name(name, entities)
+        return entities.get(key) if key else None
+
+    def _find_entity_name(self, filename: str, name: str) -> Optional[str]:
+        """Find the actual entity key via alias-aware resolution.
+
+        Resolution order: exact -> case-insensitive -> explicit aliases ->
+        normalized (title/parenthetical-insensitive) equality. None if unresolved.
+        """
+        entities = self._load_entities(filename)
+        return resolve_entity_name(name, entities)
 
     def get_timestamp(self) -> str:
         """Get current UTC timestamp in ISO format."""
