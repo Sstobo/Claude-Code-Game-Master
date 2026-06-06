@@ -37,6 +37,15 @@ def test_nameless_has_zero_required_mechanics(dcc_world):
     assert char["attributes"] == {} and is_open_schema(char)
 
 
+def test_characters_have_independent_vitals(dcc_world):
+    # Regression: shared nested hp dict aliasing across characters.
+    onb = IdentityOnboarding(dcc_world)
+    a = onb.original("A")
+    b = onb.nameless()
+    a["vitals"]["hp"]["current"] = 5
+    assert b["vitals"]["hp"]["current"] == 10, "characters must not share a vitals dict"
+
+
 def test_build_dispatches_and_saves(dcc_world):
     onb = IdentityOnboarding(dcc_world)
     char = onb.build("original", name="Kira", concept="a pilot")

@@ -17,8 +17,9 @@ def test_each_mechanics_skill_exists_with_valid_frontmatter():
 
 
 def test_claudemd_references_each_skill():
+    # Post lean-core swap: the Action Router maps each action to its skill.
     cm = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
-    assert "Mechanics Skills (on-demand)" in cm
+    assert "Action Router" in cm
     for name in SKILLS:
         assert name in cm, f"CLAUDE.md must reference {name}"
 

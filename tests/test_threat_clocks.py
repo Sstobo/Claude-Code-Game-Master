@@ -1,7 +1,34 @@
 """Tests for threat-clocks-choice-beats: named segmented pressure clocks."""
 
+import json
+from pathlib import Path
+
 from lib.threat_clocks import ThreatClockManager
 from lib.session_manager import SessionManager
+
+
+def _active(dcc_world):
+    p = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "consequences.json"
+    return json.loads(p.read_text(encoding="utf-8")).get("active", [])
+
+
+def test_filled_clock_is_a_pending_beat(dcc_world):
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Doom", 2)
+    assert m.pending_beats() == {}
+    m.advance("Doom", 2)
+    assert "Doom" in m.pending_beats()
+
+
+def test_record_choice_writes_a_consequence(dcc_world):
+    m = ThreatClockManager(dcc_world)
+    cid = m.record_choice("Carry the WMD or run?", "Carry it yourself — irreversible",
+                          trigger_type="on_location", match="Floor 4")
+    assert cid
+    texts = " ".join(c["consequence"] for c in _active(dcc_world))
+    assert "Carry it yourself" in texts
+    fork = next(c for c in _active(dcc_world) if "Carry it yourself" in c["consequence"])
+    assert fork.get("trigger_type") == "on_location" and fork.get("match") == "Floor 4"
 
 
 def test_add_advance_and_fill(dcc_world):

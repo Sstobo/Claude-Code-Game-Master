@@ -22,6 +22,7 @@ from entity_manager import EntityManager
 class ThreatClockManager(EntityManager):
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
+        self._wsd = world_state_dir
         self.clocks_file = "threat-clocks.json"
 
     def _load(self) -> Dict[str, Any]:
@@ -60,6 +61,23 @@ class ThreatClockManager(EntityManager):
     def full_clocks(self) -> Dict[str, Any]:
         return {n: c for n, c in self._load().items() if c.get("current", 0) >= c.get("max", 1)}
 
+    def pending_beats(self) -> Dict[str, Any]:
+        """Filled clocks = dramatic beats that are due (an inflection point)."""
+        return self.full_clocks()
+
+    def record_choice(self, prompt: str, chosen_fork: str, trigger: str = "player choice",
+                      trigger_type: str = None, match: str = None) -> str:
+        """Record a dramatic-choice fork as a consequence — the fork→reactive-world wire.
+
+        The DM presents `prompt` with stakes-bearing forks at an inflection point;
+        the player's chosen fork is written into the consequence engine so it pays
+        off later (optionally with a structured trigger). Returns the consequence id.
+        """
+        from consequence_manager import ConsequenceManager
+        cm = ConsequenceManager(self._wsd)
+        text = f"[Choice — {prompt}] {chosen_fork}"
+        return cm.add_consequence(text, trigger, trigger_type=trigger_type, match=match)
+
     @staticmethod
     def render(clocks: Dict[str, Any]) -> str:
         """Render clocks as filled/empty segment bars for the DM-visible context."""
@@ -84,6 +102,11 @@ def main():
     p = sub.add_parser("advance"); p.add_argument("name"); p.add_argument("--ticks", type=int, default=1)
     p = sub.add_parser("remove"); p.add_argument("name")
     sub.add_parser("list")
+    sub.add_parser("beats")  # filled clocks = beats due
+    p = sub.add_parser("choose"); p.add_argument("prompt"); p.add_argument("chosen")
+    p.add_argument("--trigger", default="player choice")
+    p.add_argument("--trigger-type", dest="trigger_type")
+    p.add_argument("--match")
 
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
@@ -97,6 +120,12 @@ def main():
         out = m.advance(args.name, args.ticks)
     elif args.action == "remove":
         out = {"removed": m.remove_clock(args.name)}
+    elif args.action == "beats":
+        out = m.pending_beats()
+    elif args.action == "choose":
+        out = {"consequence_id": m.record_choice(
+            args.prompt, args.chosen, trigger=args.trigger,
+            trigger_type=getattr(args, "trigger_type", None), match=args.match)}
     else:
         out = m.get_clocks()
 

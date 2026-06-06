@@ -12,6 +12,7 @@ builder stays available as an opt-in. Mechanics are inferred + persisted
 invisibly; the player spends the "I love this book" spike on story, not setup.
 """
 
+import copy
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -20,7 +21,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
 
-_DEFAULT_VITALS = {"hp": {"current": 10, "max": 10}, "ac": 10}
+
+def _default_vitals() -> Dict[str, Any]:
+    """Fresh nested vitals every call (avoid shared-dict aliasing across characters)."""
+    return {"hp": {"current": 10, "max": 10}, "ac": 10}
 
 
 class IdentityOnboarding(EntityManager):
@@ -36,7 +40,7 @@ class IdentityOnboarding(EntityManager):
         sheet = npc.get("character_sheet") or {}
         return {
             "identity": {"name": npc_name, "race": sheet.get("race", ""), "class": sheet.get("class", "")},
-            "vitals": {"hp": sheet.get("hp", dict(_DEFAULT_VITALS["hp"])), "ac": sheet.get("ac", 10)},
+            "vitals": {"hp": copy.deepcopy(sheet.get("hp", _default_vitals()["hp"])), "ac": sheet.get("ac", 10)},
             "attributes": dict(sheet.get("stats", {})),
             "progression": {"level": sheet.get("level", 1)},
             "inventory": {"gold": 0, "items": list(sheet.get("equipment", []))},
@@ -48,7 +52,7 @@ class IdentityOnboarding(EntityManager):
     def original(self, name: str, concept: str = "") -> Dict[str, Any]:
         return {
             "identity": {"name": name, "concept": concept},
-            "vitals": dict(_DEFAULT_VITALS),
+            "vitals": _default_vitals(),
             "attributes": {},  # inferred silently against the active kit
             "progression": {"level": 1},
             "inventory": {"gold": 0, "items": []},
@@ -59,7 +63,7 @@ class IdentityOnboarding(EntityManager):
     def nameless(self) -> Dict[str, Any]:
         return {
             "identity": {"name": "A nameless traveler"},
-            "vitals": dict(_DEFAULT_VITALS),
+            "vitals": _default_vitals(),
             "attributes": {},
             "progression": {"level": 1},
             "inventory": {"gold": 0, "items": []},

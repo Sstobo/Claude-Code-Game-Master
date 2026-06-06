@@ -39,13 +39,21 @@ class WorldTick:
             if cid:
                 applied.append({"id": cid, "text": text, "source": "world-tick"})
 
-        log = self.json_ops.load_json(self.log_file) or {"ticks": []}
-        log["ticks"].append({
-            "added": [a["id"] for a in applied],
-            "at": self.json_ops.get_timestamp(),
-            "developments": [a["text"] for a in applied],
-        })
-        self.json_ops.save_json(self.log_file, log)
+        if applied:
+            log = self.json_ops.load_json(self.log_file) or {"ticks": []}
+            log["ticks"].append({
+                "added": [a["id"] for a in applied],
+                "at": self.json_ops.get_timestamp(),
+                "developments": [a["text"] for a in applied],
+            })
+            if not self.json_ops.save_json(self.log_file, log):
+                # Log write failed -> the just-added consequences would be
+                # unrollback-able. Roll them back immediately to keep state clean.
+                ids = {a["id"] for a in applied}
+                data = self.json_ops.load_json("consequences.json") or {}
+                data["active"] = [c for c in data.get("active", []) if c.get("id") not in ids]
+                self.json_ops.save_json("consequences.json", data)
+                return []
         return applied
 
     def rollback_last(self) -> bool:
@@ -53,11 +61,15 @@ class WorldTick:
         log = self.json_ops.load_json(self.log_file) or {"ticks": []}
         if not log["ticks"]:
             return False
-        last = log["ticks"].pop()
+        last = log["ticks"][-1]
         ids = set(last.get("added", []))
         data = self.json_ops.load_json("consequences.json") or {}
         data["active"] = [c for c in data.get("active", []) if c.get("id") not in ids]
-        self.json_ops.save_json("consequences.json", data)
+        # Only pop the log entry if the consequence removal actually persisted,
+        # so a failed write never leaves the log and state inconsistent.
+        if not self.json_ops.save_json("consequences.json", data):
+            return False
+        log["ticks"].pop()
         self.json_ops.save_json(self.log_file, log)
         return True
 
