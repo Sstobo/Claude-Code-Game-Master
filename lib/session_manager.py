@@ -71,20 +71,33 @@ class SessionManager(EntityManager):
         print(f"[SUCCESS] Session started at {summary['timestamp']}")
         return summary
 
-    def end_session(self, summary: str) -> bool:
+    def end_session(self, summary: str, cliffhanger: str = None,
+                    open_threads: list = None) -> bool:
         """
-        End session with summary, log to session-log.md
+        End session with summary + structured footer, log to session-log.md.
+
+        The footer (session number, ended_at, location, cliffhanger, open_threads)
+        is both human-readable and machine-parseable so the next session can resume
+        on the exact dramatic beat (see _latest_session_meta + get_full_context).
         """
         timestamp = self.get_timestamp()
-
-        # Get session number
         session_num = self._get_session_number()
 
-        # Log session end
+        campaign = self.json_ops.load_json(self.campaign_file) or {}
+        pos = campaign.get('player_position', {})
+        location = pos.get('current_location', 'Unknown') if isinstance(pos, dict) else 'Unknown'
+        threads_str = '; '.join(open_threads) if open_threads else ''
+
         with open(self.session_log, 'a') as f:
             f.write(f"### Session Ended: {timestamp}\n")
             f.write(f"{summary}\n\n")
-            f.write("---\n\n")
+            f.write(f"**Session:** {session_num}\n")
+            f.write(f"**Location:** {location}\n")
+            if cliffhanger:
+                f.write(f"**Cliffhanger:** {cliffhanger}\n")
+            if threads_str:
+                f.write(f"**Open threads:** {threads_str}\n")
+            f.write("\n---\n\n")
 
         print(f"[SUCCESS] Session {session_num} ended and logged")
         return True
@@ -355,9 +368,12 @@ class SessionManager(EntityManager):
             lines.append("--- PREVIOUSLY ON ---")
             for s in summaries:
                 lines.append(f"- {s}")
-            cliff = self._cliffhanger(summaries[-1])
+            meta = self._latest_session_meta()
+            cliff = meta.get('cliffhanger') or self._cliffhanger(summaries[-1])
             if cliff:
                 lines.append(f"WHERE WE PAUSED: {cliff}")
+            if meta.get('open_threads'):
+                lines.append(f"OPEN THREADS: {meta['open_threads']}")
 
         # --- Story Threads (active plots, main first, each with its latest beat) ---
         threads = self._active_plot_threads(limit=None if full else 6)
@@ -663,11 +679,38 @@ class SessionManager(EntityManager):
         return campaign.get('current_character')
 
     def _get_session_number(self) -> int:
-        """Get current session number from log"""
+        """Current session number, derived from matched start/end pairs.
+
+        Counting raw 'Session Started:' over-counts orphan/duplicate starts
+        (DCC showed ~20 starts for ~13 real sessions). The current number is the
+        count of completed (ended) sessions, plus 1 if a session is open now.
+        """
         if not self.session_log.exists():
             return 0
         content = self.session_log.read_text()
-        return content.count('Session Started:')
+        ended = content.count('### Session Ended:')
+        started = content.count('## Session Started:')
+        return ended + (1 if started > ended else 0)
+
+    def _latest_session_meta(self) -> Dict[str, str]:
+        """Parse the most recent ended session's structured footer, if present.
+
+        Returns {'cliffhanger': ..., 'open_threads': ...} (empty strings if none).
+        """
+        meta = {'cliffhanger': '', 'open_threads': ''}
+        if not self.session_log.exists():
+            return meta
+        blocks = self.session_log.read_text(encoding='utf-8').split("### Session Ended:")
+        if len(blocks) < 2:
+            return meta
+        last = blocks[-1]
+        for line in last.splitlines():
+            s = line.strip()
+            if s.startswith('**Cliffhanger:**'):
+                meta['cliffhanger'] = s.split('**Cliffhanger:**', 1)[1].strip()
+            elif s.startswith('**Open threads:**'):
+                meta['open_threads'] = s.split('**Open threads:**', 1)[1].strip()
+        return meta
 
     def _get_recent_sessions(self, count: int) -> List[str]:
         """Get recent session entries"""
@@ -743,6 +786,9 @@ def main():
     # End session
     end_parser = subparsers.add_parser('end', help='End session')
     end_parser.add_argument('summary', nargs='+', help='Session summary')
+    end_parser.add_argument('--cliffhanger', help='One-line cliffhanger to resume on')
+    end_parser.add_argument('--open-thread', dest='open_threads', action='append',
+                            default=[], help='Open thread (repeatable)')
 
     # Status
     subparsers.add_parser('status', help='Get campaign status')
@@ -787,7 +833,8 @@ def main():
 
     elif args.action == 'end':
         summary_text = ' '.join(args.summary)
-        if not manager.end_session(summary_text):
+        if not manager.end_session(summary_text, cliffhanger=args.cliffhanger,
+                                   open_threads=args.open_threads):
             sys.exit(1)
 
     elif args.action == 'status':
