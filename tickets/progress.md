@@ -55,3 +55,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T17:25Z  done: item-correctness — clear lore-cursed, retype wondrous, null non-price value  [ss-7q3w9z]
 - 2026-06-06T17:27Z  done: minor-entity-stubs-taxonomy — stub plot-referenced NPCs dropped by cap; full chain passes strict integrity  [ss-7q3w9z]
 - 2026-06-06T17:29Z  done: npc-stats-enrichment — difficulty-proxy stats for combat NPCs, statless flag for the rest  [ss-7q3w9z]
+- 2026-06-06T17:31Z  done: rules-doc-authoring — authored Iron Tangle rules.md, set_rules_doc pointer, WorldKit resolves  [ss-7q3w9z]

@@ -375,7 +375,16 @@ uv run python lib/overview_seed.py "$CAMPAIGN_DIR" \
 For a DCC import, `campaign_rules` should cover: viewer-based progression, loot boxes,
 saferooms/shops, the moving Iron Tangle trains, prime-station stairwells, and the
 collapse clock. `--fix-rules-doc` nulls a `rules.md` pointer with no file on disk.
-(The rules-doc-authoring step later writes substantive `rules.md` prose and re-points it.)
+
+Then author substantive DM-facing rules prose grounded in the source and point the
+kit at it (this is the per-book rules meat the thin ruleset.json routes to):
+
+```bash
+# Write $CAMPAIGN_DIR/rules.md — DM-facing guidance for the book's signature systems
+# (progression, loot, saferooms, world mechanics, the headline clock, tone). Then:
+uv run python -c "import sys;sys.path.insert(0,'lib');from overview_seed import set_rules_doc;print(set_rules_doc('$CAMPAIGN_DIR','rules.md'))"
+```
+`WorldKit.rules_doc_path()` loads it on demand. Write real guidance, not raw passages.
 
 Verify: `bash tools/dm-campaign.sh switch "<campaign-name>"` then
 `uv run python -c "import sys;sys.path.insert(0,'lib');from world_kit import WorldKit;print(list(WorldKit().campaign_rules().keys()))"`

@@ -46,6 +46,22 @@ def fix_rules_doc(campaign_dir) -> dict:
     return {"rules_doc": doc, "changed": False}
 
 
+def set_rules_doc(campaign_dir, filename: str = "rules.md") -> dict:
+    """Point ruleset.rules_doc at `filename` (only if the file exists in the campaign).
+
+    Returns {"rules_doc": <value>, "changed": bool}.
+    """
+    cdir = Path(campaign_dir)
+    rs_path = cdir / "ruleset.json"
+    if not rs_path.exists() or not (cdir / filename).exists():
+        return {"rules_doc": None, "changed": False}
+    ruleset = json.loads(rs_path.read_text())
+    changed = ruleset.get("rules_doc") != filename
+    ruleset["rules_doc"] = filename
+    rs_path.write_text(json.dumps(ruleset, indent=2))
+    return {"rules_doc": filename, "changed": changed}
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Seed campaign-overview + fix rules_doc")
