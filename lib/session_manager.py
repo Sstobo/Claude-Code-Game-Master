@@ -819,13 +819,25 @@ def main():
     context_parser = subparsers.add_parser('context', help='Get full session context (one-command startup)')
     context_parser.add_argument('--full', action='store_true', help='Show full context with less truncation')
 
-    args = parser.parse_args()
+    from cli_output import wants_json, strip_json_flag, emit
+    json_mode = wants_json()
+    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
 
     if not args.action:
         parser.print_help()
         sys.exit(1)
 
     manager = SessionManager()
+
+    if json_mode and args.action == 'status':
+        emit(manager.get_status(), json_mode=True)
+        return
+    if json_mode and args.action == 'context':
+        emit({"context": manager.get_full_context(full=getattr(args, 'full', False))}, json_mode=True)
+        return
+    if json_mode and args.action == 'move':
+        emit(manager.move_party(' '.join(args.location)), json_mode=True)
+        return
 
     if args.action == 'start':
         summary = manager.start_session()

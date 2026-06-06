@@ -80,7 +80,7 @@ case "$ACTION" in
         echo "Campaign Status"
         echo "==============="
         echo ""
-        $PYTHON_CMD "$LIB_DIR/session_manager.py" status
+        $PYTHON_CMD "$LIB_DIR/session_manager.py" status "$@"
         ;;
 
     move)
