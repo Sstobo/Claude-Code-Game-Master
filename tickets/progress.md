@@ -37,3 +37,8 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T05:28Z  in-review: identity-first-onboarding — canon/original/nameless → open-schema char  [ss-tix001]
 - 2026-06-06T05:30Z  in-review: claudemd-lean-core-router — dm-craft skill + proposed 80-line lean core  [ss-tix001]
 - 2026-06-06T06:18Z  CONCLUDED: 6 in-review tickets agent-reviewed → done (3 bugs fixed, lean-core swapped after GO re-audit)  [ss-tix001]
+- 2026-06-06T16:06Z  prd: canvas-view-panel created  [ship-it]
+- 2026-06-06T16:06Z  sliced: 5 tickets → ready/ (canvas-view-writer claimable; rest blockedBy-gated)  [ship-it]
+- 2026-06-06T16:37Z  prd: import-pipeline-hardening created  [ship-it]
+- 2026-06-06T16:37Z  sliced: 10 tickets → ready/ (cap-extraction-30, alias-runtime-resolver, enhancer-relevance-gate, campaign-overview-author, item-correctness claimable; rest blockedBy-gated)  [ship-it]
+- 2026-06-06T16:47Z  sliced: +4 story-arc tickets → ready/ (plot-spine-extraction, threat-clock-seeding, opening-beat-seed, rules-doc-authoring)  [ship-it]
