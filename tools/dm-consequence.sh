@@ -8,6 +8,7 @@ if [ "$#" -lt 1 ]; then
     echo ""
     echo "Actions:"
     echo "  add <description> <trigger>    - Add new consequence"
+    echo "  tick                           - Fire consequences matching the current scene (auto on move/time)"
     echo "  check                          - Check pending consequences"
     echo "  resolve <id>                   - Resolve a consequence"
     echo "  list-resolved                  - List resolved consequences"
@@ -38,6 +39,10 @@ case "$ACTION" in
 
     check)
         $PYTHON_CMD "$LIB_DIR/consequence_manager.py" check
+        ;;
+
+    tick)
+        $PYTHON_CMD "$LIB_DIR/consequence_manager.py" tick
         ;;
 
     resolve)

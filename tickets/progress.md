@@ -12,3 +12,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T04:18Z  in-review: single-front-door — consolidated entry into /dm (awaiting manual walkthrough)  [ss-tix001]
 - 2026-06-06T04:25Z  done: structured-trigger-schema — optional trigger_type/match/expiry + DCC fixture migration  [ss-tix001]
 - 2026-06-06T04:28Z  done: reactivity-engine — check_pending(world_state) fires/expires triggers (scored, capped)  [ss-tix001]
+- 2026-06-06T04:31Z  done: reactivity-tick-wiring — tick wired into move/time; fires per-scene with dedup  [ss-tix001]

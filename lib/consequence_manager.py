@@ -171,6 +171,76 @@ class ConsequenceManager(EntityManager):
             return score, f"fuzzy match on: {', '.join(sorted(hits))}"
         return 0.0, ''
 
+    def tick(self, world_state: Dict[str, Any], limit: int = 2) -> List[Dict[str, Any]]:
+        """Fire matching consequences ONCE per context, stamping last_fired_key.
+
+        Same scene (location|time|date) won't re-fire the same consequence; a
+        changed scene re-arms it. Expired consequences are archived. Returns the
+        newly-fired consequences (with match_reason). The DM may still veto a
+        fired consequence narratively — it stays active either way.
+        """
+        data = self.json_ops.load_json(self.consequences_file)
+        active = data.get('active', [])
+        ctx_key = "|".join([
+            str(world_state.get('location', '')),
+            str(world_state.get('time', '')),
+            str(world_state.get('date', '')),
+        ]).lower()
+
+        survivors, expired, candidates = [], [], []
+        for c in active:
+            if self._is_expired(c, world_state):
+                aged = dict(c)
+                aged['expired'] = self.json_ops.get_timestamp()
+                expired.append(aged)
+                continue
+            survivors.append(c)
+            score, reason = self._evaluate_trigger(c, world_state)
+            if score > 0 and c.get('last_fired_key') != ctx_key:
+                candidates.append((score, c, reason))
+
+        candidates.sort(key=lambda t: t[0], reverse=True)
+        fired = []
+        for _score, c, reason in candidates[:limit]:
+            c['last_fired_key'] = ctx_key  # stamp the live object (in survivors)
+            hit = dict(c)
+            hit['match_reason'] = reason
+            fired.append(hit)
+
+        if expired or fired:
+            data['active'] = survivors
+            if expired:
+                data.setdefault('resolved', []).extend(expired)
+            self.json_ops.save_json(self.consequences_file, data)
+        return fired
+
+    def tick_from_session(self, limit: int = 2) -> List[Dict[str, Any]]:
+        """Build world_state from current campaign state, then tick()."""
+        overview = self.json_ops.load_json("campaign-overview.json") or {}
+        pos = overview.get("player_position", {})
+        location = pos.get("current_location", "") if isinstance(pos, dict) else ""
+        npcs = self.json_ops.load_json("npcs.json") or {}
+        present = []
+        loc_l = location.lower()
+        for name, d in npcs.items():
+            if not isinstance(d, dict):
+                continue
+            if d.get('is_party_member'):
+                present.append(name)
+                continue
+            tags = d.get('tags', {})
+            locs = [str(x).lower() for x in tags.get('locations', [])] if isinstance(tags, dict) else []
+            if loc_l and loc_l in locs:
+                present.append(name)
+        world_state = {
+            "location": location,
+            "time": overview.get("time_of_day", ""),
+            "date": overview.get("current_date", ""),
+            "present_npcs": present,
+            "events": [],
+        }
+        return self.tick(world_state, limit=limit)
+
     def resolve(self, consequence_id: str) -> bool:
         """
         Resolve a consequence by ID
@@ -229,6 +299,9 @@ def main():
     # Check pending
     subparsers.add_parser('check', help='Check pending consequences')
 
+    # Tick (reactivity): fire matching consequences for the current scene
+    subparsers.add_parser('tick', help='Fire consequences whose triggers match the current scene')
+
     # Resolve
     resolve_parser = subparsers.add_parser('resolve', help='Resolve a consequence')
     resolve_parser.add_argument('id', help='Consequence ID')
@@ -258,6 +331,16 @@ def main():
             print(f"{len(pending)} pending consequences:")
             for c in pending:
                 print(f"  [{c['id']}] {c['consequence']} (triggers: {c['trigger']})")
+
+    elif args.action == 'tick':
+        fired = manager.tick_from_session()
+        if fired:
+            print(f"[REACTIVITY] {len(fired)} consequence(s) fired this scene:")
+            for c in fired:
+                print(f"  [{c['id']}] {c['consequence']}")
+                print(f"      ↳ fired because: {c['match_reason']} (veto if the timing's wrong)")
+        else:
+            print("[REACTIVITY] (nothing triggered here)")
 
     elif args.action == 'resolve':
         if not manager.resolve(args.id):

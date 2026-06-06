@@ -12,4 +12,10 @@ fi
 require_active_campaign
 
 $PYTHON_CMD -m lib.time_manager update "$1" "$2"
-exit $?
+RESULT=$?
+if [ $RESULT -ne 0 ]; then exit $RESULT; fi
+
+# Reactivity: time passing can fire on_time consequences (e.g. nightfall, deadlines).
+echo ""
+bash "$(dirname "$0")/dm-consequence.sh" tick
+exit 0

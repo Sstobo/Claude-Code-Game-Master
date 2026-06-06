@@ -96,8 +96,8 @@ case "$ACTION" in
         if [ $RESULT -ne 0 ]; then exit $RESULT; fi
 
         echo ""
-        echo "Pending Consequences:"
-        bash "$TOOLS_DIR/dm-consequence.sh" check
+        # Reactivity: fire any consequences whose triggers match the new scene.
+        bash "$TOOLS_DIR/dm-consequence.sh" tick
 
         # Auto-query RAG for new location context (DM-internal, minimal output)
         CAMPAIGN_DIR=$(bash "$TOOLS_DIR/dm-campaign.sh" path 2>/dev/null)
