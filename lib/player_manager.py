@@ -18,8 +18,10 @@ from entity_manager import EntityManager
 class PlayerManager(EntityManager):
     """Manage player character operations. Inherits from EntityManager for common functionality."""
 
-    # D&D 5e XP thresholds for levels 1-20
-    XP_THRESHOLDS = [
+    # Default XP thresholds (used only when the active World Kit does not declare
+    # its own xp-levels progression). NOT a hardcoded leveling path — see
+    # _xp_thresholds(), which delegates to the kit.
+    DEFAULT_XP_THRESHOLDS = [
         0,       # Level 1
         300,     # Level 2
         900,     # Level 3
@@ -116,18 +118,31 @@ class PlayerManager(EntityManager):
         char_path.parent.mkdir(parents=True, exist_ok=True)
         return self.json_ops.save_json(str(char_path), data)
 
+    def _xp_thresholds(self):
+        """Level thresholds from the active World Kit (xp-levels model), else the
+        default table. Index L = XP required to reach level L+1; index 0 == 0.
+
+        This is how leveling delegates to the kit instead of a hardcoded 5e path.
+        """
+        ruleset = self.json_ops.load_json("ruleset.json") or {}
+        prog = ruleset.get("progression", {}) or {}
+        if prog.get("model") == "xp-levels" and prog.get("thresholds"):
+            return [0] + list(prog["thresholds"])
+        return self.DEFAULT_XP_THRESHOLDS
+
     def _normalize_xp(self, char: Dict) -> Dict:
         """Normalize XP to object format {current, next_level}"""
         xp = char.get('xp', 0)
         level = char.get('level', 1)
+        thresholds = self._xp_thresholds()
 
         if isinstance(xp, int):
             # Old format: plain integer
-            next_threshold = self.XP_THRESHOLDS[level] if level < 20 else xp
+            next_threshold = thresholds[level] if level < len(thresholds) else xp
             char['xp'] = {'current': xp, 'next_level': next_threshold}
         elif not isinstance(xp, dict):
             # Invalid format, reset
-            char['xp'] = {'current': 0, 'next_level': self.XP_THRESHOLDS[1]}
+            char['xp'] = {'current': 0, 'next_level': thresholds[1] if len(thresholds) > 1 else 0}
 
         return char
 
@@ -235,17 +250,19 @@ class PlayerManager(EntityManager):
         current_xp = char['xp']['current']
         current_level = char.get('level', 1)
 
-        # Check for level up
+        # Check for level up — bound by the active kit's thresholds, not a hardcoded 20.
+        thresholds = self._xp_thresholds()
         new_level = current_level
-        while new_level < 20 and current_xp >= self.XP_THRESHOLDS[new_level]:
+        while new_level < len(thresholds) and current_xp >= thresholds[new_level]:
             new_level += 1
 
         leveled_up = new_level > current_level
         if leveled_up:
             char['level'] = new_level
 
-        # Update next level threshold
-        next_threshold = self.XP_THRESHOLDS[new_level] if new_level < 20 else current_xp
+        # Update next level threshold (kit-driven)
+        thresholds = self._xp_thresholds()
+        next_threshold = thresholds[new_level] if new_level < len(thresholds) else current_xp
         char['xp']['next_level'] = next_threshold
 
         # Save character
