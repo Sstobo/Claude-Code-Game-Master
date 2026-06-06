@@ -266,6 +266,11 @@ bash tools/dm-extract.sh reconcile "<campaign-name>"
 # on any unresolved reference (after reconcile has stubbed/rewritten locations).
 bash tools/dm-extract.sh integrity "<campaign-name>"
 
+# Plot spine: order the MAIN plots into the book's arc (sequence + depends_on) and
+# record a through-line on the overview, so STORY THREADS read as a narrative arc,
+# not a flat bag of hooks.
+bash tools/dm-extract.sh spine "<campaign-name>"
+
 # Seed threat clocks: detect the book's headline time pressure (e.g. a "collapse
 # in N days" countdown) in the plots and create real threat_clocks entries with a
 # full-clock consequence + linked plot, so the arc has live pressure (not just prose).

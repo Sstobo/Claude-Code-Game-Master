@@ -621,16 +621,20 @@ class SessionManager(EntityManager):
             if str(p.get('status', 'active')).lower() in closed:
                 continue
             ptype = str(p.get('type', 'side')).lower()
+            # Within a type, order by spine `sequence` when present (arc order);
+            # unsequenced plots sort last via a large fallback key.
+            seq = p.get('sequence')
+            seq = seq if isinstance(seq, int) else 9999
             latest = ''
             events = p.get('events')
             if isinstance(events, list) and events:
                 ev = events[-1]
                 latest = ev.get('event', ev.get('description', '')) if isinstance(ev, dict) else str(ev)
-            active.append((order.get(ptype, 5), ptype, name, latest))
-        active.sort(key=lambda t: t[0])
+            active.append((order.get(ptype, 5), seq, ptype, name, latest))
+        active.sort(key=lambda t: (t[0], t[1]))
         chosen = active if limit is None else active[:limit]
         return [f"[{ptype}] {name}" + (f" - latest: {latest}" if latest else "")
-                for _, ptype, name, latest in chosen]
+                for _, _seq, ptype, name, latest in chosen]
 
     def _key_facts(self, per_category=4):
         """Established plot facts (local/regional/world). per_category=None = all."""
