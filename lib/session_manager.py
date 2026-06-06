@@ -347,6 +347,33 @@ class SessionManager(EntityManager):
         lines.append(f"Campaign: {campaign_name} | Session #{session_num}")
         lines.append(f"Location: {location} | Time: {time_str}")
 
+        # --- Previously On (story spine: resume story-aware, not stat-amnesiac) ---
+        # Bounded by item COUNT, never by chopping a single entry. --full shows all.
+        summaries = self._recent_session_summaries(n=None if full else 3)
+        if summaries:
+            lines.append("")
+            lines.append("--- PREVIOUSLY ON ---")
+            for s in summaries:
+                lines.append(f"- {s}")
+            cliff = self._cliffhanger(summaries[-1])
+            if cliff:
+                lines.append(f"WHERE WE PAUSED: {cliff}")
+
+        # --- Story Threads (active plots, main first, each with its latest beat) ---
+        threads = self._active_plot_threads(limit=None if full else 6)
+        if threads:
+            lines.append("")
+            lines.append("--- STORY THREADS ---")
+            lines.extend(threads)
+
+        # --- Key Facts (established plot facts the DM must keep continuity on) ---
+        key_facts = self._key_facts(per_category=None if full else 4)
+        if key_facts:
+            lines.append("")
+            lines.append("--- KEY FACTS ---")
+            for fact_line in key_facts:
+                lines.append(f"- {fact_line}")
+
         # --- Character ---
         lines.append("")
         lines.append("--- CHARACTER ---")
@@ -495,6 +522,85 @@ class SessionManager(EntityManager):
         return context
 
     # ==================== Private Helpers ====================
+
+    def _recent_session_summaries(self, n=3):
+        """Return recent completed-session summary paragraphs (oldest -> newest).
+
+        Parses session-log.md blocks; a completed session is one with a
+        '### Session Ended:' marker. n=None returns all.
+        """
+        log_path = self.campaign_dir / "session-log.md"
+        if not log_path.exists():
+            return []
+        try:
+            text = log_path.read_text(encoding='utf-8')
+        except (IOError, ValueError):
+            return []
+        summaries = []
+        for block in text.split("## Session Started:"):
+            if "### Session Ended:" not in block:
+                continue
+            after = block.split("### Session Ended:", 1)[1]
+            body = []
+            for ln in after.splitlines()[1:]:  # skip the 'Session Ended' timestamp line
+                if ln.strip() == "---":
+                    break
+                if ln.strip():
+                    body.append(ln.strip())
+            if body:
+                summaries.append(" ".join(body))
+        return summaries if n is None else summaries[-n:]
+
+    def _cliffhanger(self, summary):
+        """Best-effort 'where we paused' = last 1-2 sentences of a summary.
+
+        Superseded by structured session metadata once session-identity-metadata lands.
+        """
+        normalized = summary.replace('!', '.').replace('?', '.')
+        parts = [s.strip() for s in normalized.split('.') if s.strip()]
+        return ('. '.join(parts[-2:]) + '.') if parts else ''
+
+    def _active_plot_threads(self, limit=6):
+        """Active plots, main-first, each with its latest event beat. limit=None = all."""
+        plots = self.json_ops.load_json("plots.json") or {}
+        if not isinstance(plots, dict):
+            return []
+        closed = {'completed', 'resolved', 'failed', 'done', 'abandoned', 'dropped'}
+        order = {'main': 0, 'threat': 1, 'mystery': 2, 'side': 3}
+        active = []
+        for name, p in plots.items():
+            if not isinstance(p, dict):
+                continue
+            if str(p.get('status', 'active')).lower() in closed:
+                continue
+            ptype = str(p.get('type', 'side')).lower()
+            latest = ''
+            events = p.get('events')
+            if isinstance(events, list) and events:
+                ev = events[-1]
+                latest = ev.get('event', ev.get('description', '')) if isinstance(ev, dict) else str(ev)
+            active.append((order.get(ptype, 5), ptype, name, latest))
+        active.sort(key=lambda t: t[0])
+        chosen = active if limit is None else active[:limit]
+        return [f"[{ptype}] {name}" + (f" - latest: {latest}" if latest else "")
+                for _, ptype, name, latest in chosen]
+
+    def _key_facts(self, per_category=4):
+        """Established plot facts (local/regional/world). per_category=None = all."""
+        facts = self.json_ops.load_json("facts.json") or {}
+        if not isinstance(facts, dict):
+            return []
+        out = []
+        for cat in ('plot_local', 'plot_regional', 'plot_world'):
+            items = facts.get(cat)
+            if not isinstance(items, list):
+                continue
+            chosen = items if per_category is None else items[-per_category:]
+            for it in chosen:
+                txt = it.get('fact', it.get('text', it.get('event', ''))) if isinstance(it, dict) else str(it)
+                if txt:
+                    out.append(txt)
+        return out
 
     def _count_items(self, filename: str) -> int:
         """Count items in a JSON file"""
