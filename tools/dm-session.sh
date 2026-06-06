@@ -137,6 +137,8 @@ case "$ACTION" in
         echo "==================="
         echo ""
         $PYTHON_CMD "$LIB_DIR/session_manager.py" save "$@"
+        # Refresh long-term campaign memory on save (best-effort; never blocks).
+        $PYTHON_CMD "$LIB_DIR/campaign_memory.py" refresh >/dev/null 2>&1 || true
         ;;
 
     restore)
