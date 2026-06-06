@@ -8,3 +8,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T03:46Z  done: story-spine-context — get_full_context assembles PREVIOUSLY ON + threads + key facts + cliffhanger  [ss-tix001]
 - 2026-06-06T04:02Z  done: npc-voice-surfacing — get_voice + dm-npc.sh voice + NPC VOICES block in context  [ss-tix001]
 - 2026-06-06T04:10Z  done: json-returning-wrappers — shared cli_output envelope + search.py --json; split per-manager into 4 sub-tickets  [ss-tix001]
+- 2026-06-06T04:15Z  done: scene-context-consolidation — unified dm-context.sh (world-state + graceful RAG passages)  [ss-tix001]

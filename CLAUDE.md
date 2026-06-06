@@ -1009,7 +1009,18 @@ bash tools/dm-note.sh "session_events" "[character] completed a long rest"
 
 **All tool calls MUST use `bash tools/` prefix.** Never call bare `dm-search.sh`.
 
-### Choosing the Right Search Tool
+### Narrating a scene? Use the one front door
+
+| I need to... | Use this |
+|--------------|----------|
+| **Everything to narrate the current scene** (location + present NPCs + grounded source passages) | `bash tools/dm-context.sh ["Location"] [--entity "Name"]` |
+
+`dm-context.sh` internally routes: world-state always, RAG source passages when the
+campaign has vectors (degrades gracefully otherwise). Add `--json` for a structured
+envelope. This replaces the manual choice between the three tools below — reach for
+those only when you specifically need one kind of result.
+
+### Choosing a specific search tool
 
 | I need to... | Use this |
 |--------------|----------|
@@ -1017,11 +1028,12 @@ bash tools/dm-note.sh "session_events" "[character] completed a long rest"
 | Search world state (NPCs, locations, facts, plots) | `bash tools/dm-search.sh "query" --world-only` |
 | Search both world state AND source material | `bash tools/dm-search.sh "query"` |
 | Get RAG passages for a **known entity by name** | `bash tools/dm-enhance.sh query "Entity Name"` |
-| Get scene context for current location | `bash tools/dm-enhance.sh scene "Location Name"` |
+| Get scene context for current location | `bash tools/dm-context.sh "Location Name"` |
 | Search NPCs by location/quest tag | `bash tools/dm-search.sh --tag-location "Place"` |
 
 ### Common Mistakes
 
+- **PREFER**: `bash tools/dm-context.sh` for scene narration — it bundles world-state + grounded passages so you don't have to pick the right tool.
 - **WRONG**: `dm-enhance.sh query "some free text search"` — This does entity NAME lookup, not free-text search. It will fail if no entity matches the name.
 - **RIGHT**: `bash tools/dm-search.sh "some free text search" --rag-only` — This does free-text vector search across all source material.
 - **WRONG**: `dm-search.sh "query"` — Missing `bash tools/` prefix. Will error with "command not found".
