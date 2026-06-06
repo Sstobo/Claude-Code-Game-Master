@@ -73,12 +73,103 @@ class ConsequenceManager(EntityManager):
             return consequence_id
         return ""
 
-    def check_pending(self) -> List[Dict[str, Any]]:
+    def check_pending(self, world_state: Dict[str, Any] = None,
+                      limit: int = 2) -> List[Dict[str, Any]]:
         """
-        Get all pending consequences
+        Pending consequences.
+
+        - No world_state  -> the raw active list (legacy accessor).
+        - With world_state -> only consequences that FIRE now, each annotated with
+          a `match_reason`, sorted by confidence and capped at `limit`. Structured
+          triggers match exactly; legacy free-text triggers are scored fuzzily.
+          Expired consequences (past their `expiry`) are auto-archived to resolved.
+
+        world_state keys (all optional): location (str), present_npcs (list[str]),
+        time (str), events (list[str]), date (str).
+
+        Firing does NOT remove a consequence — the DM vetoes for timing or resolves
+        it explicitly; the tick layer dedups so it does not re-fire every beat.
         """
         data = self.json_ops.load_json(self.consequences_file)
-        return data.get('active', [])
+        active = data.get('active', [])
+
+        if world_state is None:
+            return active
+
+        fired = []
+        survivors = []
+        expired = []
+        for c in active:
+            if self._is_expired(c, world_state):
+                aged = dict(c)
+                aged['expired'] = self.json_ops.get_timestamp()
+                expired.append(aged)
+                continue
+            survivors.append(c)
+            score, reason = self._evaluate_trigger(c, world_state)
+            if score > 0:
+                hit = dict(c)
+                hit['match_reason'] = reason
+                fired.append((score, hit))
+
+        if expired:
+            data['active'] = survivors
+            data.setdefault('resolved', []).extend(expired)
+            self.json_ops.save_json(self.consequences_file, data)
+
+        fired.sort(key=lambda t: t[0], reverse=True)
+        return [hit for _, hit in fired[:limit]]
+
+    @staticmethod
+    def _world_text(world_state: Dict[str, Any]) -> str:
+        parts = [
+            str(world_state.get('location', '')),
+            str(world_state.get('time', '')),
+            str(world_state.get('date', '')),
+            ' '.join(str(x) for x in world_state.get('present_npcs', []) or []),
+            ' '.join(str(x) for x in world_state.get('events', []) or []),
+        ]
+        return ' '.join(parts).lower()
+
+    def _is_expired(self, consequence: Dict[str, Any], world_state: Dict[str, Any]) -> bool:
+        expiry = consequence.get('expiry')
+        if not expiry:
+            return False
+        return str(expiry).lower() in self._world_text(world_state)
+
+    def _evaluate_trigger(self, consequence: Dict[str, Any], world_state: Dict[str, Any]):
+        """Return (score, reason). score 0 = no fire. Structured = 1.0; fuzzy < 1."""
+        ttype = consequence.get('trigger_type')
+        match = str(consequence.get('match', '')).lower()
+
+        if ttype and match:
+            if ttype == 'on_location' and match in str(world_state.get('location', '')).lower():
+                return 1.0, f"at location matching '{consequence['match']}'"
+            if ttype == 'on_npc':
+                npcs = ' '.join(str(x) for x in world_state.get('present_npcs', []) or []).lower()
+                if match in npcs:
+                    return 1.0, f"NPC matching '{consequence['match']}' present"
+            if ttype == 'on_time' and match in str(world_state.get('time', '')).lower():
+                return 1.0, f"time matching '{consequence['match']}'"
+            if ttype == 'on_event':
+                events = ' '.join(str(x) for x in world_state.get('events', []) or []).lower()
+                if match in events:
+                    return 1.0, f"event matching '{consequence['match']}'"
+            return 0.0, ''
+
+        # Legacy free-text: score word overlap between the trigger phrase and world.
+        world_text = self._world_text(world_state)
+        stop = {'the', 'a', 'an', 'or', 'and', 'if', 'when', 'party', 'to', 'in', 'on',
+                'at', 'of', 'for', 'more', 'than', 'again', 'next', 'with', 'makes'}
+        words = {w.strip('.,;:\'"') for w in str(consequence.get('trigger', '')).lower().split()}
+        words = {w for w in words if w and w not in stop and len(w) > 2}
+        if not words:
+            return 0.0, ''
+        hits = [w for w in words if w in world_text]
+        score = len(hits) / len(words)
+        if score >= 0.5:
+            return score, f"fuzzy match on: {', '.join(sorted(hits))}"
+        return 0.0, ''
 
     def resolve(self, consequence_id: str) -> bool:
         """
