@@ -276,6 +276,12 @@ bash tools/dm-extract.sh spine "<campaign-name>"
 # full-clock consequence + linked plot, so the arc has live pressure (not just prose).
 bash tools/dm-extract.sh seed-clocks "<campaign-name>"
 
+# Seed the opening beat: set the starting player_position to the arc's opening
+# location, mark the first spine plot active with an opening beat, and write a
+# session-log "Previously On / Where We Paused" hook — so the first /dm session
+# opens on the book's actual opening, not a blank void. (Run after spine.)
+bash tools/dm-extract.sh seed-opening "<campaign-name>"
+
 # Archive the extracted/ folder (temporary working directory)
 bash tools/dm-extract.sh archive "<campaign-name>"
 ```

@@ -32,6 +32,7 @@ Commands:
                             (runs before the integrity gate)
   spine [campaign]          Derive plot arc (sequence + depends_on + through-line)
   seed-clocks [campaign]    Seed threat clocks from headline time-pressure in plots
+  seed-opening [campaign]   Set starting position + opening beat from the spine
   integrity [campaign] [--no-strict]  Canonicalize cross-refs to real keys;
                             fail on unresolved (strict by default)
   merge [campaign] [--cleanup]  Combine results from all extraction agents
@@ -488,6 +489,21 @@ case "$1" in
 
     cap)
         cap_extracted "$2" "$3"
+        ;;
+
+    seed-opening)
+        # Set starting position + opening beat + session-log hook from the spine.
+        campaign_name="$2"
+        if [ -z "$campaign_name" ]; then
+            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
+        fi
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        if [ ! -d "$CAMPAIGN_DIR" ]; then
+            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
+        fi
+        echo "Seeding opening beat: $campaign_name"
+        echo "================================="
+        $PYTHON_CMD "$LIB_DIR/opening_seed.py" "$CAMPAIGN_DIR"
         ;;
 
     spine)

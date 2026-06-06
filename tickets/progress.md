@@ -50,3 +50,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T17:10Z  done: campaign-overview-author — seed overview+campaign_rules, fix dangling rules_doc; import Step 6.6  [ss-7q3w9z]
 - 2026-06-06T17:14Z  done: threat-clock-seeding — detect time pressure in plots, seed real threat clocks (10-day collapse live)  [ss-7q3w9z]
 - 2026-06-06T17:17Z  done: plot-spine-extraction — order main plots into arc (sequence+depends_on+through-line), threads sort by sequence  [ss-7q3w9z]
+- 2026-06-06T17:20Z  done: opening-beat-seed — start at arc opening (position + first beat + session-log hook)  [ss-7q3w9z]
