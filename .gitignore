@@ -76,3 +76,11 @@ docs/production/
 
 # mypy
 .mypy_cache/
+
+# ship-it scratch
+.ship-it/
+
+# extracted book content (personal use, keep repo clean)
+world-state/campaigns/*/source-material/
+source-material/*.txt
+**/current-document.txt
