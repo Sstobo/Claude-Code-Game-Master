@@ -35,8 +35,19 @@ shift
 
 case "$ACTION" in
     start)
-        echo "Starting D&D Session"
-        echo "======================"
+        # Banner names the active World Kit, not D&D — each book plays as its own game.
+        CAMPAIGN_DIR=$(bash "$TOOLS_DIR/gm-campaign.sh" path 2>/dev/null)
+        KIT_NAME=""
+        if [ -f "$CAMPAIGN_DIR/ruleset.json" ]; then
+            KIT_NAME=$($PYTHON_CMD -c "import json,sys; print(json.load(open(sys.argv[1])).get('name','') or '')" "$CAMPAIGN_DIR/ruleset.json" 2>/dev/null)
+        fi
+        if [ -n "$KIT_NAME" ]; then
+            BANNER="Starting $KIT_NAME Session"
+        else
+            BANNER="Starting Session"
+        fi
+        echo "$BANNER"
+        printf '%*s\n' "${#BANNER}" '' | tr ' ' '='
         echo ""
         $PYTHON_CMD "$LIB_DIR/session_manager.py" start
         RESULT=$?

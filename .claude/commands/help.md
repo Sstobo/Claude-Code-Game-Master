@@ -46,7 +46,7 @@ Display all available commands and tools.
   gm-enhance.sh     Enrich entities with RAG
   gm-overview.sh    Quick world summary
   gm-campaign.sh    Switch between campaigns
-  gm-view.sh        Canvas view panel (scene / clear / render / watch)
+  gm-image.sh       Generate a scene image (gpt-image-2) + clickable link
 
 ================================================================
 
@@ -56,12 +56,16 @@ Display all available commands and tools.
   Continue playing: /gm
   Import module:    /import
 
-  LIVE CANVAS (optional)
+  SCENE IMAGES (optional)
   --------------------------------------------------------
-  Open a second terminal (VS Code split terminal works best),
-  then run:   bash tools/gm-view.sh watch
-  A persistent pane shows the current scene, party, location,
-  and live combat. Starts before a campaign exists; Ctrl+C exits.
+  The GM illustrates often, framed as an in-world chronicler's art:
+    bash tools/gm-image.sh chronicler --name "Astreus" \
+      --style "rough Frazetta-esque ink wash, woodcut" \
+      --persona "a drunk court-scholar who exaggerates the gore"
+    bash tools/gm-image.sh generate --title "..." --prompt "..."
+  The locked --style is auto-added to every prompt so the gallery
+  reads like one artbook. Saves a PNG + prints a clickable file://
+  link. Needs OPENAI_API_KEY in .env; gm-image.sh log shows spend.
 
 ================================================================
 ```

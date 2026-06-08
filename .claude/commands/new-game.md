@@ -58,6 +58,9 @@ Write `world-seed.json` to the campaign dir:
   "premise": "...", "tone": "...", "magic": "...", "setting": "...",
   "genre_bend": "<the distinct commitments, in a sentence or two>",
   "voice_exemplar": "<author/work to channel, e.g. 'Robert E. Howard'>",
+  "art_style": "In the style of <a CREATIVE, MULTIFACETED mashup> — e.g. 'In the style of Frank Miller's Batman but rendered in smudged charcoal', 'In the style of a gilded medieval illuminated manuscript but depicting cyberpunk megacities', 'In the style of Studio Ghibli but H.R. Giger biomech'. Combine two unexpected references; aim for the surprise that makes a viewer go OHHHHH. This is the campaign's locked gallery signature, set ONCE here.",
+  "chronicler_name": "<the in-world artist who 'makes' every image, fits the tone>",
+  "chronicler_persona": "<their voice/bias — grim, sarcastic, reverent, unreliable>",
   "axes": [ { "axis": "geography", "depth": "deep", "bend": "..." },
             { "axis": "magic-lore", "depth": "deep", "bend": "blood-priced curses" },
             { "axis": "bestiary", "depth": "stub", "bend": "..." } ]
@@ -166,6 +169,20 @@ generated world. Fix anything it flags before play.
 
 ## PHASE F — OVERVIEW, SESSION LOG, HANDOFF
 
+**Lock the chronicler + art style NOW** (the gallery signature is a world-creation
+decision, not an in-play improvisation) from the seed's `art_style` /
+`chronicler_*` fields:
+
+```bash
+bash tools/gm-image.sh chronicler \
+  --name "<chronicler_name>" \
+  --style "<art_style — MUST start with 'In the style of ...'; a creative, multifaceted mashup>" \
+  --persona "<chronicler_persona>"
+```
+
+The `scene-illustrator` agent READS this locked style and opens every prompt with
+it — it never picks its own. Make the mashup genuinely surprising.
+
 Update `campaign-overview.json` (starting location from the bible's geography,
 date/time, `session_count: 0`) and initialize `session-log.md` with the world
 summary (starting location, key NPCs, the three plot tiers). Then display a
@@ -188,6 +205,7 @@ Run **`/create-character`**.
 - [ ] consolidated `locations/npcs/facts.json` + merged bible graphs
 - [ ] `current-document.txt` embedded (RAG returns hits)
 - [ ] `/world-check` passes
+- [ ] chronicler + art style locked (`gm-image.sh chronicler`) — style starts "In the style of ...", a creative mashup
 - [ ] overview + session log set; handed off to `/create-character`
 
 ## ERROR RECOVERY

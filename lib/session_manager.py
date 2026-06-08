@@ -4,6 +4,7 @@ Session management module for GM tools
 Handles session lifecycle, party movement, and JSON-based saves
 """
 
+import os
 import sys
 from typing import Dict, List, Optional, Any
 from pathlib import Path
@@ -433,6 +434,38 @@ class SessionManager(EntityManager):
                          "NOT list numbered choices. The player drives freely. "
                          "(Toggle: /gm choices on|off)")
 
+        # --- Scene images (gpt-image-2): only available when a key is configured ---
+        if os.environ.get("OPENAI_API_KEY"):
+            lines.append("Scene images: ENABLED — illustrate GENEROUSLY and with glee "
+                         "(images cost ~$0.04; lean toward YES). New location, monster/boss "
+                         "reveal, big loot, a styled flourish, a funny beat, a quiet vista — "
+                         "any beat with a real visual or emotional charge earns one. Present "
+                         "it DIEGETICALLY: frame the picture as an artifact made by an in-world "
+                         "chronicler whose style fits this world's voice (e.g. \"BEHOLD, the "
+                         "battle as set down by the scholar Astreus —\") and keep that same "
+                         "artist + art-style across the campaign so it reads like one artbook. "
+                         "Run `bash tools/gm-image.sh generate --title \"...\" --prompt \"...\"`, "
+                         "then show the file:// link. (See gm-craft → Diegetic Illustration.) "
+                         "Skip only truly flat beats and don't re-shoot the same static room.")
+            chronicler = self.json_ops.load_json("chronicler.json") or {}
+            if chronicler.get("name"):
+                bits = [f"This campaign's chronicler is {chronicler['name']}"]
+                if chronicler.get("persona"):
+                    bits.append(f"({chronicler['persona']})")
+                line = " ".join(bits) + "."
+                if chronicler.get("style"):
+                    line += (f" Locked art style: {chronicler['style']} "
+                             "(auto-added to every prompt).")
+                line += " Frame every image as their work and keep them consistent."
+                lines.append("  Chronicler: " + line)
+            else:
+                lines.append("  Chronicler: none yet — name one the first time you "
+                             "illustrate and persist it with `bash tools/gm-image.sh "
+                             "chronicler --name \"...\" --style \"...\" --persona \"...\"`.")
+        else:
+            lines.append("Scene images: DISABLED (no OPENAI_API_KEY) — do NOT call gm-image.sh "
+                         "and do NOT mention images; narrate in text only.")
+
         # --- Narrative Voice (write the prose in the world's authorial voice) ---
         bible = self.json_ops.load_json("world-bible.json") or {}
         voice = bible.get("voice") or {}
@@ -650,7 +683,6 @@ class SessionManager(EntityManager):
 
         # Token observability: soft ~2k-token target is GUIDANCE only, never a hard
         # cut. Opt in with DM_DEBUG_CONTEXT=1 to watch the budget without altering output.
-        import os
         if os.environ.get('DM_DEBUG_CONTEXT'):
             approx_tokens = len(context) // 4
             print(f"[context] ~{approx_tokens} tokens ({len(context)} chars)", file=sys.stderr)

@@ -164,20 +164,19 @@ All tools follow the pattern `bash tools/gm-<tool>.sh <command> [args]`. Most ac
 | `gm-enhance.sh` | RAG-powered entity enrichment |
 | `gm-extract.sh` | Document import and extraction pipeline |
 | `gm-overview.sh` | Quick world-state summary |
-| `gm-view.sh` | Canvas view panel — push scene art, render/watch the live pane |
+| `gm-image.sh` | Generate a scene image with gpt-image-2 and print a clickable link |
 | `gm-reset.sh` | Reset campaign data |
 
-### The Live Canvas
+### Scene Images
 
-The status-bar HUD is a fixed strip; the **canvas** is a full second pane the GM can draw into — dungeon maps, scene art, party/location/combat status that stays put while play continues.
-
-Open a **second terminal** (a VS Code split terminal is ideal, but any second tab in Warp/iTerm/etc. works) and run:
+At high-impact beats — a new location, a boss reveal, a big find — the GM can illustrate the moment with a real image instead of describing it in text:
 
 ```bash
-bash tools/gm-view.sh watch
+bash tools/gm-image.sh generate --title "The Sunken Crypt" \
+  --prompt "A flooded stone crypt lit by green torchlight, dark fantasy, cinematic"
 ```
 
-The pane shows the current **scene** (drawn by the GM), plus auto-derived **PARTY**, **HERE**, and **COMBAT** panels read live from campaign state — no GM effort needed. It redraws within ~250 ms of any state change, starts even before a campaign is active, and `Ctrl+C` restores your terminal cleanly. (`gm-view.sh render` prints the panel once instead of watching.)
+It calls OpenAI's `gpt-image-2`, saves the PNG into the campaign's `images/` folder, and prints a clickable `file://` link you open to view it (the VS Code terminal linkifies the path). Every generation is logged with an estimated cost — run `gm-image.sh log` for the running total. Requires `OPENAI_API_KEY` in `.env`; without it the GM just keeps narrating in text. Use `--quality low` for quick drafts, `high` for marquee moments.
 
 ### Dependencies
 

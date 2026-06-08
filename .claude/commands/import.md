@@ -434,6 +434,23 @@ your excerpts were not verbatim — re-copy them exactly from the source).
 
 ---
 
+## Step 6.8: Lock the Chronicler + Art Style — REQUIRED
+
+The gallery's visual signature is a world-identity decision made HERE, once — not
+improvised per-image at play. Derive it from the book's tone and lock it so the
+`scene-illustrator` agent opens EVERY prompt with the same style:
+
+```bash
+bash tools/gm-image.sh chronicler \
+  --name "<in-world artist who 'makes' every image; fits the book>" \
+  --style "<MUST start with 'In the style of ...'; a CREATIVE, MULTIFACETED mashup — combine two unexpected references, e.g. 'In the style of Frank Miller's Batman but in smudged charcoal', 'In the style of a Bayeux-tapestry embroidery but depicting a neon megacity'. Aim for the OHHHHH.>" \
+  --persona "<their voice/bias — grim, sarcastic, reverent, unreliable>"
+```
+
+The agent never picks its own style; it reads this locked one. Make the mashup surprising.
+
+---
+
 ## Step 7: Switch to Campaign and Show Summary
 
 ```bash
