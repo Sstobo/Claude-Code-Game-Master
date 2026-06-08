@@ -1,24 +1,103 @@
 # Game Master Claude
 
-**Drop in a book you own. Play *that book* as its own game.**
+**A harness that turns Claude Code into a persistent Game Master — running a living game world that's genuinely yours.**
 
-Got a favorite fantasy novel? A classic adventure module? A weird pulp sci-fi paperback from the 70s? Drop the PDF in, and GM Claude reads it, builds a game out of it, and drops you into that world as whoever you want to be.
+This is not a chatbot you roleplay with. It's a *harness*: a thin, opinionated shell around Claude Code that gives the most capable model on the planet the three things it normally lacks to run a real campaign — **durable memory, a custom rulebook, and a world that keeps moving when you look away.** Claude builds the world, then runs it for you, session after session, remembering everything.
 
-Not a reskin. Not D&D-with-the-names-changed. When you import a book, Game Master Claude writes a **bespoke ruleset for that world** — its own stats, its own way of leveling up, its own signature systems (loot boxes, spice visions, train cars, whatever the book runs on). A Dune import plays like Dune. A *Dungeon Crawler Carl* import plays like *Dungeon Crawler Carl*. You don't need to know any of the rules — just say what you want to do.
+The idea is simple and, as far as we can tell, fairly new: stop asking the model to *pretend* to be a GM inside a single conversation, and instead give it a real GM's tools — state on disk, mechanics it can look up, a clock that ticks. Then get out of its way. Claude does the imagining; the harness makes it stick.
 
-The [Internet Archive](https://archive.org/) is a goldmine for this. Thousands of free books, modules, and old pulp novels. Jump into *IT* and help the bad guys. Drop into *Lord of the Rings* and play from Gollum's perspective. It's your call.
+### Two front doors
+
+There are two ways into a world, and both get the same living-world treatment:
+
+- **🌍 Author something original — `/new-game`.** A genre-aware questionnaire interviews you, then Claude authors a *book's worth* of brand-new canon and a custom ruleset — and runs it through an anti-generic pipeline whose explicit job is to keep your world from collapsing into off-the-shelf high fantasy. This is the headline act. ([jump ↓](#-author-an-original-world--new-game))
+- **📖 Import a book you own — `/import`.** Drop in a PDF and Claude reads the real text, writes a bespoke game out of *that book*, and drops you into it as whoever you want to be. ([jump ↓](#-import-a-book--import))
+
+Pick either. The persistence, the custom rulebook, the living world, the dying-and-handoff stakes — all identical underneath.
+
+---
+
+## The harness in one picture
+
+```
+        YOU                    THE HARNESS                      CLAUDE (Opus)
+   "I attack the    →   routes the beat, loads only    →   decides, narrates,
+    Terror Clown"       the rules it needs, hands           voices the NPC,
+                        Claude the scene + memory           rolls the dice
+                                    ↑                              ↓
+                        reads & writes campaign state   ←   "persist before you
+                        (HP, NPCs, threads, clocks,         narrate" — every
+                        consequences) on disk               change saved first
+```
+
+Every turn runs the same loop: **gather context → decide → execute → persist state → narrate.** The harness enforces the boring, critical part — *nothing happened until it's written to disk* — so the story survives across days, machines, and context windows. Claude handles the part it's extraordinary at: making it feel alive.
+
+---
+
+## What the harness actually gives the model
+
+- **A memory that outlives the conversation.** NPCs, locations, plot threads, facts, your character sheet, your whole history — all persisted as plain JSON per campaign. Claude can recall prior events, keeps a tiered memoir of the campaign, and tracks what's canon-from-the-book versus what *you* made happen. Close the laptop mid-fight; pick it up next week exactly where you left off.
+
+- **A rulebook written for *your* world, not D&D.** Whether you import a book or author one from scratch, Claude produces a **World Bible** (voice, tone, factions, geography, timeline) and from it a **World Kit** — a custom ruleset with its own stats, its own way of leveling, its own signature systems. A *Dune* import plays like *Dune*; a *Dungeon Crawler Carl* import plays like *Dungeon Crawler Carl*; and an original world plays like *itself*. D&D 5e is just one possible kit, not the foundation.
+
+- **A world that pushes context *to* the model.** The old failure mode of LLM roleplay is amnesia — the GM remembers your HP but forgot the cliffhanger. Here, every scene arrives pre-loaded: *previously on…*, open threads, key facts, which NPCs are present and how they talk, the clocks ticking in the background, and any consequence about to land. Claude doesn't have to remember to look — the harness puts it on the table.
+
+- **A world that keeps living.** Consequences you set in motion fire on their own when you return to a place or enough time passes. Named threat clocks tick whether you're watching or not. Between sessions, a small, bounded set of off-screen developments advance. The place feels alive because it *is* still running.
+
+- **Specialist sub-agents on tap.** A fight starts and a monster-manual agent grabs stats; you cast something and a spell-caster looks up the mechanics; you go shopping and a gear-master handles inventory; a haunting vista appears and a scene-illustrator paints it in the background. They're **book-first** — they read your world's own rules before reaching for anything external — and they spin up invisibly so the story never stops.
+
+- **Real stakes.** The character can die. Telegraphed, earned, never by GM fiat — but death is a valid forward outcome, and when it lands the harness runs a hand-off so the show goes on (take over a party member, roll a newcomer, step in as a canon figure). The world remembers the fallen.
+
+- **An illustrated campaign, drawn in-world.** *If* you drop an `OPENAI_API_KEY` into `.env`, the GM is encouraged to illustrate big beats — a new location, a boss reveal, a haunting vista, your styled flourish — with real generated images, presented diegetically as the work of an **in-world chronicler**: a named artist with a locked art style and persona, both designed at world-creation time to fit your plot and tone. The same hand "draws" every image across the campaign, so your gallery reads like one artist's sketchbook of your story. No key, no problem — the GM just keeps narrating in text and never mentions images.
 
 ---
 
 ## In Action — Dungeon Crawler Carl
 
-A campaign imported from *Dungeon Crawler Carl*. Tandy the sasquatch rips the skin off a Terror Clown, forces Carl to wear it as a disguise, then performs a sasquatch mating dance to distract Grimaldi while Donut frees the dragon. Standard Tuesday.
+A campaign imported from *Dungeon Crawler Carl*. Tandy the sasquatch rips the skin off a Terror Clown, forces Carl to wear it as a disguise, then performs a sasquatch mating dance to distract Grimaldi while Donut frees the dragon. Standard Tuesday. (Images generated in-world, on the fly, by the scene-illustrator agent.)
 
 ![Tandy acquires Terror Clown skin disguise for Carl](public/622422010_1572097020675669_3114747955156903860_n.png)
 
 ![Tandy performs a sasquatch mating dance to distract Grimaldi](public/625560066_33916991331281718_1129121114640091251_n.png)
 
 ![Exploring The Laughing Crypt — thirty clown bodies wake up](public/623940676_2000130920531570_2521032782764513297_n.png)
+
+---
+
+## 🌍 Author an original world — `/new-game`
+
+Anyone can ask an LLM for "a fantasy setting" and get the same tired tavern, the same chosen one, the same five elemental kingdoms. The interesting problem isn't *generating* a world — it's generating one that doesn't drift to generic. That's what this pipeline is built to defeat.
+
+You don't write the world. You answer a short **genre-aware questionnaire** (powered by interactive multiple-choice prompts), and Claude builds outward from your answers:
+
+- **A one-line premise** in your own words — *"Conan but on a drowned coast,"* *"cozy folk-horror in a town that forgets its dead,"* *"corporate clans fighting over charged ruins."*
+- **The genre bend** — the single most important anti-generic lever. Sword-and-sorcery (magic is blood-priced and villainous), high fantasy (deep lineage and old songs), sci-fantasy (nanomagic and clan politics), folk/cosmic horror (a wrongness beneath a fragile community) — each bend pushes the whole world somewhere specific.
+- **A narrative voice** — *whose* voice should narrate this world? Howard, Le Guin, Gibson, Pratchett, or your own pick. Claude writes original prose *in that author's fingerprint*, and narrates every beat in it. Your world doesn't read like a generic narrator; it reads like a book.
+- **A locked art style** — a deliberately surprising mashup (*"a gilded medieval illuminated manuscript depicting cyberpunk megacities"*) and an in-world chronicler who "draws" every image, so the whole gallery reads like one artist's sketchbook.
+
+From those answers Claude runs a **five-stage authoring pipeline** — *seed → skeleton → fan-out → reconcile → ground*:
+
+1. **Seed.** Your answers become a structured world-seed, with an **adaptive axis list** — Claude picks the dimensions that actually matter for *your* genre (a sword-and-sorcery world gets deep blood-magic lore and skips heavy tech; a sci-fantasy world gets deep infrastructure and corporate factions).
+2. **Skeleton.** Claude authors the world's coherent spine in one pass while the seed is fresh — name, voice, themes, factions, geography, signature systems — then **shows it to you for approval before going further.**
+3. **Fan-out.** A swarm of specialist `world-author` agents runs *in parallel*, each deepening exactly one axis (geography, factions, history, magic-lore, culture, bestiary…), while a `world-kit-author` derives the custom ruleset from the world — never defaulting to 5e.
+4. **Reconcile — the anti-drift pass.** A `world-reconciler` agent reads everything and runs three checks: a **genericness critic** that flags anything that could've come from any generic fantasy, a kit↔flavor agreement check, and a cross-link pass that weaves the axes together. Generic flags get rewritten. *This stage exists for the sole purpose of making your world play distinct, not just read distinct.*
+5. **Ground.** All the authored canon is folded into runtime state, compiled, and embedded for retrieval — the **same grounding machinery an imported book gets** — so scenes draw on your world's own canon as if it were a published source.
+
+The result is a world with its own voice, its own rules, its own art, and a corpus deep enough to play in for a hundred sessions. Then Claude hands you to `/create-character` and the story begins.
+
+```
+You: /new-game
+GM:  A few questions first. One line — what's the world?
+You: Wandering swordsmen in a desert of glass where the gods drowned.
+GM:  Genre bend? (1) sword-and-sorcery  (2) high fantasy  (3) sci-fantasy  (4) folk/cosmic horror
+...
+```
+
+## 📖 Import a book — `/import`
+
+Got a favorite novel, a classic adventure module, a weird pulp paperback from the 70s? Drop the PDF into `source-material/`, and Claude reads large spans of the actual text, writes a **World Bible** for it, drafts a **World Kit** ruleset, indexes the book for retrieval, and drops you in. Not a reskin — the imported world plays by its *own* logic, and narration stays grounded in real passages until your choices change things.
+
+> **Where to find books:** the [Internet Archive](https://archive.org/) is a goldmine — thousands of free books, modules, and old pulp novels. Jump into *IT* and help the bad guys. Drop into *Lord of the Rings* and play from Gollum's perspective. It's your call.
 
 ---
 
@@ -34,52 +113,25 @@ cd Claude-Code-Game-Master
 
 The install script sets up everything — Python, uv, jq, and all dependencies. It works on macOS and Linux with zero prior setup. (You can also just launch Claude Code and ask it to set things up.)
 
-Then play in three steps:
+Then launch and play:
 
-1. Drop a PDF into the `source-material/` folder
-2. Run `claude` to launch Claude Code
-3. Run `/gm` — the agent takes it from there
+1. Run `claude` to launch Claude Code
+2. Run `/gm` — the harness takes it from there
 
-`/gm` handles importing the book, building your character, and running the game. First thing it asks: **"Who are you in this world?"** — play a character lifted straight from the book, an original of your own, or a nameless traveler who wanders in. The mechanics get figured out behind the scenes.
-
----
-
-## What Makes It Different
-
-### Every book becomes its own game
-
-When you import a document, GM Claude reads large spans of the actual text and writes a **World Bible** for it — voice, tone, factions, geography, timeline, and the systems that make that world tick. From the Bible it drafts a **World Kit**: a custom ruleset for *that* world. It shows you the draft, you confirm it, and you're playing.
-
-The generic core underneath is deliberately thin — a single resolution system (roll vs. a difficulty), abstract health and conditions, and three ways to advance (story milestones, a resource you spend down, or classic XP levels). Everything with flavor — stat names, how combat feels, how you grow stronger — comes from the book. D&D 5e is just *one* possible kit, not the foundation.
-
-### The world pushes the story to you
-
-Old version: the GM had to remember to go look things up. New version: **the world hands the right context to the GM at the right moment.** Every scene arrives pre-loaded with what came before — *previously on…*, the open plot threads, key facts, which NPCs are present and how they talk, the clocks ticking in the background, and any consequences about to land. No more stat-sheet amnesia where the GM knows your HP but forgot the cliffhanger.
-
-### The world keeps living
-
-- **Consequences fire on their own.** Pick a fight, make a promise, leave a body — GM Claude schedules the fallout and it triggers later when you return to a place or enough time passes. With a reason attached, and undoable if the timing's wrong.
-- **Threat clocks tick.** Named pressures (a city collapsing in 10 days, a rival closing in) advance whether you're watching or not. When a clock runs out, a beat is due.
-- **Between sessions, the world moves.** A small, bounded set of off-screen developments advance while you're away — so the place feels alive when you come back.
-
-### NPCs are people
-
-Every NPC has a goal, a secret, a shifting mood, real relationships with you, and a **canonical voice** pulled verbatim from the book. They sound like themselves, they want things, and they remember how you treated them. Piss off a shopkeeper and it sticks.
-
-### It remembers everything
-
-NPCs, locations, plot threads, facts, your whole history — all of it persists across sessions. GM Claude can recall prior events, keeps a tiered memoir of your campaign, and tracks what's canon-from-the-book versus what *you* made happen. Save and restore at any point.
+`/gm` is the only command you need. It offers a **New Adventure** — author an original world (`/new-game`), import a book you've dropped in `source-material/` (`/import`), or spin up a quick one-shot — then builds your character and runs the game. First thing it asks once a world exists: **"Who are you in this world?"** — play a character lifted straight from the source, an original of your own, or a nameless traveler who wanders in. The mechanics get figured out behind the scenes.
 
 ---
 
-## Under the Hood
+## Why a harness, and not just a long prompt
 
-You never see any of this — you just see the story — but if you want to pull up the hood:
+A single mega-prompt can fake a GM for one session. It can't remember your campaign next week, it can't enforce its own rules, and it drowns the model in mechanics it doesn't need this turn. The harness solves each of those directly:
 
-- **Specialist agents spin up on demand.** A fight starts and the monster-manual agent grabs stats; cast something and the spell-caster looks up the mechanics; go shopping and the gear-master handles the inventory. They're **book-first** — they read your world's own rules before reaching for anything external.
-- **Mechanics load only when needed.** A lean always-on core routes to on-demand Skills (combat, social, skill checks, conditions, leveling, dungeon crawls, narration craft) so the heavy rules only load for the moment that needs them.
-- **D&D 5e API, when it fits.** If your world *is* D&D-flavored, the system can pull official rules, monsters, spells, and gear from the [D&D 5e API](https://www.dnd5eapi.co/) — grounding numbers in real mechanics instead of guessing. For every other book, your World Kit runs the show.
-- **Grounded in the source.** Scenes draw on real passages from your book via a local chapter index, so narration stays true to the text — until your choices change things.
+- **Thin always-on core, heavy rules on demand.** A lean router stays in context; combat, social, skill checks, conditions, leveling, dungeon crawls, and narration craft load *only* for the moment that needs them. The model spends its attention on the scene, not the manual.
+- **State on disk, not in the context window.** Memory is bounded by your filesystem, not the token limit. Campaigns can run indefinitely.
+- **Persist-before-narrate, enforced.** Every state change is written before a word reaches you, so a crash or a context reset never loses your progress.
+- **Grounded in a real corpus.** Scenes draw on actual passages — your imported book, or the canon Claude authored for your original world — via a local retrieval index, so narration stays true to the source until your choices change it.
+
+You never see any of this. You just see the story.
 
 ---
 
@@ -93,7 +145,7 @@ There's really just one command you ever need:
 
 | Command | What it does |
 |---------|--------------|
-| `/gm` | **Everything.** Start or continue your story. From here the GM imports a book, builds a world, creates your character, runs a one-shot, saves, and shows your sheet — just talk to it. |
+| `/gm` | **Everything.** Start or continue your story. The harness imports a book, builds a world, creates your character, runs a one-shot, saves, and shows your sheet — just talk to it. |
 
 `/gm` also takes shortcuts if you want them: `/gm save`, `/gm character`, `/gm overview`.
 
@@ -139,11 +191,12 @@ Spawn automatically during play, invisibly:
 | `npc-builder` | Meeting new NPCs |
 | `world-builder` | Exploring new areas |
 | `dungeon-architect` | Entering dungeons |
+| `scene-illustrator` | High-impact visual beats |
 | `create-character` | New characters |
 
 ### Bash Tools
 
-All tools follow the pattern `bash tools/gm-<tool>.sh <command> [args]`. Most accept `--json` for structured output.
+The harness is plumbing you can poke at: bash wrappers (`tools/`) → Python managers (`lib/`) → per-campaign JSON (`world-state/campaigns/<name>/`). All tools follow the pattern `bash tools/gm-<tool>.sh <command> [args]`. Most accept `--json` for structured output.
 
 | Tool | Purpose |
 |------|---------|
@@ -177,6 +230,10 @@ bash tools/gm-image.sh generate --title "The Sunken Crypt" \
 ```
 
 It calls OpenAI's `gpt-image-2`, saves the PNG into the campaign's `images/` folder, and prints a clickable `file://` link you open to view it (the VS Code terminal linkifies the path). Every generation is logged with an estimated cost — run `gm-image.sh log` for the running total. Requires `OPENAI_API_KEY` in `.env`; without it the GM just keeps narrating in text. Use `--quality low` for quick drafts, `high` for marquee moments.
+
+### The D&D 5e API, when it fits
+
+If your world *is* D&D-flavored, the harness can pull official rules, monsters, spells, and gear from the [D&D 5e API](https://www.dnd5eapi.co/) — grounding numbers in real mechanics instead of guessing. For every other book, your World Kit runs the show.
 
 ### Dependencies
 

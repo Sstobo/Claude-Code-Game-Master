@@ -92,10 +92,19 @@ def estimate_cost(quality: str, size: str):
     return _COST.get(quality, {}).get(size)
 
 
+SLUG_MAX = 32  # keep filenames (and the file:// link) short enough not to line-wrap
+
+
 def _slug(title: str) -> str:
-    """A filesystem-safe, short slug from a scene title."""
+    """A filesystem-safe, short slug from a scene title.
+
+    Capped at SLUG_MAX chars, trimmed on a word boundary so names never cut
+    mid-word (e.g. '...reads-the-dead-i'). Long titles keep their leading words.
+    """
     s = re.sub(r"[^a-z0-9]+", "-", (title or "scene").lower()).strip("-")
-    return (s or "scene")[:48]
+    if len(s) > SLUG_MAX:
+        s = s[:SLUG_MAX].rsplit("-", 1)[0]  # drop the partial trailing word
+    return s.strip("-") or "scene"
 
 
 def _next_path(images_dir: Path, title: str) -> Path:

@@ -17,10 +17,19 @@ the picture. Your whole job is to be explicit, consistent, and on-aesthetic.
 
 ## The Iron Rule: open every prompt with the campaign's LOCKED "In the style of ..."
 
-The art style is a **world-identity decision locked at creation** (`/new-game` /
-`/import` set it via `gm-image.sh chronicler --style`). **You do NOT pick or change
-it.** You READ the locked `chronicler.style` and make it the FIRST words of every
-prompt, verbatim, every time — so the gallery reads like a single artbook.
+The art style is a **world-identity decision locked at CAMPAIGN CREATION**
+(`/new-game` / `/import` set it via `gm-image.sh chronicler --style`). It does NOT
+originate with you. **You do NOT pick, invent, change, or improvise it** — not even
+to dodge a moderation block (if a prompt trips moderation, soften the VIOLENT/GORE
+nouns in the scene description, NEVER the locked style words).
+
+You get the locked style two ways and must obey it both:
+1. The GM SHOULD pass it to you verbatim in the brief — if present, use it exactly.
+2. Regardless, READ it yourself first: `gm-image.sh chronicler`. If the brief and
+   the stored style disagree, the STORED `chronicler.style` wins — re-read and use it.
+
+Make those locked style words the FIRST words of every prompt, verbatim, every
+time — so the gallery reads like a single artbook.
 
 The locked style is often a **creative, multifaceted MASHUP** — that's the point,
 and you must honor it exactly:
