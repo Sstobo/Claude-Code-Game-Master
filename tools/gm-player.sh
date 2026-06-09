@@ -12,11 +12,8 @@ shift
 
 case "$ACTION" in
     "show")
-        if [ -z "$1" ]; then
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" show
-        else
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" show "$1"
-        fi
+        # Optional [name] and optional --json (full record). Pass all through.
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" show "$@"
         ;;
 
     "list")
@@ -48,6 +45,12 @@ case "$ACTION" in
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/player_manager.py" xp "$1" "$2"
+        ;;
+
+    "award")
+        # Discretionary spectacle XP (kit-aware, level-scaled; co-awards followers).
+        # Name optional (defaults to active PC). Requires --tier; --reason optional.
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" award "$@"
         ;;
 
     "level-check")
@@ -115,28 +118,9 @@ case "$ACTION" in
         ;;
 
     "inventory")
-        if [ -z "$1" ] || [ -z "$2" ]; then
-            echo "Usage: gm-player.sh inventory <character_name> <action> [item]"
-            echo ""
-            echo "Actions:"
-            echo "  add <item>    - Add item to inventory"
-            echo "  remove <item> - Remove item from inventory"
-            echo "  list          - Show all items"
-            echo ""
-            echo "Example: gm-player.sh inventory theron add \"Health Potion\""
-            echo "Example: gm-player.sh inventory theron remove \"Dagger\""
-            echo "Example: gm-player.sh inventory theron list"
-            exit 1
-        fi
-        if [ "$2" = "list" ]; then
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" inventory "$1" "$2"
-        else
-            if [ -z "$3" ]; then
-                echo "Error: Item name required for $2"
-                exit 1
-            fi
-            $PYTHON_CMD "$LIB_DIR/player_manager.py" inventory "$1" "$2" "$3"
-        fi
+        # All positionals are optional: defaults to the active PC and `list`.
+        # Forms: `inventory` · `inventory list` · `inventory <name> <action> [item]`.
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" inventory "$@"
         ;;
 
     "loot")
@@ -190,16 +174,17 @@ case "$ACTION" in
         echo "Usage: gm-player.sh <action> [args]"
         echo ""
         echo "Actions:"
-        echo "  show [name]                  - Show player(s) summary"
+        echo "  show [name] [--json]         - Show summary (or full record with --json)"
         echo "  get <name>                   - Get full character JSON"
         echo "  list                         - List all player IDs"
         echo "  set <name>                   - Set character as current active PC"
         echo "  xp <name> +<amount>          - Award XP to character"
+        echo "  award [name] --tier T        - Spectacle XP for a clever/effective/unique/punishing beat (T=minor|major|legendary; --reason \"...\"; co-awards followers)"
         echo "  hp <name> <+/-amount>        - Modify character HP"
         echo "  kill <name> [--cause ...]    - Mark PC dead (then run Death Protocol)"
         echo "  become <party_member>        - Take over a party member as the active PC"
         echo "  gold <name> [+/-amount]      - Modify or show character gold"
-        echo "  inventory <name> <action>    - Manage inventory (add/remove/list)"
+        echo "  inventory [name] [action]    - Manage inventory (add/remove/list; defaults to active PC + list)"
         echo "  condition <name> <action>    - Manage conditions (add/remove/list)"
         echo "  loot <name> --gold X --items - Batch add items + gold at once"
         echo "  level-check <name>           - Check XP and level status"

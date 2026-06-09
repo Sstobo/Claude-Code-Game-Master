@@ -26,6 +26,8 @@ Persist combat with `bash tools/gm-combat.sh` (start/add-enemy/hp/condition/next
 
 Bonus: clever tactics +25%, creative environment +10-25%, social victory +50%.
 
+**Non-kill wins still earn XP.** When a fight is won WITHOUT a kill — driving the enemy off a ledge, baiting two enemies into each other, an environmental kill, a daring escape from a lethal foe, surviving telegraphed over-CR odds — award it like a kill: `bash tools/gm-player.sh award --tier minor|major|legendary --reason "..."` (kit-aware, level-scaled; co-awards followers in DCC). See `gm-craft → Reward the spectacle`. Combat's CR→XP is just one source of XP among many.
+
 ## Modifiers
 Advantage = 2d20 keep high; Disadvantage = keep low. Half cover +2 AC; 3/4 cover +5. Flanking = advantage (melee). Prone: advantage melee / disadvantage ranged. Crit (nat 20) = double damage dice then add mods. Nat 1 = auto-miss.
 

@@ -23,6 +23,9 @@ Trivial 5 · Easy 10 · Moderate 15 · Hard 20 · Very Hard 25 · Nearly Impossi
 ## Narrate by margin
 Nat 20 = exceptional flourish · beat by 10+ = looks easy, extra benefit · success = clean · fail by 1-4 = close, minor setback · fail by 5+ = clear fail + complication · nat 1 = mishap.
 
+## Reward a great success (award spectacle XP)
+A clever/effective/unique solve EARNS progress, not just a kill. On a strong success (nat 20, beat-by-10+, or an inventive approach), grant it before narrating: `bash tools/gm-player.sh award --tier minor|major|legendary --reason "..."` (kit-aware, level-scaled, co-awards followers in DCC). See `gm-craft → Reward the spectacle`.
+
 ## Fail Forward (CRITICAL)
 A failed roll NEVER means "nothing happens" — it means "something DIFFERENT happens."
 - Failed lockpick? The pick breaks inside — now you need the key or a louder way.

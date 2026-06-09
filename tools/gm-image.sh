@@ -75,14 +75,15 @@ case "$ACTION" in
         fi
 
         IMG_PATH=$(echo "$RESULT" | $PYTHON_CMD -c "import sys,json; print(json.load(sys.stdin)['path'])")
+        SHORT_PATH=$(echo "$RESULT" | $PYTHON_CMD -c "import sys,json; d=json.load(sys.stdin); print(d.get('short_path') or d['path'])")
         COST=$(echo "$RESULT" | $PYTHON_CMD -c "import sys,json; c=json.load(sys.stdin)['cost']; print('%.3f'%c if c is not None else '?')")
 
         log_token_usage "gm-image.generate" "quality=$QUALITY" "size=$SIZE" "est_cost_usd=$COST"
 
-        # Absolute path so the file:// link is valid + clickable in the terminal.
-        ABS_PATH=$(cd "$(dirname "$IMG_PATH")" && pwd)/$(basename "$IMG_PATH")
+        # Short symlink so the file:// link stays on one line and stays clickable
+        # (the deep campaign path wraps in the terminal, which breaks the click target).
         success "Image generated: ${TITLE:-untitled}"
-        echo "  open: file://$ABS_PATH"
+        echo "  open: file://$SHORT_PATH"
         echo "  est cost: \$$COST ($QUALITY $SIZE)"
         ;;
 

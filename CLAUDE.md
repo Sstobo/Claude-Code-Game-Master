@@ -82,6 +82,7 @@ grounded source passages.
 | Change | Command |
 |---|---|
 | HP/XP/gold/inventory (PC) | `gm-player.sh` |
+| Spectacle XP (clever/effective/unique/punishing non-kill beat) | `gm-player.sh award [name] --tier minor\|major\|legendary --reason "..."` (kit-aware, level-scaled; co-awards followers in DCC) |
 | Party NPC stats | `gm-npc.sh` |
 | NPC mood/goal/secret | `gm-npc.sh set-inner` / `mood` |
 | Character look (PC/NPC) | `gm-player.sh set-appearance` / `gm-npc.sh set-appearance` (the 11-field `visual_appearance` — author at creation, update when the look changes) |

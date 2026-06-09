@@ -15,6 +15,12 @@ description: The Art of Game Mastering — narration, NPC, pacing, and improvisa
 - **Engage all senses** — the smell of ozone before lightning, iron in the air of a battlefield.
 - **The best moments are unplanned.** Lean into player surprises harder than anything scripted.
 
+## Reward the spectacle (XP is not just for kills)
+A clever, effective, unique, daring, or punishing-but-cool beat EARNS progress — same as a kill. When a player solves an encounter without combat (improvised trap, environmental kill, baiting enemies into each other, a daring escape, a crowd-pleasing stunt, or simply surviving telegraphed lethal odds), grant it on the spot:
+`bash tools/gm-player.sh award [name] --tier minor|major|legendary --reason "..."`
+- **minor** — a neat, effective move. **major** — a genuinely clever/unique solution or a real risk paid off. **legendary** — a defining, table-flipping moment.
+- Kit-aware and level-scaled (XP for level/xp kits, a milestone tick for milestone kits) and **co-awards the kit's follower/viewer currency** where one exists (DCC). One call per beat. Persist the award BEFORE narrating the payoff. In DCC especially: spectacle, not just kills, is the point — lean toward awarding.
+
 ## Narrative Voice (write in the author's voice)
 - **Scene context carries a `--- NARRATIVE VOICE ---` block** (from the world-bible:
   a `Style` line + a few sample passages). When present, it is your **prose target**

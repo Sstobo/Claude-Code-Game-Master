@@ -167,6 +167,68 @@ class ResourceAxisProgression(Progression):
         return sum(1 for t in self.tiers if value >= t)
 
 
+# ----------------------------------------------- discretionary "spectacle" award
+#
+# A kit-agnostic reward path for MEANINGFUL RESOLUTION of any kind — not just
+# kills. A clever skill check, a social victory, an exploration breakthrough, a
+# daring escape, or surviving punishing odds can all grant progress through the
+# SAME door. Combat's CR->XP table is just one source of XP among many; this is
+# the others.
+#
+# This is a PURE calculator: it turns a tier + the character's progress context
+# into the amounts to apply. The caller (player_manager) persists the result and
+# runs level-up detection, so this stays file-system- and kit-shape-agnostic.
+
+# Sane defaults a kit overrides via ruleset.json -> progression.spectacle.tiers.
+# XP is scaled to the gap to the next level so a beat stays meaningful at any
+# level/floor; `xp_floor` guarantees a minimum. `followers` is only applied when
+# the kit declares a secondary `follower_field` (e.g. DCC viewers).
+DEFAULT_SPECTACLE_TIERS = {
+    'minor':     {'xp_frac': 0.20, 'xp_floor': 50,  'followers': 250,  'milestone': 0},
+    'major':     {'xp_frac': 0.50, 'xp_floor': 150, 'followers': 1500, 'milestone': 0},
+    'legendary': {'xp_frac': 1.00, 'xp_floor': 400, 'followers': 8000, 'milestone': 1},
+}
+
+
+def spectacle_award(tier: str,
+                    progression_model: str = 'milestone',
+                    xp_to_next: int = 0,
+                    tiers: Dict[str, Any] = None,
+                    has_follower_currency: bool = False) -> Dict[str, Any]:
+    """Compute a discretionary spectacle reward, kit-agnostically.
+
+    tier                 'minor' | 'major' | 'legendary' (or any kit-defined key).
+    progression_model    the active kit's model: 'xp-levels' / 'level' grant XP;
+                         'milestone' grants milestone count; 'resource-axis' is
+                         driven by its resource (followers) when present.
+    xp_to_next           XP remaining to the next level (used to scale XP rewards).
+    tiers                kit tier table (ruleset override), else DEFAULT_SPECTACLE_TIERS.
+    has_follower_currency  True if the kit declares a follower/viewer field to co-award.
+
+    Returns {'ok', 'tier', 'xp', 'followers', 'milestone'} — amounts to apply.
+    Unknown tier -> {'ok': False, 'error': ...}.
+    """
+    table = tiers or DEFAULT_SPECTACLE_TIERS
+    key = (tier or '').lower()
+    if key not in table:
+        return {'ok': False, 'error': f"unknown tier '{tier}'", 'valid': list(table.keys())}
+    spec = table[key]
+
+    xp = 0
+    milestone = 0
+    # XP-based kits ('xp-levels' and the 'level' alias) get scaled XP.
+    if progression_model in ('xp-levels', 'level'):
+        gap = max(0, int(xp_to_next))
+        xp = max(int(spec.get('xp_floor', 0)), int(round(gap * float(spec.get('xp_frac', 0)))))
+    elif progression_model == 'milestone':
+        # No XP math — a legendary beat can be worth a milestone tick.
+        milestone = int(spec.get('milestone', 0))
+
+    followers = int(spec.get('followers', 0)) if has_follower_currency else 0
+
+    return {'ok': True, 'tier': key, 'xp': xp, 'followers': followers, 'milestone': milestone}
+
+
 def make_progression(model: str, **config) -> Progression:
     """Factory: build a progression model by name. Unknown -> milestone (safe default)."""
     if model == 'xp-levels':

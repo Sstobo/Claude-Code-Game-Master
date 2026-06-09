@@ -85,3 +85,6 @@ world-state/campaigns/*/source-material/
 source-material/*.txt
 **/current-document.txt
 index.html
+
+# Remotion demo video (local build workspace — entire folder ignored)
+video/

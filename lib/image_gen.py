@@ -159,6 +159,32 @@ def _next_path(images_dir: Path, title: str) -> Path:
     return images_dir / f"{highest + 1:04d}-{_slug(title)}.png"
 
 
+# Short, shallow symlink dir so the clickable file:// link never line-wraps.
+# The deep campaign path (~110 chars) wraps in the terminal and the wrap kills
+# the click target; a symlink at /tmp/gm-img/<tag>-NNNN.png resolves to the real
+# PNG when clicked while staying ~30 chars on one line.
+SHORTLINK_DIR = Path("/tmp/gm-img")
+
+
+def _short_link(out_path: Path, campaign_dir: str) -> Path | None:
+    """Create a short symlink to ``out_path`` and return it (None on failure).
+
+    Name: <campaign-initials>-<NNNN>.png — the descriptive slug stays in the real
+    filename for browsing; the symlink is purely the clickable handle.
+    """
+    try:
+        tag = "".join(w[:1] for w in Path(campaign_dir).name.split("-"))[:6] or "gm"
+        seq = out_path.name[:4]
+        SHORTLINK_DIR.mkdir(parents=True, exist_ok=True)
+        link = SHORTLINK_DIR / f"{tag}-{seq}.png"
+        if link.is_symlink() or link.exists():
+            link.unlink()
+        link.symlink_to(out_path.resolve())
+        return link
+    except OSError:
+        return None  # fall back to the absolute path
+
+
 def _log_generation(images_dir: Path, record: dict) -> None:
     """Append one JSON line to the per-campaign generation/spend log."""
     try:
@@ -263,9 +289,11 @@ def generate_image(prompt: str, *, title: str = "", quality: str = DEFAULT_QUALI
     }
     _log_generation(images_dir, record)
 
+    short = _short_link(out_path, campaign_dir)
     return {
         "path": str(out_path),
         "rel_path": os.path.relpath(out_path, Path.cwd()),
+        "short_path": str(short) if short else str(out_path),
         "cost": cost,
         "model": model,
         "quality": quality,

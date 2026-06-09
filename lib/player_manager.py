@@ -324,6 +324,89 @@ class PlayerManager(EntityManager):
 
         return result
 
+    def _spectacle_config(self) -> Dict[str, Any]:
+        """Spectacle tier table + optional follower currency from the active kit.
+        Tiers default to game_core.DEFAULT_SPECTACLE_TIERS; a kit overrides them
+        (and declares a follower currency) via ruleset.json -> progression.spectacle."""
+        import game_core
+        ruleset = self.json_ops.load_json("ruleset.json") or {}
+        prog = ruleset.get("progression", {}) or {}
+        spec = prog.get("spectacle", {}) or {}
+        return {
+            'model': prog.get("model", "milestone"),
+            'tiers': spec.get("tiers") or game_core.DEFAULT_SPECTACLE_TIERS,
+            'follower_field': spec.get("follower_field"),   # e.g. "followers"
+            'follower_label': spec.get("follower_label", "followers"),
+        }
+
+    def award_spectacle(self, name: str, tier: str, reason: str = None) -> Dict[str, Any]:
+        """
+        Award discretionary "spectacle" progress for a clever/effective/unique/
+        punishing beat of ANY kind (skill check, social win, exploration, escape,
+        surviving punishing odds) — not just kills. Kit-agnostic: the reward shape
+        is computed by game_core.spectacle_award against the active progression
+        model (XP for level kits, milestone for milestone kits) and any kit-defined
+        follower currency. Reuses award_xp so LEVEL_UP detection still fires.
+        """
+        import game_core
+        char = self._load_character(name)
+        if not char:
+            print(f"[ERROR] Character '{name}' not found")
+            return {'success': False, 'error': f"Character '{name}' not found"}
+
+        cfg = self._spectacle_config()
+        actual_name = char.get('name', name)
+
+        # XP gap to next level (drives XP scaling; 0 for non-XP kits).
+        char = self._normalize_xp(char)
+        xp_to_next = max(0, char['xp']['next_level'] - char['xp']['current'])
+
+        award = game_core.spectacle_award(
+            tier,
+            progression_model=cfg['model'],
+            xp_to_next=xp_to_next,
+            tiers=cfg['tiers'],
+            has_follower_currency=bool(cfg.get('follower_field')),
+        )
+        if not award.get('ok'):
+            valid = ', '.join(award.get('valid', []))
+            print(f"[ERROR] Unknown tier '{tier}'. Valid: {valid}")
+            return {'success': False, 'error': award.get('error', 'unknown tier')}
+
+        result = {'success': True, 'name': actual_name, 'tier': award['tier'], 'reason': reason}
+
+        # XP-based kits: route through award_xp (handles level-up + LEVEL_UP).
+        if award['xp'] > 0:
+            xp_result = self.award_xp(actual_name, award['xp'])
+            if not xp_result.get('success'):
+                return xp_result
+            result.update({k: v for k, v in xp_result.items() if k != 'reason'})
+
+        # Milestone kits: tick the milestone counter.
+        if award['milestone'] > 0:
+            char = self._load_character(actual_name) or char
+            new_ms = int(char.get('milestone', 0) or 0) + award['milestone']
+            char['milestone'] = new_ms
+            self._save_character(actual_name, char)
+            result['milestone_gained'] = award['milestone']
+            result['milestone_total'] = new_ms
+            print(f"MILESTONE +{award['milestone']} -> {new_ms}")
+
+        # Kit follower currency (DCC viewers), co-awarded in the same call.
+        follower_field = cfg.get('follower_field')
+        if follower_field and award['followers'] > 0:
+            char = self._load_character(actual_name) or char
+            new_followers = int(char.get(follower_field, 0) or 0) + award['followers']
+            char[follower_field] = new_followers
+            self._save_character(actual_name, char)
+            result['followers_gained'] = award['followers']
+            result['followers_total'] = new_followers
+            print(f"{cfg['follower_label'].upper()} +{award['followers']} -> {new_followers}")
+
+        if reason:
+            print(f"SPECTACLE [{award['tier']}] {actual_name}: {reason}")
+        return result
+
     def get_xp_status(self, name: str) -> Optional[Dict[str, Any]]:
         """Get XP and level status for character"""
         char = self._load_character(name)
@@ -799,6 +882,12 @@ def main():
     xp_parser.add_argument('name', help='Character name')
     xp_parser.add_argument('amount', help='XP amount (can include + prefix)')
 
+    # Discretionary "spectacle" XP (kit-aware, level-scaled; co-awards followers)
+    award_parser = subparsers.add_parser('award', help='Award level-scaled spectacle XP for a clever/effective/unique/punishing beat')
+    award_parser.add_argument('name', nargs='?', help='Character name (optional; defaults to active PC)')
+    award_parser.add_argument('--tier', required=True, choices=['minor', 'major', 'legendary'], help='Reward tier')
+    award_parser.add_argument('--reason', help='Why the beat earned it (logged)')
+
     # Check level status
     level_parser = subparsers.add_parser('level-check', help='Check XP and level status')
     level_parser.add_argument('name', help='Character name')
@@ -837,8 +926,8 @@ def main():
 
     # Manage inventory
     inv_parser = subparsers.add_parser('inventory', help='Manage character inventory')
-    inv_parser.add_argument('name', help='Character name')
-    inv_parser.add_argument('inv_action', choices=['add', 'remove', 'list'], help='Action to perform')
+    inv_parser.add_argument('name', nargs='?', help='Character name (optional; defaults to active PC)')
+    inv_parser.add_argument('inv_action', nargs='?', help='Action: add/remove/list (default: list)')
     inv_parser.add_argument('item', nargs='?', help='Item name (required for add/remove)')
 
     # Batch loot
@@ -863,8 +952,9 @@ def main():
 
     manager = PlayerManager()
 
-    if json_mode and args.action == 'get':
-        char = manager.get_player(args.name)
+    if json_mode and args.action in ('get', 'show'):
+        # `show --json` emits the full active (or named) character record.
+        char = manager.get_player(args.name) if args.action == 'get' else manager._load_character(args.name)
         if char:
             emit(char, json_mode=True)
         else:
@@ -898,6 +988,17 @@ def main():
             sys.exit(emit_error(result.get('error', f'{args.action} failed'), json_mode=True))
         return
 
+    if json_mode and args.action == 'award':
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = manager.award_spectacle(args.name, args.tier, getattr(args, 'reason', None))
+        if result.get('success'):
+            emit(result, json_mode=True)
+        else:
+            sys.exit(emit_error(result.get('error', 'award failed'), json_mode=True))
+        return
+
     if args.action == 'show':
         if args.name:
             result = manager.show_player(args.name)
@@ -929,6 +1030,11 @@ def main():
             sys.exit(1)
 
         result = manager.award_xp(args.name, amount)
+        if not result.get('success'):
+            sys.exit(1)
+
+    elif args.action == 'award':
+        result = manager.award_spectacle(args.name, args.tier, getattr(args, 'reason', None))
         if not result.get('success'):
             sys.exit(1)
 
@@ -1005,7 +1111,19 @@ def main():
             sys.exit(1)
 
     elif args.action == 'inventory':
-        result = manager.modify_inventory(args.name, args.inv_action, args.item)
+        # Allow `inventory [name] [action] [item]` with name optional. When the
+        # first positional is an action keyword, it lands in `name`; shift it so
+        # it's treated as the action against the active PC.
+        actions = ('add', 'remove', 'list')
+        name, inv_action, item = args.name, args.inv_action, args.item
+        if name in actions:
+            name, inv_action, item = None, name, inv_action
+        if inv_action is None:
+            inv_action = 'list'
+        if inv_action not in actions:
+            print(f"[ERROR] Unknown inventory action: {inv_action} (choose from add, remove, list)")
+            sys.exit(1)
+        result = manager.modify_inventory(name, inv_action, item)
         if not result.get('success'):
             sys.exit(1)
 
