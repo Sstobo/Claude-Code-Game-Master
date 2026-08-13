@@ -11,7 +11,11 @@ fi
 
 require_active_campaign
 
-$PYTHON_CMD -m lib.time_manager update "$1" "$2"
+# The managers resolve world-state relative to the working directory, so run from
+# the project root no matter where the caller invoked this wrapper.
+cd "$PROJECT_ROOT" || exit 1
+
+$PYTHON_CMD "$LIB_DIR/time_manager.py" update "$1" "$2"
 RESULT=$?
 if [ $RESULT -ne 0 ]; then exit $RESULT; fi
 
@@ -20,5 +24,5 @@ $PYTHON_CMD "$LIB_DIR/threat_clocks.py" tick-time
 
 # Reactivity: time passing can fire on_time consequences (e.g. nightfall, deadlines).
 echo ""
-bash "$(dirname "$0")/gm-consequence.sh" tick
+bash "$TOOLS_DIR/gm-consequence.sh" tick
 exit 0

@@ -6,7 +6,7 @@ sources:
   - { resource: /lib/character_schema.py }
   - { resource: /lib/player_manager.py }
   - { resource: /features/character-creation/save_character.py }
-generated: { by: claude-opus-5, at: 2026-08-13T18:47:33Z }
+generated: { by: claude-opus-5, at: 2026-08-13T20:38:05Z }
 ---
 
 # The player character sheet
@@ -93,8 +93,11 @@ archives the fallen PC to `fallen/<name>-<id>.json`, clearing `died_at` and the 
 on the new sheet. Nothing is destroyed, which is what lets the world keep referencing,
 mourning, and avenging the dead hero.
 
-`modify_hp` guards on `status != 'dead'` (`lib/player_manager.py:468`) — a corpse does not
-take damage.
+`modify_hp` refuses outright once `status == 'dead'` (`lib/player_manager.py:464`) — a
+corpse neither takes damage nor heals; the call returns `success: False` and the sheet is
+untouched. `kill_character` writes HP itself and never routes through `modify_hp`, so the
+guard cannot block a death. Below that gate, `modify_hp` still runs the *dying* gate
+(`:485`): 0 HP sets `status: 'dying'`, healing off 0 sets it back to `alive`.
 
 ## Related
 

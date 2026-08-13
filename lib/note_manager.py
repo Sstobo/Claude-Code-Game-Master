@@ -5,8 +5,12 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from lib.campaign_manager import CampaignManager
-from lib.json_ops import JsonOperations
+
+# Add lib directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+from campaign_manager import CampaignManager
+from json_ops import JsonOperations
 
 
 class NoteManager:
@@ -62,9 +66,9 @@ class NoteManager:
 def main():
     """CLI interface for note management."""
     if len(sys.argv) < 2:
-        print("Usage: python -m lib.note_manager add <category> <fact>")
-        print("       python -m lib.note_manager get [category]")
-        print("       python -m lib.note_manager categories")
+        print("Usage: python lib/note_manager.py add <category> <fact>")
+        print("       python lib/note_manager.py get [category]")
+        print("       python lib/note_manager.py categories")
         sys.exit(1)
 
     action = sys.argv[1]
@@ -74,7 +78,7 @@ def main():
 
         if action == 'add':
             if len(sys.argv) < 4:
-                print("Usage: python -m lib.note_manager add <category> <fact>")
+                print("Usage: python lib/note_manager.py add <category> <fact>")
                 sys.exit(1)
             category = sys.argv[2]
             fact = sys.argv[3]

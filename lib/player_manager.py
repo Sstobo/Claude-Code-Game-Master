@@ -416,9 +416,8 @@ class PlayerManager(EntityManager):
             print(f"[ERROR] Character '{name}' not found")
             return None
 
-        # Normalize XP structure
+        # Normalize XP structure for reading only — a status check never writes.
         char = self._normalize_xp(char)
-        self._save_character(name, char)
 
         current_xp = char['xp']['current']
         current_level = char.get('level', 1)
@@ -459,6 +458,23 @@ class PlayerManager(EntityManager):
         hp = char.get('hp', {})
         current_hp = hp.get('current', 0)
         max_hp = hp.get('max', 0)
+
+        # A corpse does not take damage and does not heal. kill_character sets HP
+        # itself and never routes through here, so the guard cannot block a death.
+        if char.get('status') == 'dead':
+            char_name = char.get('name', name)
+            print(f"[ERROR] {char_name} is dead — HP is frozen at "
+                  f"{current_hp}/{max_hp}. Run the Death Protocol (become a "
+                  f"party member / new character) to continue play.")
+            return {
+                'success': False,
+                'name': char_name,
+                'hp_change': 0,
+                'current_hp': current_hp,
+                'max_hp': max_hp,
+                'status': 'dead',
+                'error': 'character is dead',
+            }
 
         # Apply change and clamp between 0 and max
         new_hp = max(0, min(current_hp + amount, max_hp))

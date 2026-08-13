@@ -4,8 +4,12 @@
 import json
 import sys
 from pathlib import Path
-from lib.campaign_manager import CampaignManager
-from lib.json_ops import JsonOperations
+
+# Add lib directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+from campaign_manager import CampaignManager
+from json_ops import JsonOperations
 
 
 class TimeManager:
@@ -46,8 +50,8 @@ class TimeManager:
 def main():
     """CLI interface for time management."""
     if len(sys.argv) < 2:
-        print("Usage: python -m lib.time_manager update <time_of_day> <date>")
-        print("       python -m lib.time_manager get")
+        print("Usage: python lib/time_manager.py update <time_of_day> <date>")
+        print("       python lib/time_manager.py get")
         sys.exit(1)
 
     action = sys.argv[1]
@@ -57,7 +61,7 @@ def main():
 
         if action == 'update':
             if len(sys.argv) < 4:
-                print("Usage: python -m lib.time_manager update <time_of_day> <date>")
+                print("Usage: python lib/time_manager.py update <time_of_day> <date>")
                 sys.exit(1)
             time_of_day = sys.argv[2]
             date = sys.argv[3]

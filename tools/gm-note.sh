@@ -16,12 +16,16 @@ fi
 
 require_active_campaign
 
+# The managers resolve world-state relative to the working directory, so run from
+# the project root no matter where the caller invoked this wrapper.
+cd "$PROJECT_ROOT" || exit 1
+
 if [ "$1" = "categories" ]; then
     echo "Fact Categories:"
-    $PYTHON_CMD -m lib.note_manager categories
+    $PYTHON_CMD "$LIB_DIR/note_manager.py" categories
     exit $?
 elif [ "$#" -eq 2 ]; then
-    $PYTHON_CMD -m lib.note_manager add "$1" "$2"
+    $PYTHON_CMD "$LIB_DIR/note_manager.py" add "$1" "$2"
     exit $?
 else
     echo "Usage: gm-note.sh <category> <fact>"
