@@ -5,7 +5,14 @@ Provides consistent validation across all tools
 """
 
 import re
+import sys
+from pathlib import Path
 from typing import Optional, List, Tuple
+
+# Add lib directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+from schemas import PLOT_TYPES, PLOT_TYPE_SORT
 
 
 class Validators:
@@ -205,10 +212,10 @@ class Validators:
         Validate plot type
         Returns: (is_valid, error_message)
         """
-        valid_types = ['main', 'side', 'mystery', 'threat']
+        valid_types = sorted(PLOT_TYPES, key=PLOT_TYPE_SORT.get)
 
         type_lower = plot_type.lower().strip()
-        if type_lower not in valid_types:
+        if type_lower not in PLOT_TYPES:
             return False, f"Invalid plot type. Valid types: {', '.join(valid_types)}"
 
         return True, None

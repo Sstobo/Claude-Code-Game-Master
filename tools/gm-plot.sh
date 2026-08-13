@@ -20,7 +20,9 @@ if [ "$#" -lt 1 ]; then
     echo "  threads                          Active story threads (GM dashboard)"
     echo "  counts                           Show plot statistics"
     echo ""
-    echo "Types: main, side, mystery, threat"
+    # Types come from the canonical taxonomy in lib/schemas.py (PLOT_TYPE_SORT), in rank order
+    PLOT_TYPE_LIST=$($PYTHON_CMD -c "import sys; sys.path.insert(0, '$LIB_DIR'); from schemas import PLOT_TYPE_SORT; print(', '.join(sorted(PLOT_TYPE_SORT, key=PLOT_TYPE_SORT.get)))" 2>/dev/null)
+    echo "Types: ${PLOT_TYPE_LIST:-see PLOT_TYPE_SORT in lib/schemas.py}"
     echo "Status: active, completed, failed, dormant"
     echo ""
     echo "Examples:"

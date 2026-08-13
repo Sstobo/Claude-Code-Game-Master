@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
 from character_schema import to_flat
+from schemas import PLOT_TYPE_SORT
 
 
 class SessionManager(EntityManager):
@@ -734,7 +735,7 @@ class SessionManager(EntityManager):
         if not isinstance(plots, dict):
             return []
         closed = {'completed', 'resolved', 'failed', 'done', 'abandoned', 'dropped'}
-        order = {'main': 0, 'threat': 1, 'mystery': 2, 'side': 3}
+        order = PLOT_TYPE_SORT
         active = []
         for name, p in plots.items():
             if not isinstance(p, dict):
@@ -751,7 +752,7 @@ class SessionManager(EntityManager):
             if isinstance(events, list) and events:
                 ev = events[-1]
                 latest = ev.get('event', ev.get('description', '')) if isinstance(ev, dict) else str(ev)
-            active.append((order.get(ptype, 5), seq, ptype, name, latest))
+            active.append((order.get(ptype, len(order)), seq, ptype, name, latest))
         active.sort(key=lambda t: (t[0], t[1]))
         chosen = active if limit is None else active[:limit]
         return [f"[{ptype}] {name}" + (f" - latest: {latest}" if latest else "")

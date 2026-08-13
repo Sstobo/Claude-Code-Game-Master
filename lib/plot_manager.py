@@ -12,6 +12,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
+from schemas import PLOT_TYPES, PLOT_TYPE_SORT
+
+# Canonical types in display order, with friendlier headings where one reads better
+# than the bare type name.
+PLOT_TYPE_ORDER = sorted(PLOT_TYPES, key=PLOT_TYPE_SORT.get)
+PLOT_TYPE_LABELS = {
+    'main': 'MAIN PLOTS', 'side': 'SIDE QUESTS', 'mystery': 'MYSTERIES', 'threat': 'THREATS',
+}
+
+
+def _plot_type_label(plot_type: str) -> str:
+    return PLOT_TYPE_LABELS.get(plot_type, plot_type.upper())
 
 
 class PlotManager(EntityManager):
@@ -207,10 +219,7 @@ class PlotManager(EntityManager):
             'completed': 0,
             'failed': 0,
             'dormant': 0,
-            'main': 0,
-            'side': 0,
-            'mystery': 0,
-            'threat': 0
+            **{t: 0 for t in PLOT_TYPE_ORDER},
         }
 
         for name, data in plots.items():
@@ -300,22 +309,15 @@ class PlotManager(EntityManager):
         lines = ["=== PLOTS ===", ""]
 
         # Group by type
-        by_type = {'main': [], 'side': [], 'mystery': [], 'threat': [], 'other': []}
+        by_type = {t: [] for t in PLOT_TYPE_ORDER}
         for name, data in plots.items():
             plot_type = data.get('type', 'other').lower()
             if plot_type not in by_type:
                 plot_type = 'other'
             by_type[plot_type].append((name, data))
 
-        type_labels = {
-            'main': 'MAIN PLOTS',
-            'side': 'SIDE QUESTS',
-            'mystery': 'MYSTERIES',
-            'threat': 'THREATS',
-            'other': 'OTHER'
-        }
-
-        for plot_type, label in type_labels.items():
+        for plot_type in PLOT_TYPE_ORDER:
+            label = _plot_type_label(plot_type)
             type_plots = by_type[plot_type]
             if type_plots:
                 lines.append(f"--- {label} ---")
@@ -347,7 +349,7 @@ class PlotManager(EntityManager):
         from datetime import datetime, timezone
 
         plots = self._load_entities(self.plots_file)
-        threads = {'main': [], 'side': [], 'mystery': [], 'threat': [], 'other': []}
+        threads = {t: [] for t in PLOT_TYPE_ORDER}
 
         # Try to get session count for staleness
         try:
@@ -410,16 +412,9 @@ class PlotManager(EntityManager):
 
         lines = ["=== ACTIVE STORY THREADS ===", ""]
 
-        type_labels = {
-            'main': 'MAIN PLOTS',
-            'side': 'SIDE QUESTS',
-            'mystery': 'MYSTERIES',
-            'threat': 'THREATS',
-            'other': 'OTHER',
-        }
-
-        for plot_type, label in type_labels.items():
-            type_threads = threads[plot_type]
+        for plot_type in PLOT_TYPE_ORDER:
+            label = _plot_type_label(plot_type)
+            type_threads = threads.get(plot_type) or []
             if not type_threads:
                 continue
 

@@ -4,11 +4,12 @@ title: World state JSON schema reference
 description: The on-disk shape of every per-campaign file — the contract no single source file states.
 sources:
   - { resource: /lib/schemas.py }
+  - { resource: /lib/minor_stubs.py }
   - { resource: /lib/npc_manager.py }
   - { resource: /lib/consequence_manager.py }
   - { resource: /lib/world_kit.py }
   - { resource: /lib/world_bible.py }
-generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
+generated: { by: claude-opus-5, at: 2026-08-13T18:09:14Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
 ---
 
@@ -18,7 +19,7 @@ The on-disk shape of a campaign, which no single source file declares — the ma
 write their own slice. **`lib/schemas.py` is the authority on every enum below**; where
 this document lists allowed values it is a convenience copy, and the copy has drifted
 before. Re-derive with `uv run python lib/schemas.py` (validates the active campaign) or by
-reading the `VALID_*` sets at the top of that file.
+reading the `VALID_*` / `PLOT_TYPE*` sets at the top of that file.
 
 ---
 
@@ -323,10 +324,18 @@ consequence is a legacy free-text entry matched fuzzily. A campaign may mix both
 
 A dictionary keyed by plot name.
 
+`type` comes from the single canonical taxonomy, `schemas.PLOT_TYPES` — derived from
+`schemas.PLOT_TYPE_SORT`, whose ranks are also the display/sort order for STORY THREADS
+and plot listings. `validators`, `minor_stubs`, `plot_manager` and `session_manager` all
+import it; there is no second copy. `minor_stubs.validate_plot_types` (the `/import`
+validate step) passes canonical types through untouched, maps extractor synonyms
+(`quest`→`side`, `arc`→`main`, `conflict`→`threat`, …) via `PLOT_TYPE_SYNONYMS`, and only
+falls back to `side` — with a warning naming the original — for a type it does not know.
+
 ```json
 {
   "PLOT_NAME": {
-    "type": "main|side|personal|world|optional|scene|theme|idea|lore|background",
+    "type": "main|threat|mystery|side|personal|world|optional|scene|theme|idea|lore|background|other",
     "status": "active|completed|failed|dormant|available",
     "sequence": 1,
     "depends_on": ["earlier plot name"],

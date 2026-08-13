@@ -14,6 +14,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from json_ops import JsonOperations
 from campaign_manager import CampaignManager
+from schemas import PLOT_TYPES, PLOT_TYPE_SORT
+
+# Canonical plot types in display order — the counter keys are derived, never hand-listed.
+PLOT_TYPE_ORDER = sorted(PLOT_TYPES, key=PLOT_TYPE_SORT.get)
 
 
 class WorldStats:
@@ -47,10 +51,7 @@ class WorldStats:
             "plots_total": 0,
             "plots_active": 0,
             "plots_completed": 0,
-            "plots_main": 0,
-            "plots_side": 0,
-            "plots_mystery": 0,
-            "plots_threat": 0
+            **{f"plots_{t}": 0 for t in PLOT_TYPE_ORDER},
         }
 
         # NPCs
@@ -86,14 +87,8 @@ class WorldStats:
                         counts["plots_completed"] += 1
                     # Count by type
                     plot_type = data.get('type', '').lower()
-                    if plot_type == 'main':
-                        counts["plots_main"] += 1
-                    elif plot_type == 'side':
-                        counts["plots_side"] += 1
-                    elif plot_type == 'mystery':
-                        counts["plots_mystery"] += 1
-                    elif plot_type == 'threat':
-                        counts["plots_threat"] += 1
+                    if plot_type in PLOT_TYPES:
+                        counts[f"plots_{plot_type}"] += 1
 
         # Characters (new format: single character.json)
         if self.character_file.exists():
@@ -247,7 +242,9 @@ class WorldStats:
 
         print(f"\nPlots: {counts['plots_total']} total ({counts['plots_active']} active)")
         if counts['plots_total'] > 0:
-            print(f"  Types: {counts['plots_main']} main, {counts['plots_side']} side, {counts['plots_mystery']} mystery, {counts['plots_threat']} threat")
+            by_type = [f"{counts[f'plots_{t}']} {t}" for t in PLOT_TYPE_ORDER if counts[f'plots_{t}']]
+            if by_type:
+                print(f"  Types: {', '.join(by_type)}")
         if detailed and "details" in overview and "active_plots" in overview["details"]:
             print("  Active plots:")
             for p in overview["details"]["active_plots"]:

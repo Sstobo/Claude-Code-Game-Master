@@ -5,7 +5,8 @@ The hard 30-cap can drop NPCs that plots still reference (when >30 are reference
 leaving plot.npcs links that don't resolve. This creates a minimal NPC stub for each
 such reference (a generic, monster-manual-statveable placeholder) and rewrites the
 reference to the stub key — so the strict integrity gate passes. Also validates
-plot `type` against the documented enum, normalizing anything off-enum to 'side'.
+plot `type` against the canonical enum (`schemas.PLOT_TYPES`), mapping known
+synonyms and falling back to 'side' — with a warning — for anything unknown.
 
 Run after cap + integrity-canonicalize, alongside missing-location-reconcile.
 """
@@ -16,8 +17,28 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from entity_aliases import resolve_entity_name
+from schemas import PLOT_TYPES
 
-VALID_PLOT_TYPES = {"main", "side", "personal", "world", "optional"}
+# Extractor vocabulary (see .claude/agents/extractor-plots.md) that isn't itself a
+# canonical type but maps cleanly onto one. Anything outside both sets is unknown.
+PLOT_TYPE_SYNONYMS = {
+    "quest": "side",
+    "side quest": "side",
+    "faction quest": "side",
+    "encounter": "side",
+    "random encounter": "side",
+    "mysteries": "mystery",
+    "main quest": "main",
+    "arc": "main",
+    "plot point": "main",
+    "turning point": "main",
+    "conflict": "threat",
+    "danger": "threat",
+    "beat": "scene",
+    "sequence": "scene",
+    "plan": "idea",
+    "concept": "idea",
+}
 
 
 def _make_npc_stub(name: str, referenced_by: str) -> dict:
@@ -55,15 +76,26 @@ def stub_missing_npcs(npcs: dict, plots: dict) -> dict:
 
 
 def validate_plot_types(plots: dict) -> dict:
-    """Normalize any off-enum plot type to 'side'. Returns a report."""
+    """Map plot types onto the canonical enum. Returns a report.
+
+    Canonical types pass through untouched; known extractor synonyms map to their
+    canonical type; anything else falls back to 'side' with a warning naming the
+    original value (silent flattening used to erase threat/mystery from imports).
+    """
     report = {"reclassified": []}
     for pname, plot in (plots or {}).items():
         if not isinstance(plot, dict):
             continue
-        t = str(plot.get("type", "")).lower()
-        if t not in VALID_PLOT_TYPES:
-            plot["type"] = "side"
-            report["reclassified"].append({"plot": pname, "from": t or "(blank)", "to": "side"})
+        t = str(plot.get("type", "")).strip().lower()
+        if t in PLOT_TYPES:
+            continue
+        mapped = PLOT_TYPE_SYNONYMS.get(t)
+        if mapped is None:
+            mapped = "side"
+            print(f"[WARNING] Plot '{pname}': unknown type '{t or '(blank)'}' -> 'side'",
+                  file=sys.stderr)
+        plot["type"] = mapped
+        report["reclassified"].append({"plot": pname, "from": t or "(blank)", "to": mapped})
     return report
 
 

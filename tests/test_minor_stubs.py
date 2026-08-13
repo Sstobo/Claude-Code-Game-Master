@@ -30,11 +30,34 @@ def test_optional_type_is_valid_and_kept():
     assert report["reclassified"] == []
 
 
-def test_off_enum_type_normalized_to_side():
+def test_threat_and_mystery_survive_untouched():
+    plots = {"Siege": {"type": "threat"}, "Whodunit": {"type": "mystery"}}
+    report = validate_plot_types(plots)
+    assert plots["Siege"]["type"] == "threat"
+    assert plots["Whodunit"]["type"] == "mystery"
+    assert report["reclassified"] == []
+
+
+def test_known_synonym_maps_to_canonical_type():
+    plots = {
+        "Errand": {"type": "quest"},
+        "Rivalry": {"type": "conflict"},
+        "Ambush": {"type": "Random Encounter"},
+        "Riddles": {"type": "mysteries"},
+    }
+    validate_plot_types(plots)
+    assert plots["Errand"]["type"] == "side"
+    assert plots["Rivalry"]["type"] == "threat"
+    assert plots["Ambush"]["type"] == "side"       # case-insensitive, multi-word
+    assert plots["Riddles"]["type"] == "mystery"
+
+
+def test_unknown_type_falls_back_to_side_with_warning(capsys):
     plots = {"Weird": {"type": "epilogue"}, "Blank": {}}
     validate_plot_types(plots)
     assert plots["Weird"]["type"] == "side"
     assert plots["Blank"]["type"] == "side"
+    assert "epilogue" in capsys.readouterr().err
 
 
 def test_run_stubs_makes_all_plot_npcs_resolve(tmp_path):

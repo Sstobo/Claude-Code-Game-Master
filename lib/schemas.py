@@ -4,15 +4,39 @@ JSON schemas and validation for GM world state files.
 Provides schema definitions and validation functions for all entity types.
 """
 
+import sys
+from pathlib import Path
 from typing import Dict, Any, List, Tuple, Optional
+
+# Add lib directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
 
 from character_schema import to_flat
 
 # Valid attitudes for NPCs
 VALID_ATTITUDES = {'ally', 'neutral', 'enemy', 'friendly', 'hostile', 'suspicious', 'helpful'}
 
-# Valid plot types
-VALID_PLOT_TYPES = {'main', 'side', 'personal', 'world', 'optional', 'scene', 'theme', 'idea', 'lore', 'background'}
+# Valid plot types — THE canonical plot taxonomy. Every other site
+# (validators, minor_stubs, plot_manager, session_manager) imports these;
+# do not re-declare a local copy.
+# The values are ordered by narrative weight: this is both the sort order for
+# STORY THREADS and the display order for plot listings.
+PLOT_TYPE_SORT = {
+    'main': 0,        # the spine
+    'threat': 1,      # pressure on the spine
+    'mystery': 2,     # open questions
+    'side': 3,        # optional quests worth running
+    'personal': 4,    # PC-specific arcs
+    'world': 5,       # world-scale movements
+    'optional': 6,    # take-it-or-leave-it content
+    'scene': 7,       # a single beat lifted from the source
+    'theme': 8,       # recurring idea (fiction imports)
+    'idea': 9,        # unformed hook (notes imports)
+    'lore': 10,       # background colour, not a quest
+    'background': 11,
+    'other': 12,      # catch-all bucket
+}
+PLOT_TYPES = set(PLOT_TYPE_SORT)
 
 # Valid plot statuses
 VALID_PLOT_STATUSES = {'active', 'completed', 'failed', 'dormant', 'available'}
@@ -145,8 +169,8 @@ def validate_plot(name: str, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
 
     # Validate type if present
     plot_type = data.get('type', '').lower()
-    if plot_type and plot_type not in VALID_PLOT_TYPES:
-        errors.append(f"Plot '{name}': invalid type '{plot_type}' (valid: {', '.join(VALID_PLOT_TYPES)})")
+    if plot_type and plot_type not in PLOT_TYPES:
+        errors.append(f"Plot '{name}': invalid type '{plot_type}' (valid: {', '.join(sorted(PLOT_TYPES, key=PLOT_TYPE_SORT.get))})")
 
     # Validate status if present
     status = data.get('status', '').lower()
