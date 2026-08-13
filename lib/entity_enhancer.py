@@ -108,6 +108,9 @@ class EntityEnhancer:
             except ImportError as e:
                 print(f"[ERROR] RAG components not available: {e}")
                 return False
+            except ValueError:
+                # No active campaign to point the store at — RAG simply off.
+                return False
         return True
 
     def find_entity(self, name: str) -> Optional[Dict[str, Any]]:

@@ -23,6 +23,10 @@ class CampaignVectorStore:
                          (e.g., world-state/campaigns/my-campaign/)
             collection_name: Name of the ChromaDB collection
         """
+        # Guard the str(None) trap: a caller with no active campaign passes
+        # "None", and the eager mkdir below would create ./None/vectors/.
+        if campaign_dir is None or str(campaign_dir) in ("", "None"):
+            raise ValueError("CampaignVectorStore requires a real campaign dir (no active campaign?)")
         self.campaign_dir = Path(campaign_dir)
         self.vectors_dir = self.campaign_dir / "vectors"
         self.collection_name = collection_name

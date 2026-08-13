@@ -6,6 +6,7 @@ sources:
   - { resource: /lib/world_bible.py }
   - { resource: /lib/book_bible.py }
 generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
 # The World Bible

@@ -10,7 +10,7 @@ sources:
   - { resource: /tools/gm-session.sh }
   - { resource: /tools/gm-clock.sh }
 generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
-verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
+verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
 # The living world

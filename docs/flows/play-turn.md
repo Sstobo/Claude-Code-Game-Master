@@ -8,7 +8,7 @@ sources:
   - { resource: /tools/gm-context.sh }
   - { resource: /.claude/settings.json }
 generated: { by: claude-fable-5, at: 2026-08-13T14:48:10Z }
-verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
+verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
 # A play turn

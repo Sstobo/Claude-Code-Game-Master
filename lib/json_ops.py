@@ -16,7 +16,11 @@ class JsonOperations:
 
     def __init__(self, world_state_dir: str = "world-state"):
         self.world_state_dir = Path(world_state_dir)
-        self.world_state_dir.mkdir(parents=True, exist_ok=True)
+        # Guard the str(None) trap: a manager constructed with no active
+        # campaign passes "None", and the eager mkdir would create ./None/.
+        # Reads then return defaults (path doesn't exist); writes fail loudly.
+        if str(world_state_dir) != "None":
+            self.world_state_dir.mkdir(parents=True, exist_ok=True)
 
     def load_json(self, filename: str, default: Any = None) -> Any:
         """
