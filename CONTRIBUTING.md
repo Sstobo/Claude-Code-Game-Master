@@ -162,9 +162,17 @@ To add a new Claude agent:
 
 ### Documentation
 
-- Update relevant documentation when making changes
-- Add comments to complex code sections
-- Include examples in docstrings
+The docs under `docs/` are an [OKF](docs/log.md) knowledge bundle: every doc's
+frontmatter declares the source files whose change would make it wrong, and drift is
+machine-checked against git.
+
+- Before editing code, ask which docs claim it:
+  `node ~/.claude/skills/okf/scripts/okf.mjs status <files…>` (settled flags live in
+  `docs/log.md`)
+- Update the claiming docs **in the same commit** as the code
+- Docs hold what the code cannot state (the why, cross-file invariants, landmines) —
+  a doc that restates code gets deleted, not maintained
+- Added or moved docs → rerun `okf.mjs index docs`
 - Keep the README.md up to date
 
 ## Project Structure

@@ -36,7 +36,7 @@ Every turn runs the same loop: **gather context → decide → execute → persi
 
 ## What the harness actually gives the model
 
-- **A memory that outlives the conversation.** NPCs, locations, plot threads, facts, your character sheet, your whole history — all persisted as plain JSON per campaign. Claude can recall prior events, keeps a tiered memoir of the campaign, and tracks what's canon-from-the-book versus what *you* made happen. Close the laptop mid-fight; pick it up next week exactly where you left off.
+- **A memory that outlives the conversation.** NPCs, locations, plot threads, facts, your character sheet, your whole history — all persisted as plain JSON per campaign. At each session's end the GM writes an **arc entry** (what changed, who matters now, what debts are open), and recall over your campaign's history is **semantic** — ask about "the clown" and it finds the summary that says *Grimaldi*. It tracks what's canon-from-the-book versus what *you* made happen. Close the laptop mid-fight; pick it up next week exactly where you left off.
 
 - **A rulebook written for *your* world, not D&D.** Whether you import a book or author one from scratch, Claude produces a **World Bible** (voice, tone, factions, geography, timeline) and from it a **World Kit** — a custom ruleset with its own stats, its own way of leveling, its own signature systems. A *Dune* import plays like *Dune*; a *Dungeon Crawler Carl* import plays like *Dungeon Crawler Carl*; and an original world plays like *itself*. D&D 5e is just one possible kit, not the foundation.
 
@@ -210,7 +210,10 @@ The harness is plumbing you can poke at: bash wrappers (`tools/`) → Python man
 | `gm-combat.sh` | Persisted, resumable combat tracking |
 | `gm-condition.sh` | Player conditions (poisoned, stunned, etc.) |
 | `gm-consequence.sh` | Schedule future events and triggers |
-| `gm-recall.sh` | Surface prior events from campaign memory |
+| `gm-recall.sh` | Campaign memory — semantic recall, arc entries, memoir |
+| `gm-clock.sh` | Threat clocks — pressure that mounts as time passes |
+| `gm-lore.sh` | Grounded chapter briefs from the source book |
+| `gm-worldgen.sh` | Consolidate an authored world's fan-out output |
 | `gm-note.sh` | Record world facts by category |
 | `gm-time.sh` | Advance in-game time |
 | `gm-search.sh` | Search world state and/or source material |
@@ -233,7 +236,11 @@ It calls OpenAI's `gpt-image-2`, saves the PNG into the campaign's `images/` fol
 
 ### The D&D 5e API, when it fits
 
-If your world *is* D&D-flavored, the harness can pull official rules, monsters, spells, and gear from the [D&D 5e API](https://www.dnd5eapi.co/) — grounding numbers in real mechanics instead of guessing. For every other book, your World Kit runs the show.
+If your world *is* D&D-flavored, declare `"kit": "dnd5e"` in the campaign's `ruleset.json` and the harness pulls official rules, monsters, spells, and gear from the [D&D 5e API](https://www.dnd5eapi.co/) — grounding numbers in real mechanics instead of guessing. For every other book, your World Kit runs the show, and the D&D mechanics refuse to load (so a bespoke world can't be silently overwritten by 5e).
+
+### The documentation brain
+
+Everything about how the harness works lives in **[`docs/`](docs/index.md)** — a knowledge layer where every doc declares the source files whose change would make it wrong, and staleness is machine-checked against git ([OKF](docs/log.md)). Start with the flows (a play turn, importing a book, authoring a world, the death hand-off) and read `docs/gotchas/` before debugging anything. Docs are updated in the same commit as the code they describe; `okf drift` reports when the two diverge.
 
 ### Dependencies
 
