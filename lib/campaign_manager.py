@@ -4,7 +4,9 @@ Campaign management module for GM tools
 Handles multi-campaign support with CRUD operations
 """
 
+import re
 import sys
+import hashlib
 import json
 import shutil
 from typing import Dict, List, Optional, Any
@@ -28,8 +30,24 @@ class CampaignManager:
 
     @staticmethod
     def _slugify(name: str) -> str:
-        """Normalize a campaign name to its folder slug (matches create())."""
-        return name.lower().replace(' ', '-')
+        """Normalize a campaign name to its folder slug (matches create()).
+
+        The ONE slug rule for the whole system: lowercase, every run of
+        non-alphanumerics becomes a single dash, edge dashes trimmed. Shell
+        (`campaign_manager.py slugify`) and extraction (`AgentExtractor.
+        _sanitize_name`) both route here, so a punctuated name like
+        "Baldur's Gate: Book 1" lands in exactly one directory.
+
+        NEVER returns an empty string. A name with no ASCII alphanumerics at all
+        ("龍の伝説", "!!!") gets a deterministic hash slug instead: an empty slug
+        would resolve to the campaigns root, and a caller joining it into a path
+        would point rm -rf at every campaign.
+        """
+        slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+        if slug:
+            return slug
+        digest = hashlib.sha1(name.encode('utf-8')).hexdigest()[:8]
+        return f'campaign-{digest}'
 
     def _resolve_name(self, name: str) -> str:
         """Resolve a user-supplied name (display name OR slug) to the actual
@@ -40,6 +58,14 @@ class CampaignManager:
         slug = self._slugify(name)
         if (self.campaigns_dir / slug).is_dir():
             return slug
+        # Folders created under the OLD slug rule kept apostrophes, dots and
+        # underscores ("baldur's-gate"), so the current rule no longer points at
+        # them and a real campaign reads as "does not exist". Match by comparing
+        # slugified folder names — resolves legacy dirs without renaming on disk.
+        if self.campaigns_dir.is_dir():
+            for existing in sorted(self.campaigns_dir.iterdir()):
+                if existing.is_dir() and self._slugify(existing.name) == slug:
+                    return existing.name
         return slug
 
     def list_campaigns(self) -> List[Dict[str, Any]]:
@@ -393,11 +419,21 @@ def main():
     path_parser = subparsers.add_parser('path', help='Get campaign directory path')
     path_parser.add_argument('name', nargs='?', help='Campaign name (defaults to active)')
 
+    # Slugify a name (shell callers use this instead of their own tr|sed)
+    slugify_parser = subparsers.add_parser('slugify', help='Print the folder slug for a campaign name')
+    slugify_parser.add_argument('name', help='Campaign display name or slug')
+
     args = parser.parse_args()
 
     if not args.action:
         parser.print_help()
         sys.exit(1)
+
+    if args.action == 'slugify':
+        # Pure string work — answer before constructing a manager, which would
+        # create world-state/campaigns relative to the caller's cwd.
+        print(CampaignManager._slugify(args.name))
+        return
 
     manager = CampaignManager()
 

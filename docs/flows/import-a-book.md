@@ -4,13 +4,15 @@ title: Importing a book
 description: How a PDF becomes a playable campaign — parallel extraction, then a strictly-ordered sequence of repair and seeding passes.
 sources:
   - { resource: /.claude/commands/import.md }
+  - { resource: /.claude/agents/extractor-npcs.md }
   - { resource: /tools/gm-extract.sh }
   - { resource: /lib/agent_extractor.py }
+  - { resource: /lib/campaign_manager.py }
   - { resource: /lib/extraction_cap.py }
   - { resource: /lib/plot_spine.py }
   - { resource: /lib/clock_seed.py }
   - { resource: /lib/opening_seed.py }
-generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
+generated: { by: claude-fable-5, at: 2026-08-13T18:46:47Z }
 ---
 
 # Importing a book
@@ -22,12 +24,21 @@ their output into runtime state. That split is what keeps the fan-out race-free.
 
 ## The shape
 
-1. **`prepare`** — extract text, chunk it, build the vector index.
+1. **`prepare`** — extract text, chunk it, build the vector index — then **`gm-campaign.sh
+   switch` immediately**. Every RAG read downstream resolves against the *active*
+   campaign's vector store, so the switch has to precede the preview and the agents, not
+   trail them at the summary step. The command asserts the switch took (`gm-campaign.sh
+   active` equals the expected slug) and stops the import on a mismatch — a silent failure
+   here has all four agents extracting the *previous* campaign's book.
 2. **Preview** — sample RAG queries, shown to the user so they can see what the book yields
    before committing.
 3. **Four extractor agents in parallel** — `extractor-npcs` / `-locations` / `-items` /
-   `-plots`, each reading `chunks/` and writing `extracted/<type>.json`. They are launched
-   simultaneously and share no files.
+   `-plots`, each writing `extracted/<type>.json`. They are launched simultaneously and
+   share no files. Each finds its material through `gm-search.sh --rag-only` queries rather
+   than reading `chunks/` wholesale, which is why step 1's switch is load-bearing. Their
+   prompts live in the **markdown body** of `.claude/agents/extractor-*.md`; the agent
+   loader reads the body and ignores unknown frontmatter keys, so a prompt parked in
+   frontmatter never reaches the agent.
 4. **`validate`** then the repair-and-seed chain (below).
 5. **Bible → kit → overview → voice → chronicler** — the world's identity, drafted from
    large-span reads rather than chunks. See [the World Bible](../modules/world-bible.md).
@@ -78,6 +89,16 @@ on the book's actual opening rather than in a void.
   [wrapped vs unwrapped](../gotchas/wrapped-vs-unwrapped-merge.md).
 - Agents validating against a live campaign file — see
   [extraction vs runtime schema](../gotchas/extraction-vs-runtime-schema.md).
+- A punctuated campaign name ("Baldur's Gate: Book 1") splitting across two directories.
+  Every path — creation, extraction, the shell wrappers — now slugs through
+  `CampaignManager._slugify` (`lib/campaign_manager.py`), exposed to shell as
+  `campaign_manager.py slugify`. Never re-implement it in a `tr | sed` pipeline. It also
+  never returns empty — a name with no ASCII alphanumerics ("龍の伝説") gets a deterministic
+  `campaign-<hash>` slug, because an empty slug joined onto `campaigns/` is what an
+  `rm -rf` in `gm-extract.sh clean` would read as *every* campaign. Folders created under
+  the older, looser rule (`baldur's-gate`, `curse_of_strahd`) stay reachable: `_resolve_name`
+  falls back to matching directories whose slugified name equals the input's, so nothing on
+  disk needs renaming.
 - `integrity` failing strict: read its unresolved list. Each entry names the owner and the
   reference; the fix is almost always a missed `reconcile` or an out-of-order run, not a
   bad extraction.

@@ -69,10 +69,41 @@ Show progress as the document is prepared:
 Reading your adventure and preparing it for play...
 ```
 
-Run the prepare command:
+Run the prepare command, then make the new campaign ACTIVE immediately:
 ```bash
 bash tools/gm-extract.sh prepare "<file-path>" "<campaign-name>"
+
+# REQUIRED, and it must happen here — not at the end. Every RAG read from now on
+# (the Step 3 preview, and every `gm-search.sh --rag-only` the four extractor
+# agents run) resolves against the ACTIVE campaign's vector store. Switch late and
+# the agents query the previous campaign's book, or no book at all.
+bash tools/gm-campaign.sh switch "<campaign-name>"
+
+# ASSERT the switch took. A failed switch is silent-but-poisonous: the preview and
+# all four extractors would read the PREVIOUS campaign's book and write plausible
+# entities from the wrong source.
+EXPECTED=$(uv run python lib/campaign_manager.py slugify "<campaign-name>")
+ACTIVE=$(bash tools/gm-campaign.sh active)
+# Compare slugs, not raw strings: a legacy-named folder resolves to its own
+# directory name, which is still the right campaign.
+ACTIVE_SLUG=$(uv run python lib/campaign_manager.py slugify "$ACTIVE")
+if [ "$ACTIVE_SLUG" != "$EXPECTED" ]; then
+    echo "MISMATCH — active is '$ACTIVE', expected '$EXPECTED'" >&2
+    exit 1
+fi
+echo "Active campaign: $ACTIVE"
+
+# From here on, ALWAYS resolve the campaign directory through the tool. Never
+# hand-build "world-state/campaigns/<campaign-name>" from the display name —
+# that is the unslugged path, and it is a different directory.
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
+echo "Campaign directory: $CAMPAIGN_DIR"
 ```
+
+**If this block exits non-zero, STOP.** Do not run the preview and do not
+launch the extractors. Report the mismatch to the user and fix it (usually the
+campaign name given to `prepare` differs from the one passed to `switch`) before
+continuing.
 
 After completion, display what was processed:
 ```
@@ -166,28 +197,34 @@ Four agents are reading your adventure...
 Agents work in parallel - this may take a few minutes.
 ```
 
-**CRITICAL**: Launch all 4 agents simultaneously using parallel Task tool calls:
+**CRITICAL**: Launch all 4 agents simultaneously using parallel Task tool calls.
+Resolve the directory FIRST and paste that literal path into every prompt — never
+interpolate the display name under `world-state/campaigns/`:
+
+```bash
+bash tools/gm-campaign.sh path    # -> <campaign-dir>, use this exact string below
+```
 
 ```
 Task: subagent_type=extractor-npcs
-prompt: "Extract characters from: world-state/campaigns/<campaign-name>/chunks/
-         Read all chunk files and extract every character/NPC/person.
-         Write output to: world-state/campaigns/<campaign-name>/extracted/npcs.json"
+prompt: "Extract characters from: <campaign-dir>/chunks/
+         Find every character/NPC/person via RAG queries (the campaign is active).
+         Write output to: <campaign-dir>/extracted/npcs.json"
 
 Task: subagent_type=extractor-locations
-prompt: "Extract places from: world-state/campaigns/<campaign-name>/chunks/
-         Read all chunk files and extract every location/setting/scene.
-         Write output to: world-state/campaigns/<campaign-name>/extracted/locations.json"
+prompt: "Extract places from: <campaign-dir>/chunks/
+         Find every location/setting/scene via RAG queries (the campaign is active).
+         Write output to: <campaign-dir>/extracted/locations.json"
 
 Task: subagent_type=extractor-items
-prompt: "Extract objects from: world-state/campaigns/<campaign-name>/chunks/
-         Read all chunk files and extract every item/object/prop.
-         Write output to: world-state/campaigns/<campaign-name>/extracted/items.json"
+prompt: "Extract objects from: <campaign-dir>/chunks/
+         Find every item/object/prop via RAG queries (the campaign is active).
+         Write output to: <campaign-dir>/extracted/items.json"
 
 Task: subagent_type=extractor-plots
-prompt: "Extract story elements from: world-state/campaigns/<campaign-name>/chunks/
-         Read all chunk files and extract every quest/scene/theme/plot point.
-         Write output to: world-state/campaigns/<campaign-name>/extracted/plots.json"
+prompt: "Extract story elements from: <campaign-dir>/chunks/
+         Find every quest/scene/theme/plot point via RAG queries (the campaign is active).
+         Write output to: <campaign-dir>/extracted/plots.json"
 ```
 
 As each agent completes, update the display:
@@ -319,7 +356,10 @@ with an EMPTY attribute list and the wrong name) — the imported book will play
 hollow, mismatched rules. Do not skip.
 
 ```bash
-CAMPAIGN_DIR="world-state/campaigns/<campaign-name>"
+# Resolved, never hand-built: the campaign has been active since Step 2, and
+# "world-state/campaigns/<campaign-name>" would be the UNSLUGGED path — a second,
+# empty directory that the runtime (which reads the slugged one) never sees.
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 [ -f "$CAMPAIGN_DIR/ruleset.json" ] && echo "World Kit already present" || echo "NO World Kit — must create one"
 ```
 
@@ -327,7 +367,7 @@ If no `ruleset.json` exists, author one **inferred from the source book**:
 
 - **Same universe as an existing campaign?** (e.g. another Dungeon Crawler Carl
   book) Copy that campaign's `ruleset.json` — the kit is universe-level, not
-  campaign state: `cp world-state/campaigns/<sibling>/ruleset.json "$CAMPAIGN_DIR/ruleset.json"`
+  campaign state: `cp "$(bash tools/gm-campaign.sh path "<sibling>")/ruleset.json" "$CAMPAIGN_DIR/ruleset.json"`
 - **Otherwise**, write a kit that fits the book. Baseline template (adjust to the
   source — sci-fi/horror/non-D&D books often need different attributes or a
   `resource-axis` / `milestone` progression rather than levels):
@@ -345,8 +385,8 @@ cat > "$CAMPAIGN_DIR/ruleset.json" <<'JSON'
 JSON
 ```
 
-Verify the kit (read the file directly — `world_kit.py info` reads the *active*
-campaign, which isn't switched until Step 7):
+Verify the kit (read the file directly, so the check is pinned to the campaign
+being imported rather than to whatever `world_kit.py info` finds active):
 ```bash
 uv run python -c "import json; k=json.load(open('$CAMPAIGN_DIR/ruleset.json')); print('Kit:', k['name'], '| attrs:', k['stat_schema']['attributes'])"
 ```
@@ -366,6 +406,7 @@ Author real overview content from the source and write a `campaign_rules` block
 describing the book's signature systems, then resolve any dangling `rules_doc`:
 
 ```bash
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)   # re-derive; never hand-build it
 uv run python lib/overview_seed.py "$CAMPAIGN_DIR" \
   --fields-json '{"campaign_name":"<World/Book Name>","genre":"<e.g. LitRPG / Comedy-Horror>","tone":{"horror":30,"comedy":35,"drama":35}}' \
   --rules-json '{"<system_key>":"<one-line rule the GM enforces>", "...":"..."}' \
@@ -380,13 +421,14 @@ Then author substantive GM-facing rules prose grounded in the source and point t
 kit at it (this is the per-book rules meat the thin ruleset.json routes to):
 
 ```bash
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)   # re-derive; never hand-build it
 # Write $CAMPAIGN_DIR/rules.md — GM-facing guidance for the book's signature systems
 # (progression, loot, saferooms, world mechanics, the headline clock, tone). Then:
 uv run python -c "import sys;sys.path.insert(0,'lib');from overview_seed import set_rules_doc;print(set_rules_doc('$CAMPAIGN_DIR','rules.md'))"
 ```
 `WorldKit.rules_doc_path()` loads it on demand. Write real guidance, not raw passages.
 
-Verify: `bash tools/gm-campaign.sh switch "<campaign-name>"` then
+Verify (the campaign is already active from Step 2):
 `uv run python -c "import sys;sys.path.insert(0,'lib');from world_kit import WorldKit;print(list(WorldKit().campaign_rules().keys()))"`
 — the campaign_rules keys must be non-empty.
 
@@ -410,10 +452,11 @@ Use the grounding helper so only verbatim excerpts survive (it drops anything no
 found in the source), then merge into the bible and validate:
 
 ```bash
-uv run python - <<'PY'
-import sys, json; sys.path.insert(0, "lib")
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
+CAMPAIGN_DIR="$CAMPAIGN_DIR" uv run python - <<'PY'
+import os, sys, json; sys.path.insert(0, "lib")
 from book_bible import draft_voice
-CAMP = "world-state/campaigns/<campaign-name>"
+CAMP = os.environ["CAMPAIGN_DIR"]   # resolved by the tool, never hand-built
 src = open(f"{CAMP}/current-document.txt", encoding="utf-8").read()
 voice = draft_voice(
     style="<author's prose fingerprint>",
@@ -451,13 +494,9 @@ The agent never picks its own style; it reads this locked one. Make the mashup s
 
 ---
 
-## Step 7: Switch to Campaign and Show Summary
+## Step 7: Show Summary
 
-```bash
-bash tools/gm-campaign.sh switch "<campaign-name>"
-```
-
-Count and display what was extracted:
+The campaign has been active since Step 2. Count and display what was extracted:
 
 ```bash
 CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
@@ -555,7 +594,7 @@ Then automatically run `/create-character` to guide the user through character c
 All content is stored in:
 
 ```
-world-state/campaigns/<campaign-name>/
+world-state/campaigns/<campaign-slug>/    # resolve with: bash tools/gm-campaign.sh path
 ├── chunks/              # Text chunks from document
 ├── vectors/             # ChromaDB embeddings for RAG queries
 ├── extracted/           # Individual agent outputs

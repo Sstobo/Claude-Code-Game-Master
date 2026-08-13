@@ -656,18 +656,15 @@ class AgentExtractor:
         return f"{base_name} ({counter})"
 
     def _sanitize_name(self, name: str) -> str:
-        """Sanitize campaign name for use as directory name"""
-        import re
-        # Remove file extension if present
-        name = Path(name).stem
-        # Replace spaces with dashes, remove special chars
-        name = re.sub(r'[^a-zA-Z0-9\-_]', '-', name)
-        # Collapse multiple dashes
-        name = re.sub(r'-+', '-', name)
-        # Remove leading/trailing dashes
-        name = name.strip('-')
-        # Lowercase for consistency
-        return name.lower() or 'unnamed-campaign'
+        """Sanitize a campaign name for use as a directory name.
+
+        Straight through to CampaignManager._slugify — the one slug rule, so
+        extraction and campaign creation always agree on the directory. Do NOT
+        stem here: a campaign named "Curse of Strahd v2.0" would lose its ".0"
+        and land in a second directory. Callers that pass a *filepath* stem it
+        themselves (see prepare_for_agents).
+        """
+        return CampaignManager._slugify(name)
 
 
 def main():

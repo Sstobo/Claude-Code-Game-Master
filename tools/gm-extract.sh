@@ -17,6 +17,25 @@ source "$(dirname "$0")/common.sh"
 CAMPAIGNS_DIR="$WORLD_STATE_BASE/campaigns"
 EXTRACT_DIR="$WORLD_STATE_BASE/extraction-temp"  # Default if no campaign specified
 
+# The ONE slug rule lives in lib/campaign_manager.py; never re-implement it here,
+# or extraction writes to a different directory than the campaign it belongs to.
+campaign_slug() {
+    local slug
+    # `|| slug=""` keeps a failed interpreter launch (missing venv on first run)
+    # from killing the script mid-command with no diagnostic; stderr from python
+    # is left visible so the real cause still prints.
+    slug=$($PYTHON_CMD "$LIB_DIR/campaign_manager.py" slugify "$1") || slug=""
+    # _slugify never returns empty, but an empty slug here would make every
+    # "$CAMPAIGNS_DIR/$(campaign_slug ...)" resolve to the campaigns ROOT — and
+    # clean_temp would rm -rf every campaign. Refuse rather than guess.
+    if [ -z "$slug" ]; then
+        echo "Error: could not derive a campaign slug from: $1" >&2
+        echo "  ($PYTHON_CMD could not run lib/campaign_manager.py — run /setup if the venv is missing)" >&2
+        exit 1
+    fi
+    printf '%s' "$slug"
+}
+
 show_usage() {
     cat << EOF
 D&D Module Extraction Tool
@@ -122,7 +141,7 @@ merge_results() {
     # Build command with optional campaign name
     if [ -n "$campaign_name" ]; then
         echo "Campaign: $campaign_name"
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
 
         # Check if campaign directory exists
         if [ ! -d "$CAMPAIGN_DIR" ]; then
@@ -174,7 +193,7 @@ save_to_world() {
     # Build command with optional campaign name
     if [ -n "$campaign_name" ]; then
         echo "Campaign: $campaign_name"
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
 
         if [ ! -f "$CAMPAIGN_DIR/merged-results.json" ]; then
             echo "Error: No merged results found for campaign: $campaign_name"
@@ -205,7 +224,7 @@ review_content() {
     # Build command with optional campaign name
     if [ -n "$campaign_name" ]; then
         echo "Campaign: $campaign_name"
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
 
         if [ ! -f "$CAMPAIGN_DIR/merged-results.json" ]; then
             echo "Error: No merged results to review for campaign: $campaign_name"
@@ -240,7 +259,14 @@ clean_temp() {
 
     if [ -n "$campaign_name" ]; then
         echo "Cleaning campaign extraction directory: $campaign_name"
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
+
+        # Last line of defense before an rm -rf: the target must be a directory
+        # strictly INSIDE campaigns/, never the campaigns root itself.
+        if [ "${CAMPAIGN_DIR%/}" = "${CAMPAIGNS_DIR%/}" ]; then
+            echo "Error: refusing to clean the campaigns root ($CAMPAIGNS_DIR)" >&2
+            exit 1
+        fi
 
         if [ -d "$CAMPAIGN_DIR" ]; then
             rm -rf "$CAMPAIGN_DIR"
@@ -272,7 +298,7 @@ archive_extracted() {
         fi
     fi
 
-    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
     EXTRACTED_DIR="$CAMPAIGN_DIR/extracted"
 
     if [ ! -d "$EXTRACTED_DIR" ]; then
@@ -345,7 +371,7 @@ validate_extraction() {
         fi
     fi
 
-    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
 
     if [ ! -d "$CAMPAIGN_DIR" ]; then
         echo "Error: Campaign directory not found: $CAMPAIGN_DIR"
@@ -417,7 +443,7 @@ normalize_extracted() {
         fi
     fi
 
-    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
 
     if [ ! -d "$CAMPAIGN_DIR/extracted" ]; then
         echo "Error: No extracted/ directory for campaign: $campaign_name"
@@ -488,7 +514,7 @@ cap_extracted() {
         fi
     fi
 
-    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
     if [ ! -d "$CAMPAIGN_DIR" ]; then
         echo "Error: Campaign directory not found: $CAMPAIGN_DIR"
         exit 1
@@ -519,7 +545,7 @@ case "$1" in
         if [ -z "$campaign_name" ]; then
             campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
         fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
         if [ ! -d "$CAMPAIGN_DIR" ]; then
             echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
         fi
@@ -534,7 +560,7 @@ case "$1" in
         if [ -z "$campaign_name" ]; then
             campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
         fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
         if [ ! -d "$CAMPAIGN_DIR" ]; then
             echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
         fi
@@ -549,7 +575,7 @@ case "$1" in
         if [ -z "$campaign_name" ]; then
             campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
         fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
         if [ ! -d "$CAMPAIGN_DIR" ]; then
             echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
         fi
@@ -564,7 +590,7 @@ case "$1" in
         if [ -z "$campaign_name" ]; then
             campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
         fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
         if [ ! -d "$CAMPAIGN_DIR" ]; then
             echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
         fi
@@ -579,7 +605,7 @@ case "$1" in
         if [ -z "$campaign_name" ]; then
             campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
         fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
         if [ ! -d "$CAMPAIGN_DIR" ]; then
             echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
         fi
@@ -594,7 +620,7 @@ case "$1" in
         if [ -z "$campaign_name" ]; then
             campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
         fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
         if [ ! -d "$CAMPAIGN_DIR" ]; then
             echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
         fi
@@ -609,7 +635,7 @@ case "$1" in
         if [ -z "$campaign_name" ]; then
             campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
         fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
         if [ ! -d "$CAMPAIGN_DIR" ]; then
             echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
         fi
@@ -624,7 +650,7 @@ case "$1" in
         if [ -z "$campaign_name" ]; then
             campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
         fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
         if [ ! -d "$CAMPAIGN_DIR" ]; then
             echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
         fi
@@ -639,7 +665,7 @@ case "$1" in
         if [ -z "$campaign_name" ]; then
             campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
         fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
         if [ ! -d "$CAMPAIGN_DIR" ]; then
             echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
         fi
