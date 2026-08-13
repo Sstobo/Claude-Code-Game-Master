@@ -8,7 +8,7 @@ sources:
   - { resource: /lib/consequence_manager.py }
   - { resource: /lib/world_kit.py }
   - { resource: /lib/world_bible.py }
-generated: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:41:47Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
 ---
 
@@ -469,6 +469,7 @@ how a world plays without baking in D&D 5e.
 ```json
 {
   "name": "Dungeon Crawler Carl",
+  "kit": "custom | dnd5e   (absent = custom; dnd5e unlocks the D&D mechanics skills + dnd5eapi)",
   "stat_schema": { "attributes": ["str","con","dex","int"], "vitals": ["hp"] },
   "progression": { "model": "milestone | xp-levels | resource-axis", "...": "model config (thresholds/tiers/resource)" },
   "resolution": { "model": "d20-vs-dc" },

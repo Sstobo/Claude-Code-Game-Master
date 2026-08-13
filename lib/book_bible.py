@@ -73,6 +73,9 @@ def draft_ruleset_from_bible(bible: Dict[str, Any], progression_model: str = "mi
     progression.update(progression_config)
     return {
         "name": bible.get("name", "Imported World"),
+        # 'dnd5e' unlocks the D&D mechanics skills; the importer sets it only
+        # when the book actually IS a D&D module.
+        "kit": "custom",
         "stat_schema": {"attributes": [], "vitals": ["hp"]},
         "progression": progression,
         "resolution": {"model": "d20-vs-dc"},

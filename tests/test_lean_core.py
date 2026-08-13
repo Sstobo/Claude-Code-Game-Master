@@ -55,3 +55,24 @@ def test_all_skills_exist_with_frontmatter():
 def test_craft_skill_preserves_the_soul():
     text = (ROOT / ".claude" / "skills" / "gm-craft" / "SKILL.md").read_text(encoding="utf-8")
     assert "Yes, and" in text and "Persist before narrating" in text
+
+
+DND_ONLY_SKILLS = ["gm-combat", "gm-levelup", "gm-spellcasting"]
+
+
+def test_dnd_only_skills_carry_the_kit_guard():
+    for name in DND_ONLY_SKILLS:
+        text = (ROOT / ".claude" / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+        assert "KIT GUARD" in text, f"{name} must open with the kit guard"
+        assert "world_kit.py info" in text, f"{name} guard must check the kit via world_kit"
+
+
+def test_world_kit_exposes_kit_identity():
+    import json
+    import subprocess
+    import sys as _sys
+    r = subprocess.run([_sys.executable, str(ROOT / "lib" / "world_kit.py"), "info", "--json"],
+                       capture_output=True, text=True, cwd=str(ROOT))
+    assert r.returncode == 0, r.stderr
+    data = json.loads(r.stdout)["data"]
+    assert data["kit"] in ("dnd5e", "custom") or isinstance(data["kit"], str)

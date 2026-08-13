@@ -6,7 +6,7 @@ sources:
   - { resource: /tests/test_lean_core.py }
   - { resource: /.claude/skills/gm-combat/SKILL.md }
   - { resource: /.claude/skills/gm-craft/SKILL.md }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:41:47Z }
 ---
 
 # Lean core, skills on demand
@@ -44,17 +44,23 @@ exactly that reason.
 Adding a skill without adding it to `ALL_SKILLS` and the router leaves it unroutable and
 untested.
 
-## Three of the eight skills are D&D-only
+## Three of the eight skills are D&D-only, and now guard themselves
 
 `gm-combat`, `gm-levelup`, and `gm-spellcasting` encode 5e — hit dice, spell slots, an XP
-table, death saves. Their own frontmatter says so: *"in a campaign whose World Kit is
-dnd5e. For non-D&D kits, use the generic core and the active ruleset instead."*
+table, death saves. Since 2026-08-13 each opens with a **STEP 0 kit guard**: run
+`world_kit.py info --json`, and unless `kit == "dnd5e"`, close the skill and use the
+generic core + the active ruleset. Enforcement points:
+`test_dnd_only_skills_carry_the_kit_guard` asserts the guard text exists, and
+`WorldKit.kit()` supplies the identity — `ruleset.json`'s `kit` field, defaulting to
+`"custom"` when absent, so a legacy or bespoke world can never accidentally qualify as
+D&D. A campaign that *wants* the 5e machinery declares `"kit": "dnd5e"` in its ruleset.
 
-**Nothing enforces that.** No test, no guard, no check inside the skills. Loading
-`gm-combat` in a Dune campaign silently imports 5e rules the world never declared, and the
-result reads as "the world isn't distinctive" rather than as an error. Check the active kit
-before loading a mechanics skill — [game core and World Kit](../modules/game-core-and-world-kit.md)
-covers what the kit declares.
+(Until 2026-08-13 nothing enforced the split, and loading `gm-combat` in a Dune campaign
+silently imported 5e rules — the failure read as "the world isn't distinctive", not as an
+error.)
+
+The guard is still an instruction a model follows, not a hard interlock — the honest
+enforcement tier is "tested prompt", one step below "lint rule".
 
 The other five — `gm-skills`, `gm-social`, `gm-conditions`, `gm-dungeon`, `gm-craft` — are
 kit-agnostic judgment frameworks and load freely.

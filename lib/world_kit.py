@@ -34,6 +34,7 @@ from game_core import make_progression, resolve_check
 
 DEFAULT_RULESET = {
     "name": "Generic Adventure",
+    "kit": "custom",
     "stat_schema": {"attributes": [], "vitals": ["hp"]},
     "progression": {"model": "milestone"},
     "resolution": {"model": "d20-vs-dc"},
@@ -60,6 +61,15 @@ class WorldKit:
     # --- declared configuration ---
     def name(self) -> str:
         return self.ruleset.get("name", "Generic Adventure")
+
+    def kit(self) -> str:
+        """Kit identity: 'dnd5e' unlocks the D&D mechanics skills + dnd5eapi.
+
+        Anything else (default 'custom') runs the generic core + this ruleset.
+        Legacy rulesets without the field are 'custom' — the safe reading, since
+        loading 5e mechanics into a bespoke world is the failure this prevents.
+        """
+        return self.ruleset.get("kit", "custom")
 
     def stat_schema(self) -> Dict[str, Any]:
         return self.ruleset.get("stat_schema", {})
@@ -110,6 +120,7 @@ def main():
     kit = WorldKit()
     info = {
         "name": kit.name(),
+        "kit": kit.kit(),
         "stat_schema": kit.stat_schema(),
         "resolution_model": kit.resolution_model(),
         "progression_model": kit.progression_model(),
