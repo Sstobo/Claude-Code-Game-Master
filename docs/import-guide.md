@@ -1,170 +1,88 @@
-# Import System Guide
-
-Complete documentation for importing PDFs, documents, and modules into playable campaigns using RAG (Retrieval-Augmented Generation).
-
-## Quick Start
-
-```bash
-# One command does everything
-/import "path/to/book.pdf" "campaign-name"
-```
-
-This will:
-1. Create the campaign folder structure
-2. Extract text from the document
-3. Generate vector embeddings for semantic search
-4. Launch extraction agents to find NPCs, locations, items, and plots
-5. Merge and save everything to world state
-
+---
+type: Playbook
+title: Import operations guide
+description: Running, inspecting, and troubleshooting an import by hand — the operator's side of the /import flow.
+sources:
+  - { resource: /tools/gm-extract.sh }
+  - { resource: /tools/gm-search.sh }
+  - { resource: /.claude/commands/import.md }
+generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
 ---
 
-## Manual Step-by-Step Process
+# Import operations guide
 
-For more control or troubleshooting, run each step individually:
-
-### Step 1: Vectorize the Document
-
-```bash
-bash tools/gm-extract.sh prepare "path/to/book.pdf" "campaign-name"
+```
+/import <file-path> [campaign-name]
 ```
 
-This will:
-- Create the campaign folder structure
-- Extract text from PDF/DOCX/TXT
-- Split into ~3000 character chunks
-- Generate embeddings using sentence-transformers
-- Store vectors in ChromaDB at `world-state/campaigns/<name>/vectors/`
+Drop a PDF, DOCX, TXT, or MD into `source-material/` and run it. The campaign name defaults
+to the filename. **What each pass does and why the order matters is in
+[importing a book](flows/import-a-book.md)** — this page is the operator's side: running
+steps by hand, checking the result, and fixing a bad run.
 
-### Step 2: Extract Entities
+`bash tools/gm-extract.sh` with no arguments prints the authoritative command list. Prefer
+that over any list written here.
 
-The `/import` command automatically launches 4 parallel extraction agents:
+## Running a step by hand
 
-| Agent | Queries For | Output |
-|-------|-------------|--------|
-| NPCs | characters, names, dialogue | `extracted/npcs.json` |
-| Locations | places, rooms, settings | `extracted/locations.json` |
-| Items | treasures, equipment, artifacts | `extracted/items.json` |
-| Plots | quests, hooks, storylines | `extracted/plots.json` |
-
-Each agent uses semantic search to find relevant content:
-```bash
-bash tools/gm-search.sh "character names dialogue" --rag-only -n 50
-```
-
-### Step 3: Merge Results
+Every pass takes an optional campaign name, defaulting to the active campaign:
 
 ```bash
-bash tools/gm-extract.sh merge "campaign-name"
+bash tools/gm-extract.sh prepare "source-material/book.pdf" "campaign-name"
+bash tools/gm-extract.sh cap "campaign-name" 30
+bash tools/gm-extract.sh integrity "campaign-name" --no-strict   # report, don't fail
 ```
 
-Combines all agent outputs into unified JSON files and deduplicates entities.
+Re-running a pass is safe — they are written to be idempotent — but **re-running one out of
+order is not**, because several passes depend on repairs made by earlier ones.
 
-### Step 4: Review Extraction
+## `merge` / `save` / `review` are the legacy path
+
+`gm-extract.sh` still offers `merge`, `save [rename|skip|overwrite]`, and `review`. The
+`/import` command does **not** call them: it uses `normalize` to move `extracted/*.json`
+into the campaign root, then the repair chain. Reach for `merge`/`save` only when
+deliberately folding a second extraction into an existing campaign; running them as a
+"finish the import" step will not produce what the current pipeline produces.
+
+## Checking a finished import
 
 ```bash
-bash tools/gm-extract.sh review "campaign-name"
+bash tools/gm-search.sh "a phrase from the book" --rag-only -n 20   # vectors alive?
+bash tools/gm-search.sh "character name" --world-only               # entities landed?
+uv run python lib/schemas.py                                        # validate world state
+uv run python lib/world_bible.py validate                           # bible complete?
 ```
 
-Shows counts and samples from each entity type. Review before saving.
-
-### Step 5: Save to World State
-
-```bash
-bash tools/gm-extract.sh save rename "campaign-name"
-```
-
-Moves extracted data to final world state files. Strategies:
-- `rename` - Rename duplicates with suffix (default)
-- `skip` - Skip entities that already exist
-- `overwrite` - Replace existing entities
-
-### Step 6: Archive Extraction Files (Optional)
-
-```bash
-bash tools/gm-extract.sh archive "campaign-name"
-```
-
-Archives the `extracted/` folder after successful merge to keep campaign folder clean.
-
----
-
-## RAG Query Tool
-
-After importing, you can query the vectorized source material directly:
-
-```bash
-# Search both world state AND source material (default)
-bash tools/gm-search.sh "dragon"
-
-# Search source material only
-bash tools/gm-search.sh "dragon" --rag-only -n 20
-
-# Search world state only
-bash tools/gm-search.sh "dragon" --world-only
-```
-
----
-
-## Using Source Material During Play
-
-When RAG context is shown during gameplay, **USE IT**:
-- Ground scene descriptions in source material prose
-- Reference specific details (smells, sounds, features) from the original
-- Ensure NPC dialogue matches their canonical voice
-- Capture the author's writing style and atmosphere
-
-Use **ALL returned passages** - even loosely related passages help maintain authentic tone.
-
----
-
-## System Components
-
-| Component | Path | Purpose |
-|-----------|------|---------|
-| RAG Extractor | `lib/rag/rag_extractor.py` | PDF→chunks→vectors |
-| Vector Store | `lib/rag/vector_store.py` | ChromaDB interface |
-| Embedder | `lib/rag/embedder.py` | sentence-transformers |
-| Agent Extractor | `lib/agent_extractor.py` | Orchestrates workflow |
-| Search CLI | `tools/gm-search.sh` | Unified search |
-| Extract CLI | `tools/gm-extract.sh` | prepare/merge/save |
-| Extractor Agents | `.claude/agents/extractor-*.md` | 4 specialized agents |
-| Import Skill | `.claude/commands/import.md` | Import workflow |
-
----
+An empty `--rag-only` result is ambiguous by design: no vectors, missing RAG dependencies,
+and a genuinely absent phrase all look identical. Check
+`bash tools/gm-context.sh --json` for `rag_available` before concluding the book is thin.
+See [the RAG stack](modules/rag-stack.md).
 
 ## Troubleshooting
 
-### No results from queries?
-- Check vectors exist: `bash tools/gm-search.sh "test" --rag-only`
-- Re-run prepare step if needed: `bash tools/gm-extract.sh prepare "file" "name"`
+| Symptom | Likely cause |
+|---|---|
+| No text extracted at all | the PDF is image-only. **There is no OCR path** — convert the file before importing |
+| `integrity` fails strict with unresolved refs | a repair pass was skipped or run out of order — re-run `normalize-connections` → `reconcile` → `stub-npcs`, then `integrity` |
+| One entity type came back empty | the merge dropped it on a wrapper-key mismatch — see [wrapped vs unwrapped](gotchas/wrapped-vs-unwrapped-merge.md) |
+| An entity literally named `npcs` | same bug, other direction |
+| Entities present but bland | enhancement didn't ground — check `context_name_match_fraction`, then re-run `gm-enhance.sh batch` |
+| No source passages during play | RAG deps missing, or the campaign was never vectorized |
+| Main cast missing after `cap` | they weren't referenced by any main plot; raise the limit rather than hand-editing |
+| Agents produced nothing | `bash tools/gm-extract.sh validate "<campaign>"`, then re-run the failing agent alone |
 
-### Missing entities?
-- Try different search terms
-- Increase result count: `-n 50` instead of default
-- Run extraction agent again with specific focus
+## Notes that are easy to get wrong
 
-### Duplicate entities?
-- Run merge step to deduplicate
-- Manual cleanup in JSON files if needed
+- **Vectorizing is expensive once, free afterward.** The store is persistent; a 500+ page
+  book takes minutes the first time and nothing on restart.
+- **Chunks are ~3000 characters** and are a different index from the chapter-granularity
+  one the Loremaster uses. Both exist; see [the RAG stack](modules/rag-stack.md).
+- **Use every passage the harness surfaces during play.** Loosely related prose still
+  carries the author's atmosphere, which is the point of grounding.
+- **`source-material/` and extracted book text are gitignored** — a cloned repo has no
+  books and no vectors.
 
-### Extraction agents failing?
-- Check `bash tools/gm-extract.sh validate "campaign-name"`
-- Re-run failed agent types individually
+## Related
 
----
-
-## Supported File Formats
-
-- **PDF** - Full support with text extraction
-- **DOCX** - Microsoft Word documents
-- **TXT** - Plain text files
-- **MD** - Markdown files
-
----
-
-## Performance Tips
-
-- Large documents (500+ pages) may take several minutes to vectorize
-- Extraction agents run in parallel for speed
-- Vector store is persistent - no need to re-vectorize on restart
-- Use `--rag-only` flag for faster searches when world state isn't needed
+- [Importing a book](flows/import-a-book.md) — the pipeline and its ordering
+- [World state schema reference](schema-reference.md) — what the files end up looking like

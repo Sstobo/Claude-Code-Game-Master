@@ -1,26 +1,59 @@
+---
+type: Module
+title: World state JSON schema reference
+description: The on-disk shape of every per-campaign file — the contract no single source file states.
+sources:
+  - { resource: /lib/schemas.py }
+  - { resource: /lib/npc_manager.py }
+  - { resource: /lib/consequence_manager.py }
+  - { resource: /lib/world_kit.py }
+  - { resource: /lib/world_bible.py }
+generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+---
+
 # World State JSON Schema Reference
 
-This document defines the canonical JSON schemas for all world state files. Managers enforce these schemas when reading and writing data.
+The on-disk shape of a campaign, which no single source file declares — the managers each
+write their own slice. **`lib/schemas.py` is the authority on every enum below**; where
+this document lists allowed values it is a convenience copy, and the copy has drifted
+before. Re-derive with `uv run python lib/schemas.py` (validates the active campaign) or by
+reading the `VALID_*` sets at the top of that file.
 
 ---
 
 ## Campaign Structure
 
-Each campaign lives in its own folder: `world-state/campaigns/<name>/`
+Each campaign lives in its own folder: `world-state/campaigns/<name>/`. The active campaign
+is named in `world-state/active-campaign.txt`.
 
 ```
 <campaign-name>/
-├── campaign-overview.json   # Campaign settings and current state
+├── campaign-overview.json   # Campaign settings, player position, campaign_rules
+├── character.json           # Player character sheet (FLAT shape)
 ├── npcs.json                # All NPCs
 ├── locations.json           # All locations
 ├── facts.json               # World facts by category
-├── consequences.json        # Pending/resolved events
-├── items.json               # Items (from imports)
 ├── plots.json               # Plot hooks and quests
-├── session-log.md           # Session history
-├── character.json           # Player character sheet
-└── saves/                   # Snapshot saves
+├── items.json               # Items (from imports)
+├── consequences.json        # Pending/resolved events + firing provenance
+├── ruleset.json             # World Kit — how this world plays
+├── world-bible.json         # Fidelity spine (voice, factions, geography, systems)
+├── rules.md                 # Optional long-form rules prose (ruleset.rules_doc)
+├── session-log.md           # Session history — the canonical ledger
+├── threat-clocks.json       # Named pressure clocks (optional)
+├── campaign-memory.json     # Recall index, rebuilt on save
+├── chronicler.json          # Locked art style + in-world artist
+├── world-tick-log.json      # Between-session tick provenance
+├── loremaster-cache.json    # Per-location grounded briefs
+├── saves/                   # Snapshot saves
+├── fallen/                  # Archived sheets of dead PCs
+├── images/                  # Generated scene images + _gen-log.jsonl
+├── chunks/ · vectors/       # RAG source chunks and the ChromaDB index
+└── extracted/ · canon/ · authored/   # Import / world-authoring staging
 ```
+
+Most of these are created lazily — a campaign that has never been illustrated has no
+`chronicler.json`, and one that was never imported has no `vectors/`.
 
 ---
 
@@ -43,9 +76,24 @@ Each campaign lives in its own folder: `world-state/campaigns/<name>/`
     "arrival_time": "ISO timestamp"
   },
   "current_character": "string (character name)",
-  "session_count": 0
+  "session_count": 0,
+
+  "campaign_rules": {
+    "description": "…runs on its own systems — follow them exactly.",
+    "signature_systems": ["the book's distinctive mechanics"],
+    "tone": "string"
+  },
+  "story_spine": {"arc": ["ordered plot names"], "through_line": "string"},
+  "preferences": {"action_menu": true}
 }
 ```
+
+**`campaign_rules` is the block that reaches the model verbatim and untruncated** every
+beat — it is where a world's signature systems must live to have any effect. Putting them
+in `ruleset.json` instead is a silent no-op for narration. See
+[game core and World Kit](modules/game-core-and-world-kit.md). Worlds are free to add
+their own keys here (the shipped DCC fixture carries `viewer_stats`, `pending_boxes`, and
+`pending_interview_topics`).
 
 ---
 
@@ -57,7 +105,7 @@ A dictionary keyed by NPC name.
 {
   "NPC_NAME": {
     "description": "string (physical/personality description)",
-    "attitude": "friendly|neutral|hostile|suspicious|helpful|indifferent|fearful|respectful|dismissive|curious",
+    "attitude": "ally|neutral|enemy|friendly|hostile|suspicious|helpful",
     "created": "ISO timestamp",
     "events": [
       {"event": "string describing what happened", "timestamp": "ISO timestamp"}
@@ -66,14 +114,35 @@ A dictionary keyed by NPC name.
       "locations": ["location name"],
       "quests": ["quest name"]
     },
-    "context": ["optional source passages"],
+    "context": ["canonical voice lines — verbatim source dialogue"],
     "enhanced": false,
     "enhanced_at": "ISO timestamp",
     "is_party_member": false,
-    "character_sheet": null
+    "character_sheet": null,
+
+    "aliases": ["name variants recorded by the integrity gate"],
+    "visual_appearance": {"sex": "", "age": "", "race": "", "species": "", "hair": "",
+                          "face": "", "eyes": "", "clothing": "", "gear": "",
+                          "demeanor": "", "size": ""},
+    "goal": "string", "secret": "string", "current_mood": "neutral",
+    "voice": "string — how they SOUND (not their lines; those are `context`)",
+    "bonds": {},
+    "stats": {"ac": null, "hp": 45, "cr": 3, "difficulty": "minion|standard|boss",
+              "statless": false},
+    "location_tags": ["import-side spelling — see the gotcha below"]
   }
 }
 ```
+
+Two field pairs are routinely confused:
+
+- **`context` vs `voice`** — `context` holds quotable lines; `voice` describes the sound.
+  See [NPC model](modules/npc-model.md).
+- **`tags.locations` vs `location_tags`** — both exist, and only the first is read at
+  runtime. See [the NPC location tag split](gotchas/npc-location-tag-split.md).
+
+`attitude` values above are the `VALID_ATTITUDES` set in `lib/schemas.py`; an invalid
+attitude is coerced to `neutral` on batch import rather than rejected.
 
 ### Party Member Character Sheet
 
@@ -167,22 +236,26 @@ Dungeon rooms (stored in `locations.json`) may include:
 
 ## facts.json
 
-A dictionary with category keys, each containing an array of fact strings.
+A dictionary with category keys, each containing an array of fact **objects**.
 
 ```json
 {
   "world_building": [
-    "The kingdom has been at peace for 100 years",
-    "Dragons are extinct except for one"
+    {"fact": "The kingdom has been at peace for 100 years",
+     "timestamp": "2026-01-28T21:50:30Z"}
   ],
   "session_events": [
-    "The party met the king on day 1"
-  ],
-  "plot_hooks": [
-    "A mysterious stranger mentioned a treasure"
+    {"fact": "The party met the king on day 1", "timestamp": "..."}
   ]
 }
 ```
+
+Bare strings are tolerated on read (`lib/campaign_memory.py:60` falls back to `str(it)`)
+but managers write the object form.
+
+**Category names are load-bearing.** `campaign_memory` classifies a fact as book-canon
+only when its category is `plot_world` or `world_building`; everything else is filed as
+our-story. See [campaign memory](modules/campaign-memory.md).
 
 ### Common Categories
 
@@ -220,11 +293,22 @@ Tracks events that will trigger in the future.
       "consequence": "string",
       "trigger": "string",
       "created": "ISO timestamp",
-      "resolved": "ISO timestamp"
+      "resolved": "ISO timestamp",
+      "expired": "ISO timestamp (when aged out rather than resolved)"
     }
-  ]
+  ],
+
+  "provenance": [
+    {"id": "…", "consequence": "…", "reason": "why it matched",
+     "ctx_key": "location|time|date", "fired_at": "ISO timestamp"}
+  ],
+  "_snapshot": {"active": [], "resolved": []}
 }
 ```
+
+A fired consequence also carries `last_fired_key` (the scene key that fired it) and stays
+in `active` — firing is not resolving. `_snapshot` is the **one-beat** rollback buffer,
+overwritten by the next tick. See [the living world](modules/living-world.md).
 
 **Structured triggers** (`trigger_type`/`match`/`expiry`) are additive and
 optional. When present, the reactivity engine fires the consequence automatically
@@ -240,8 +324,10 @@ A dictionary keyed by plot name.
 ```json
 {
   "PLOT_NAME": {
-    "type": "main|side|mystery|threat",
-    "status": "active|completed|failed|dormant",
+    "type": "main|side|personal|world|optional|scene|theme|idea|lore|background",
+    "status": "active|completed|failed|dormant|available",
+    "sequence": 1,
+    "depends_on": ["earlier plot name"],
     "description": "string (what the quest is about)",
     "npcs": ["involved", "npc", "names"],
     "locations": ["relevant", "locations"],
@@ -284,7 +370,10 @@ A dictionary keyed by item name. Typically populated by `/import`.
 
 ## character.json
 
-The player character sheet.
+The player character sheet, in the **flat** canonical shape. `stats` is an open,
+kit-defined dict — the six abilities below are a D&D example, not a requirement. A legacy
+open-schema file (`identity`/`vitals`/`attributes`) is migrated to flat on first read.
+See [the player character sheet](modules/player-character.md).
 
 ```json
 {
@@ -319,9 +408,24 @@ The player character sheet.
   "traits": "string",
   "notes": [],
   "gold": 0,
-  "xp": {"current": 0, "next_level": 300}
+  "xp": {"current": 0, "next_level": 300},
+
+  "conditions": [],
+  "status": "alive | dying | dead",
+  "died_at": "ISO timestamp (set by gm-player.sh kill)",
+  "cause": "string",
+  "visual_appearance": {"…11 fixed fields — see lib/visual_appearance.py"},
+  "origin": "canon | original | nameless",
+  "concept": "string (original mode)",
+  "voice": ["canonical lines, when lifted from a canon NPC"],
+  "current_location": "string",
+  "id": "string"
 }
 ```
+
+`xp` accepts a bare integer and is normalized to `{current, next_level}` on load. Kit
+vitals a schema has never heard of (`water`, `heat`, `corruption`) live at the top level
+and survive the flat↔open round trip.
 
 ---
 
@@ -396,3 +500,15 @@ import; captures what makes a book feel like itself.
 
 Required: name, voice, tone, themes, factions (graph), geography (graph),
 signature_systems. The bible auto-generates the World Kit ruleset + campaign_rules.
+
+A `confirmed: false` flag on a freshly auto-drafted bible holds the world for human review;
+**an absent flag counts as confirmed**, so hand-authored and legacy bibles are playable
+immediately. See [the World Bible](modules/world-bible.md).
+
+---
+
+## Related
+
+- [The entity graph](modules/entity-graph.md) — why these files cross-reference by name
+- [Extraction schema is not the runtime schema](gotchas/extraction-vs-runtime-schema.md)
+- [Importing a book](flows/import-a-book.md) — how these files get populated

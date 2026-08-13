@@ -1,0 +1,71 @@
+---
+type: Flow
+title: A play turn
+description: What happens between the player typing an action and reading the result — the loop, the routing table, and the three things that fire without being asked.
+sources:
+  - { resource: /CLAUDE.md }
+  - { resource: /tools/gm-session.sh }
+  - { resource: /tools/gm-context.sh }
+  - { resource: /.claude/settings.json }
+generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+---
+
+# A play turn
+
+**CONTEXT → DECIDE → EXECUTE → PERSIST → NARRATE.** The order is the product. Everything
+the harness adds over "a model pretending to be a GM" lives in the first and fourth steps.
+
+## The loop, concretely
+
+1. **CONTEXT** — the session brief (`gm-session.sh context`) and, when the beat is about a
+   place or a person, the place brief (`gm-context.sh`). These are two different commands
+   returning almost disjoint data; see [scene context](../modules/scene-context.md).
+2. **DECIDE** — route on what the player said. The table in `CLAUDE.md` maps phrasing to a
+   Skill; the Skill is loaded on demand rather than living in the always-on core. See
+   [lean core and skill routing](../conventions/lean-core-and-skill-routing.md).
+3. **EXECUTE** — resolve through the active World Kit, never a hardcoded rule set.
+   Dice only ever come from `lib/dice.py`, one roll per command, never inlined.
+4. **PERSIST** — write every state change *before* narrating. See
+   [persist before narrate](../conventions/persist-before-narrate.md).
+5. **NARRATE** — prose length matched to the beat, and the action menu on or off per the
+   player's stored preference.
+
+## Three things fire without anyone asking
+
+This is the part that is easy to forget when reasoning about a turn, because none of it
+appears in the transcript:
+
+| Trigger | What fires | Where |
+|---|---|---|
+| `gm-session.sh move` | consequence tick for the new scene | `tools/gm-session.sh:112` |
+| `gm-time.sh` | consequence tick (time-based triggers) | `tools/gm-time.sh` |
+| every turn end | `session-autosave.sh` Stop hook → `gm-session.sh save autosave` | `.claude/settings.json` |
+
+So moving the party is never *only* moving the party — it can surface a consequence that
+changes the scene you were about to narrate. Check the tick output before writing the beat,
+not after. See [the living world](../modules/living-world.md).
+
+## The state-write hook is an auditor, not a guard
+
+The `PostToolUse` hook pattern-matches state-writing commands and appends them to
+`.ship-it/state-writes.log`. It **never blocks** — `set +e`, every error swallowed,
+`exit 0` unconditionally. Its value is retrospective: after a session that lost something,
+the log shows whether the persist call was made at all.
+
+Note the matcher is a literal `case` over command substrings
+(`.claude/hooks/post-tool-state-log.sh:18`) covering `gm-player.sh`, `gm-npc.sh`,
+`gm-session.sh move`, `gm-consequence.sh add`, and `gm-condition.sh`. A new state-writing
+tool is invisible to the audit until it is added there.
+
+## Startup is a decision tree, not a greeting
+
+Before the first word to the player, the harness checks: is the venv built (else `/setup`),
+does any campaign exist (else route to `/gm` → New Adventure), does the active campaign
+have a `character.json` (else identity-first onboarding). Each failure has a specific
+destination — see [onboarding and the death hand-off](onboarding-and-death.md) and
+[install and setup](../playbooks/install-and-setup.md).
+
+## Related
+
+- [Game core and World Kit](../modules/game-core-and-world-kit.md) — what "resolve through the kit" means
+- [Illustrating a scene](scene-illustration.md) — the background branch off a narrated beat
