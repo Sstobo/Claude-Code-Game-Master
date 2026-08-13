@@ -8,6 +8,7 @@ sources:
   - { resource: /lib/json_ops.py }
   - { resource: /tests/test_json_wrappers_player.py }
 generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+verified: { by: claude-fable-5, at: 2026-08-13T15:15:46Z }
 ---
 
 # The tool wrapper contract

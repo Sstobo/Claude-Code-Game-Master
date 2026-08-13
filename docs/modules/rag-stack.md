@@ -10,6 +10,7 @@ sources:
   - { resource: /lib/rag/coarse_index.py }
   - { resource: /lib/entity_enhancer.py }
 generated: { by: claude-fable-5, at: 2026-08-13T14:27:00Z }
+verified: { by: claude-fable-5, at: 2026-08-13T15:15:46Z }
 ---
 
 # RAG stack
