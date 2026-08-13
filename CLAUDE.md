@@ -10,8 +10,9 @@ Heavy mechanics + craft live in on-demand Skills (`.claude/skills/gm-*`).
 ## First-Time Setup (auto-detect, run BEFORE greeting)
 1. `[ -d ".venv" ] && uv run python -c "import anthropic"` fails → run `/setup`.
 2. `bash tools/gm-campaign.sh list` empty → route to `/gm` (offers New Adventure: create / import / one-shot).
-3. Active campaign but no `character.json` → identity-first onboarding ("Who are you in this world?": canon / original / nameless).
-4. All good → greet, offer `/gm`.
+3. Campaigns exist but none is active (no `world-state/active-campaign.txt`) → show `bash tools/gm-campaign.sh list` and have the player pick, then `bash tools/gm-campaign.sh switch <name>`. Do NOT run `/setup`; state tools refuse to run until one is active.
+4. Active campaign but no `character.json` → identity-first onboarding ("Who are you in this world?": canon / original / nameless).
+5. All good → greet, offer `/gm`.
 
 ## The Core Loop
 Every interaction: **CONTEXT → DECIDE → EXECUTE → PERSIST → NARRATE.**

@@ -6,8 +6,10 @@ sources:
   - { resource: /CLAUDE.md }
   - { resource: /tools/gm-session.sh }
   - { resource: /tools/gm-context.sh }
+  - { resource: /tools/gm-enhance.sh }
+  - { resource: /tools/gm-worldgen.sh }
   - { resource: /.claude/settings.json }
-generated: { by: claude-fable-5, at: 2026-08-13T14:48:10Z }
+generated: { by: claude-opus-5, at: 2026-08-13T18:35:05Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
@@ -61,10 +63,19 @@ tool is invisible to the audit until it is added there.
 ## Startup is a decision tree, not a greeting
 
 Before the first word to the player, the harness checks: is the venv built (else `/setup`),
-does any campaign exist (else route to `/gm` → New Adventure), does the active campaign
-have a `character.json` (else identity-first onboarding). Each failure has a specific
-destination — see [onboarding and the death hand-off](onboarding-and-death.md) and
+does any campaign exist (else route to `/gm` → New Adventure), do campaigns exist with none
+active (else campaign selection — `gm-campaign.sh list`, then `switch <name>`), does the
+active campaign have a `character.json` (else identity-first onboarding). Each failure has a
+specific destination — see [onboarding and the death hand-off](onboarding-and-death.md) and
 [install and setup](../playbooks/install-and-setup.md).
+
+The "exists but none active" state is its own branch because it is not a broken install and
+`/setup` does not fix it. `world-state/active-campaign.txt` is what every tool resolves state
+through; without it `WORLD_STATE_DIR` is empty. The state-reading wrappers
+(`gm-session.sh`, `gm-enhance.sh`, and `gm-worldgen.sh` when given no campaign name) guard on
+that and exit with the two commands that fix it, rather than handing the Python layer an
+empty path and surfacing a traceback. Usage/help output still prints without a campaign, and
+`gm-worldgen.sh consolidate <campaign>` still runs pre-activation because the name is explicit.
 
 ## Related
 

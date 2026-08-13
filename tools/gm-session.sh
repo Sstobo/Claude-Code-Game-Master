@@ -3,6 +3,19 @@
 
 source "$(dirname "$0")/common.sh"
 
+# Loud, actionable failure for verbs that read campaign state. common.sh's
+# require_active_campaign exits before we could append the "how do I fix it"
+# lines, so the guidance lives here.
+require_campaign() {
+    if [ -z "$WORLD_STATE_DIR" ]; then
+        error "No active campaign. This command needs one."
+        echo "  Campaigns on disk:  bash tools/gm-campaign.sh list" >&2
+        echo "  Activate one:       bash tools/gm-campaign.sh switch <name>" >&2
+        echo "  Or run /gm to start a New Adventure." >&2
+        exit 1
+    fi
+}
+
 if [ "$#" -lt 1 ]; then
     echo "Usage: gm-session.sh <action> [args]"
     echo ""
@@ -35,6 +48,9 @@ fi
 
 ACTION="$1"
 shift
+
+# Every action below reads or writes campaign state.
+require_campaign
 
 case "$ACTION" in
     start)

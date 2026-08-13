@@ -13,6 +13,20 @@
 set -e
 source "$(dirname "$0")/common.sh"
 
+# Loud, actionable failure for verbs that read campaign state. common.sh's
+# require_active_campaign exits before we could append the "how do I fix it"
+# lines, so the guidance lives here.
+require_campaign() {
+    if [ -z "$WORLD_STATE_DIR" ]; then
+        error "No active campaign, and no campaign name given."
+        echo "  Name one explicitly:  $0 <command> <campaign>" >&2
+        echo "  Campaigns on disk:    bash tools/gm-campaign.sh list" >&2
+        echo "  Activate one:         bash tools/gm-campaign.sh switch <name>" >&2
+        echo "  Or run /gm to start a New Adventure." >&2
+        exit 1
+    fi
+}
+
 show_usage() {
     cat << EOF
 Authored-World Generation Tool
@@ -37,10 +51,13 @@ EOF
 case "$1" in
     consolidate)
         shift
+        # An explicit campaign name works pre-activation; otherwise we need an active one.
+        case "${1:-}" in ""|--*) require_campaign ;; esac
         $PYTHON_CMD "$LIB_DIR/world_author.py" consolidate "$@"
         ;;
     compile-canon)
         shift
+        case "${1:-}" in ""|--*) require_campaign ;; esac
         $PYTHON_CMD "$LIB_DIR/world_author.py" compile-canon "$@"
         ;;
     -h|--help|help|"")
