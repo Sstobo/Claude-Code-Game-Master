@@ -9,6 +9,7 @@ sources:
   - { resource: /lib/world_kit.py }
   - { resource: /lib/world_bible.py }
 generated: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
+verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
 ---
 
 # World State JSON Schema Reference

@@ -7,6 +7,7 @@ sources:
   - { resource: /lib/player_manager.py }
   - { resource: /CLAUDE.md }
 generated: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
+verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
 ---
 
 # Onboarding and the death hand-off
