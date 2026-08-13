@@ -1,13 +1,13 @@
 ---
 type: Module
 title: Campaign memory and the Loremaster
-description: How a long campaign remembers itself — a keyword recall index over lived history, and a separate cached deep-read over the source book.
+description: How a long campaign remembers itself — GM-authored arc entries, an embedding-backed recall index over lived history, and a cached deep-read over the source book.
 sources:
   - { resource: /lib/campaign_memory.py }
   - { resource: /lib/loremaster.py }
   - { resource: /tools/gm-recall.sh }
   - { resource: /tools/gm-lore.sh }
-generated: { by: claude-fable-5, at: 2026-08-13T14:54:48Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:55:53Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 

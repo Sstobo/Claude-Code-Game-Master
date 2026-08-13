@@ -4,7 +4,7 @@
 
 ## Module
 
-* [Campaign memory and the Loremaster](campaign-memory.md) - How a long campaign remembers itself — a keyword recall index over lived history, and a separate cached deep-read over the source book.
+* [Campaign memory and the Loremaster](campaign-memory.md) - How a long campaign remembers itself — GM-authored arc entries, an embedding-backed recall index over lived history, and a cached deep-read over the source book.
 * [Game core and World Kit](game-core-and-world-kit.md) - The system-agnostic engine and the per-campaign ruleset that configures it — and the two separate rule surfaces a world actually plays by.
 * [RAG stack](rag-stack.md) - Two retrieval systems over the source book — 3000-char embedded chunks and a chapter-granularity index — plus the parts of each that are inert.
 * [Scene context — the two doors](scene-context.md) - What the harness pushes to the model each beat, and why "context" means two different things depending on which tool you call.

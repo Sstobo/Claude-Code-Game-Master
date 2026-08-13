@@ -64,3 +64,23 @@ change). Status as of the same day, after the fix pass:
 - ~~`CoarseIndex`'s non-keyword embedder path was dead~~ — fixed 2026-08-13: correct class
   (`LocalEmbedder`), correct embed-then-similarity call, fallback narrowed to
   `ImportError`. Keyword remains the default and the only configuration any caller uses.
+
+## 2026-08-13 — improvement pass (four workstreams)
+
+Same day, on top of the fix pass. All landed with tests and same-commit doc updates:
+
+1. **Kit guard** (`09b0316`) — `ruleset.json` gains a machine-readable `kit` field;
+   the three D&D-only skills open with a STEP 0 guard routing non-dnd5e worlds to the
+   generic core. Tested prompt, not a hard interlock.
+2. **Entity unification** (`b9bbd30`) — `tags.locations` is the only NPC location field
+   (`tag_unify` at import normalize; `gm-npc.sh unify-tags` for old campaigns);
+   `schemas.validate_character` is the only character validator (kit-aware, name+level
+   required). Two gotcha docs rewritten as dated history.
+3. **Long-context grounding** (`fd40673`) — `gm-lore.sh --full` returns whole chapter
+   spans; `move` auto-briefs on first visit. Deliberately skipped persisting the chapter
+   index: segmentation is a cheap regex scan.
+4. **Real memory** (`ffb2c8d`) — GM-authored arc entries at session end
+   (`gm-recall.sh arc`), memoir leads with them, and recall is embedding-backed when RAG
+   deps are installed (content-hash gated re-embeds; keyword fallback verified separately).
+
+Suite green on both dependency profiles (`--extra dev`, `--extra dev --extra rag`).
