@@ -90,6 +90,10 @@ case "$ACTION" in
         echo "Pending Consequences:"
         bash "$TOOLS_DIR/gm-consequence.sh" check
         echo ""
+        echo "Arc entry (REQUIRED — this is what long-term memory recalls):"
+        echo "  bash tools/gm-recall.sh arc '{\"summary\": \"what changed this session\","
+        echo "    \"who_matters\": [\"...\"], \"open_debts\": [\"...\"]}'"
+        echo ""
         echo "World tick: optionally advance 1-3 SMALL off-screen developments"
         echo "  (grounded in plots/RAG) with: gm-session.sh world-tick '<json list>'"
         ;;

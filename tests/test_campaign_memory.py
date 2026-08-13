@@ -49,3 +49,31 @@ def test_session_log_is_not_mutated(dcc_world):
 
 def test_recall_empty_query_returns_nothing(dcc_world):
     assert CampaignMemory(dcc_world).recall("") == []
+
+
+def test_arc_entry_persists_and_leads_the_memoir(dcc_world):
+    m = CampaignMemory(dcc_world)
+    m.add_arc("Carl skinned the Terror Clown and the dungeon noticed.",
+              who_matters=["Grimaldi"], open_debts=["Grimaldi wants revenge"])
+    mem = m.memoir()
+    assert "Terror Clown" in mem["arc_summary"]
+    assert "Grimaldi" in mem["arc_summary"]
+    assert mem["arc_entries"] == 1
+
+
+def test_refresh_preserves_arcs_and_indexes_them(dcc_world):
+    m = CampaignMemory(dcc_world)
+    m.add_arc("The party freed the dragon from the circus.")
+    m.refresh()
+    assert len(m.arcs()) == 1  # refresh must not clobber arcs
+    hits = m.recall("dragon circus", top_k=10)
+    assert any(e.get("source") == "arc" for e in hits)
+
+
+def test_recall_falls_back_to_keyword_without_rag_deps(dcc_world):
+    # In this test env sentence_transformers is absent, so this exercises the
+    # keyword path end to end; with deps installed it exercises the semantic path.
+    m = CampaignMemory(dcc_world)
+    m.refresh()
+    hits = m.recall("alliance Tutorial Guild Hall")
+    assert hits, "recall must return something on a matching query"

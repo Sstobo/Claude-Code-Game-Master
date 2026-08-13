@@ -7,7 +7,7 @@ sources:
   - { resource: /lib/loremaster.py }
   - { resource: /tools/gm-recall.sh }
   - { resource: /tools/gm-lore.sh }
-generated: { by: claude-fable-5, at: 2026-08-13T14:48:10Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:54:48Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -17,24 +17,39 @@ Two memories, easily confused, with different subjects:
 
 | | `CampaignMemory` (`gm-recall.sh`) | `Loremaster` |
 |---|---|---|
-| Remembers | **what we did** — session summaries + facts | **what the book says** — chapters of the source text |
-| Backed by | keyword overlap over `campaign-memory.json` | the coarse chapter index over the retained book text |
+| Remembers | **what we did** — arc entries + session summaries + facts | **what the book says** — chapters of the source text |
+| Backed by | embeddings over `campaign-memory.json` (keyword fallback) | the coarse chapter index over the retained book text |
 | Front door | `gm-recall.sh` | `gm-lore.sh "<location>" [--important]` (wrapper added 2026-08-13; had no caller before that) |
 
-Neither uses embeddings. The vector store is a third, separate thing —
-see [RAG stack](rag-stack.md).
+The chunk vector store is a third, separate thing — see [RAG stack](rag-stack.md);
+campaign memory keeps its own vectors inside `campaign-memory.json`, not in ChromaDB.
 
-## Recall is keyword overlap, not semantics
+## Recall: semantic when it can be, keyword when it must
 
-`recall()` scores by counting shared word tokens between the query and each entry
-(`lib/campaign_memory.py:78-88`). The docstring's "semantic-ish" means *not semantic*.
-Practical consequence: recall finds an event only if the query reuses its **words**.
-Asking "have we met the clown before?" will miss a summary that says "Grimaldi". Query
-with names and nouns from the fiction, not paraphrase.
+Since 2026-08-13, `refresh` embeds every entry via `LocalEmbedder` when the RAG deps are
+installed, and `recall()` does cosine top-k over those vectors — so "have we met the
+clown before?" can now find a summary that says "Grimaldi". Without the deps, both
+degrade to the original keyword-overlap path, where recall finds an event only if the
+query reuses its **words** — query with names and nouns from the fiction there.
+
+Which path ran is invisible in the output. If recall quality seems paraphrase-blind,
+check whether `campaign-memory.json` has an `embeddings` key before blaming the query.
+Re-embedding is gated on a content hash of the entry texts, because `refresh` runs on
+every autosave and loading the model each turn would be felt.
 
 `session-log.md` remains the canonical ledger; this module only reads it. It parses on the
 `## Session Started:` / `### Session Ended:` markers and skips `**`-prefixed footer lines,
 so a hand-edited log that loses those markers loses its history silently.
+
+## Arc entries are the consolidation tier (since 2026-08-13)
+
+`gather()` can only re-read what the log already says. The **arc entry** is the GM's own
+end-of-session synthesis — `{"summary", "who_matters", "open_debts"}` — written with
+`gm-recall.sh arc '<json>'` (a bare prose string is accepted as the summary). Session end
+prompts for it, and `CLAUDE.md` marks it required: **an arc entry is what makes session 30
+feel like a continuation instead of a reboot with notes.** Arcs are preserved across
+`refresh` (which used to clobber the whole file) and join the recall index as their own
+tier.
 
 ## `refresh` runs on save, and only on save
 
@@ -54,13 +69,13 @@ the entire book-canon / our-story split. A fact filed under any other category i
 Filing an imported book fact under, say, `lore` therefore mislabels it — and
 `--provenance book-canon` will not find it.
 
-## `memoir()` is thinner than it sounds
+## `memoir()` leads with real arcs now
 
-`arc_summary` is the **most recent session entry truncated to 300 characters**, not a
-synthesized arc, and `compressed_older` is a *count* of older entries, not compressed
-text (`lib/campaign_memory.py:90-102`). The consolidation the docstring describes is a
-shape the data supports, not work this module performs. Anything that needs a real arc
-summary has to generate it.
+`arc_summary` is the latest **GM-authored arc entry** when any exist; the old behavior —
+the most recent raw session entry truncated to 300 chars — survives only as the fallback
+for campaigns that never wrote one. `compressed_older` is still a *count*, not compressed
+text. A campaign whose memoir reads like a truncated sentence is a campaign whose GM has
+been skipping the arc step.
 
 ## The Loremaster re-indexes the whole book per instance
 

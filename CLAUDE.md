@@ -92,7 +92,7 @@ grounded source passages.
 | Consequence (structured) | `gm-consequence.sh add "..." "<trigger>" --trigger-type ... --match ...` |
 | Combat | `gm-combat.sh` (optional; for fights worth tracking) |
 | Fact / note | `gm-note.sh` |
-| End session | `gm-session.sh end "<summary>" --cliffhanger "..." --open-thread "..."` |
+| End session | `gm-session.sh end "<summary>" --cliffhanger "..." --open-thread "..."` — then write the arc entry: `gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debts": [...]}'` (this is what long-term recall surfaces) |
 All tools take `--json` for structured returns. **Always prefix with `bash tools/`.**
 
 ## Search Guide (which tool)

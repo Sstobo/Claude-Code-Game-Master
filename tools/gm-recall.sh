@@ -1,9 +1,11 @@
 #!/bin/bash
 # gm-recall.sh - Long-term campaign memory
 #
-#   gm-recall.sh recall "have we met Remex before?"   # surface relevant prior events
+#   gm-recall.sh recall "have we met Remex before?"   # semantic when RAG deps present, keyword fallback
 #   gm-recall.sh recall "dragon" --provenance our-story
-#   gm-recall.sh memoir                                # tiered arc summary + recent
+#   gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debts": [...]}'
+#                                                      # REQUIRED at session end — long-term memory
+#   gm-recall.sh memoir                                # arc entries + recent verbatim
 #   gm-recall.sh refresh                               # rebuild the memory index (auto on save)
 
 source "$(dirname "$0")/common.sh"
