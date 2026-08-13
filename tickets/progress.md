@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-13T21:38:24Z  done: gm-extract-silent-cat — loud failures, legacy resolve, traversal closed  [fable-sott1]
+- 2026-08-13T21:37:30Z  unblocked: skill-guidance-pass — adopt+soften per user decision  [fable-sott1]
+- 2026-08-13T21:31:56Z  blocked: skill-guidance-pass — collision with live GM session's uncommitted failure-doctrine edits  [fable-sott1]
 - 2026-08-13T21:31:11Z  created: 7 guardrail tickets (Trust the Agent review); extraction-cap-importance superseded → wontfix  [fable-sott1]
 - 2026-08-13T21:17:11Z  done: reset-scope-completeness — story cleared, world kept, archive fails safe  [fable-sott1]
 - 2026-08-13T21:12:35Z  done: persist-path-hotfixes — cwd-safe wrappers, corpse-HP guard, read-only XP  [fable-sott1]

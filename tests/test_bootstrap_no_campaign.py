@@ -6,11 +6,20 @@ status — and in a `set -e` wrapper (gm-extract.sh, gm-worldgen.sh) the script 
 at the source line, before printing anything. First-run bootstrap is exactly the
 no-campaign case, so the guard is what makes import/create reachable at all.
 
+gm-extract.sh had the same silent death from a second cause (gm-extract-silent-cat):
+every verb open-coded `campaign_name=$(cat active-campaign.txt 2>/dev/null)`, whose
+exit status under `set -e` killed the script with no output. Those sites now route
+through require_campaign/campaign_dir, so the tests below assert the diagnostic
+text, not merely that something was printed.
+
 These run the real wrappers against the real repo, so the fixture moves
 world-state/active-campaign.txt aside and puts it back in teardown.
 """
 
+import os
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -18,18 +27,26 @@ import pytest
 PROJECT_ROOT = Path(__file__).parent.parent
 ACTIVE_FILE = PROJECT_ROOT / "world-state" / "active-campaign.txt"
 
+NO_CAMPAIGN_DIAGNOSTIC = "No campaign specified and no active campaign found."
+
 
 @pytest.fixture
 def no_active_campaign():
-    """Deactivate the live campaign for the duration of a test, then restore it."""
-    saved = ACTIVE_FILE.read_text() if ACTIVE_FILE.exists() else None
-    if saved is not None:
-        ACTIVE_FILE.unlink()
+    """Deactivate the live campaign for the duration of a test, then restore it.
+
+    The file is moved to a sidecar and moved back with os.replace, never deleted
+    and rewritten: a crash mid-test leaves the campaign recoverable on disk
+    instead of erasing which campaign the player was in.
+    """
+    sidecar = ACTIVE_FILE.with_suffix(".txt.testsaved")
+    saved = ACTIVE_FILE.exists()
+    if saved:
+        os.replace(ACTIVE_FILE, sidecar)
     try:
         yield
     finally:
-        if saved is not None:
-            ACTIVE_FILE.write_text(saved)
+        if saved:
+            os.replace(sidecar, ACTIVE_FILE)
         elif ACTIVE_FILE.exists():
             ACTIVE_FILE.unlink()
 
@@ -68,6 +85,152 @@ def test_no_tool_dies_silently(no_active_campaign, argv):
     assert output.strip(), f"{argv} produced no output (exit {result.returncode})"
 
 
+@pytest.mark.parametrize("verb", ["validate", "normalize", "cap", "spine", "archive"])
+def test_extract_verbs_needing_a_campaign_fail_loudly(no_active_campaign, verb):
+    """The raw-cat sites: each of these verbs needs a campaign and had none, so it
+    must name the problem and the fix — not exit 1 with an empty terminal."""
+    result = _run("tools/gm-extract.sh", verb)
+    output = result.stdout + result.stderr
+    assert result.returncode != 0, f"{verb} should not succeed without a campaign"
+    assert NO_CAMPAIGN_DIAGNOSTIC in output, f"{verb} exited {result.returncode} with: {output!r}"
+    assert "gm-campaign.sh switch" in output, f"{verb} did not name the fix: {output!r}"
+
+
 def test_active_campaign_file_restored(no_active_campaign):
     """Guard the fixture: inside the test the file is gone, teardown puts it back."""
     assert not ACTIVE_FILE.exists()
+
+
+def _isolated_extract(tmp_path: Path) -> Path:
+    """A throwaway PROJECT_ROOT — common.sh derives every path from the script's own
+    location, so copying tools/ and symlinking lib/ moves the whole tool off the live
+    world-state."""
+    (tmp_path / "tools").mkdir()
+    for script in ("common.sh", "gm-extract.sh"):
+        shutil.copy(PROJECT_ROOT / "tools" / script, tmp_path / "tools" / script)
+    (tmp_path / "lib").symlink_to(PROJECT_ROOT / "lib")
+    return tmp_path / "tools" / "gm-extract.sh"
+
+
+def test_clean_is_idempotent_for_a_campaign_that_is_not_there(tmp_path):
+    """`clean` removes a directory; a directory that is already gone is the job done,
+    not an error. Only this verb gets that pass — the rest still fail hard."""
+    script = _isolated_extract(tmp_path)
+    (tmp_path / "world-state" / "campaigns" / "keeper").mkdir(parents=True)
+
+    result = subprocess.run(
+        ["bash", str(script), "clean", "No Such Book"],
+        cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=120,
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    assert "not found" in output, output
+    assert (tmp_path / "world-state" / "campaigns" / "keeper").is_dir(), output
+
+
+def test_a_broken_resolver_that_still_prints_cannot_produce_a_path(tmp_path):
+    """campaign_dir must judge success by exit status, not by "something reached
+    stdout" — otherwise a failing interpreter's junk becomes a path that `clean`
+    then rm -rf's."""
+    script = _isolated_extract(tmp_path)
+    (tmp_path / "world-state" / "campaigns" / "keeper").mkdir(parents=True)
+
+    # find_python (common.sh) prefers `uv`, so a `uv` earlier on PATH is the whole
+    # interpreter: this one prints to stdout and then fails, like a broken venv.
+    stub_bin = tmp_path / "stub-bin"
+    stub_bin.mkdir()
+    stub_uv = stub_bin / "uv"
+    stub_uv.write_text("#!/bin/bash\necho 'keeper-but-actually-junk'\nexit 1\n")
+    stub_uv.chmod(0o755)
+
+    result = subprocess.run(
+        ["bash", str(script), "clean", "Keeper"],
+        cwd=PROJECT_ROOT,
+        env={**os.environ, "PATH": f"{stub_bin}:{os.environ['PATH']}"},
+        capture_output=True, text=True, timeout=120,
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode != 0, output
+    assert "could not derive a campaign slug" in output, output
+    assert (tmp_path / "world-state" / "campaigns" / "keeper").is_dir(), output
+
+
+@pytest.mark.parametrize("name", ["../rag", "..", ".", "/tmp", "campaigns/keeper"])
+def test_clean_refuses_a_path_instead_of_a_campaign_name(tmp_path, name):
+    """`clean "../rag"` used to rm -rf world-state/rag: resolution returns an exact
+    folder match verbatim, and campaigns/../rag IS a directory. Slugging made that
+    impossible by stripping slashes; resolving has to refuse paths outright. This is
+    a loud refusal, not the idempotent no-such-campaign exit."""
+    script = _isolated_extract(tmp_path)
+    world_state = tmp_path / "world-state"
+    (world_state / "campaigns" / "keeper").mkdir(parents=True)
+    (world_state / "rag").mkdir()
+
+    result = subprocess.run(
+        ["bash", str(script), "clean", name],
+        cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=120,
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode != 0, output
+    assert "not a path" in output, output
+    assert (world_state / "rag").is_dir(), f"clean escaped campaigns/:\n{output}"
+    assert (world_state / "campaigns" / "keeper").is_dir(), output
+    assert (world_state / "campaigns").is_dir(), output
+
+
+def test_resolve_refuses_names_that_leave_the_campaigns_directory(tmp_path):
+    """The same refusal one layer down, where every other caller (set_active,
+    delete, get_campaign_path) reaches it: a name only resolves when it is a direct
+    child of campaigns/."""
+    world_state = tmp_path / "world-state"
+    (world_state / "campaigns" / "keeper").mkdir(parents=True)
+    (world_state / "rag").mkdir()
+
+    def resolve(name):
+        return subprocess.run(
+            [sys.executable, str(PROJECT_ROOT / "lib" / "campaign_manager.py"),
+             "resolve", name, "--world-state", str(world_state)],
+            capture_output=True, text=True, timeout=120,
+        )
+
+    for name in ["../rag", "", str(world_state / "rag")]:
+        result = resolve(name)
+        assert result.returncode == 3, f"{name!r} resolved to {result.stdout!r}"
+        assert not result.stdout.strip(), f"{name!r} printed {result.stdout!r}"
+
+    # The refusal must not cost the normal paths: exact, display name, legacy folder.
+    (world_state / "campaigns" / "curse_of_strahd").mkdir()
+    for name, expected in [("keeper", "keeper"), ("Curse of Strahd", "curse_of_strahd"),
+                           ("curse_of_strahd", "curse_of_strahd")]:
+        result = resolve(name)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert result.stdout.strip() == expected
+
+
+def test_legacy_campaign_directory_is_reachable_from_extract_verbs(tmp_path):
+    """A folder named under the older slug rule (curse_of_strahd) is what
+    `gm-campaign.sh switch` writes to active-campaign.txt. gm-extract.sh used to
+    re-slugify that name to curse-of-strahd and report a real campaign as missing;
+    it now resolves against what is on disk.
+
+    Runs in a throwaway PROJECT_ROOT so the live world-state is never touched.
+    """
+    script = _isolated_extract(tmp_path)
+    (tmp_path / "world-state" / "campaigns" / "curse_of_strahd" / "extracted").mkdir(parents=True)
+
+    switched = subprocess.run(
+        [sys.executable, str(PROJECT_ROOT / "lib" / "campaign_manager.py"), "switch", "Curse of Strahd"],
+        cwd=tmp_path, capture_output=True, text=True, timeout=120,
+    )
+    assert switched.returncode == 0, switched.stdout + switched.stderr
+    assert (tmp_path / "world-state" / "active-campaign.txt").read_text() == "curse_of_strahd"
+
+    result = subprocess.run(
+        ["bash", str(tmp_path / "tools" / "gm-extract.sh"), "normalize"],
+        cwd=PROJECT_ROOT,  # so `uv run python` resolves this project's environment
+        capture_output=True, text=True, timeout=120,
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    assert "curse_of_strahd" in output, output
+    assert "not found" not in output, output

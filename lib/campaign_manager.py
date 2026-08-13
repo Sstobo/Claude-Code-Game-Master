@@ -49,24 +49,37 @@ class CampaignManager:
         digest = hashlib.sha1(name.encode('utf-8')).hexdigest()[:8]
         return f'campaign-{digest}'
 
-    def _resolve_name(self, name: str) -> str:
+    @classmethod
+    def _resolve_in(cls, campaigns_dir: Path, name: str) -> str:
         """Resolve a user-supplied name (display name OR slug) to the actual
-        campaign folder name. Returns the slug if no exact-folder match exists,
-        so callers still produce a sensible '<slug> does not exist' error."""
-        if (self.campaigns_dir / name).is_dir():
+        campaign folder name under `campaigns_dir`. Returns the slug if no
+        exact-folder match exists, so callers still produce a sensible
+        '<slug> does not exist' error.
+
+        A name is only an exact match if it names a DIRECT child of
+        campaigns_dir. "../rag" and absolute paths are directories too, and a
+        caller that joins the result back onto campaigns/ (gm-extract.sh clean
+        rm -rf's it) would then delete outside the campaign tree entirely.
+        _slugify used to make that impossible by stripping slashes and dots;
+        resolving real folder names has to refuse it explicitly."""
+        candidate = campaigns_dir / name
+        if candidate.is_dir() and candidate.resolve().parent == campaigns_dir.resolve():
             return name
-        slug = self._slugify(name)
-        if (self.campaigns_dir / slug).is_dir():
+        slug = cls._slugify(name)
+        if (campaigns_dir / slug).is_dir():
             return slug
         # Folders created under the OLD slug rule kept apostrophes, dots and
         # underscores ("baldur's-gate"), so the current rule no longer points at
         # them and a real campaign reads as "does not exist". Match by comparing
         # slugified folder names — resolves legacy dirs without renaming on disk.
-        if self.campaigns_dir.is_dir():
-            for existing in sorted(self.campaigns_dir.iterdir()):
-                if existing.is_dir() and self._slugify(existing.name) == slug:
+        if campaigns_dir.is_dir():
+            for existing in sorted(campaigns_dir.iterdir()):
+                if existing.is_dir() and cls._slugify(existing.name) == slug:
                     return existing.name
         return slug
+
+    def _resolve_name(self, name: str) -> str:
+        return self._resolve_in(self.campaigns_dir, name)
 
     def list_campaigns(self) -> List[Dict[str, Any]]:
         """
@@ -423,6 +436,14 @@ def main():
     slugify_parser = subparsers.add_parser('slugify', help='Print the folder slug for a campaign name')
     slugify_parser.add_argument('name', help='Campaign display name or slug')
 
+    # Resolve a name to the folder that EXISTS on disk (slugify is for new names)
+    resolve_parser = subparsers.add_parser(
+        'resolve',
+        help='Print the existing campaign folder for a name (exit 3, no output, if none matches)')
+    resolve_parser.add_argument('name', help='Campaign display name, slug, or legacy folder name')
+    resolve_parser.add_argument('--world-state', default='world-state',
+                                help='World state directory (default: world-state)')
+
     args = parser.parse_args()
 
     if not args.action:
@@ -433,6 +454,18 @@ def main():
         # Pure string work — answer before constructing a manager, which would
         # create world-state/campaigns relative to the caller's cwd.
         print(CampaignManager._slugify(args.name))
+        return
+
+    if args.action == 'resolve':
+        # Read-only lookup — answered before constructing a manager, whose
+        # __init__ would mkdir world-state/campaigns under the caller's cwd.
+        # Exit 3 (not 1) so a shell caller can tell "no such campaign" apart
+        # from "the interpreter could not run at all".
+        campaigns_dir = Path(args.world_state) / "campaigns"
+        resolved = CampaignManager._resolve_in(campaigns_dir, args.name)
+        if not (campaigns_dir / resolved).is_dir():
+            sys.exit(3)
+        print(resolved)
         return
 
     manager = CampaignManager()

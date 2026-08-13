@@ -12,7 +12,7 @@ sources:
   - { resource: /lib/plot_spine.py }
   - { resource: /lib/clock_seed.py }
   - { resource: /lib/opening_seed.py }
-generated: { by: claude-fable-5, at: 2026-08-13T18:46:47Z }
+generated: { by: claude-opus-5, at: 2026-08-13T21:19:33Z }
 ---
 
 # Importing a book
@@ -90,15 +90,21 @@ on the book's actual opening rather than in a void.
 - Agents validating against a live campaign file — see
   [extraction vs runtime schema](../gotchas/extraction-vs-runtime-schema.md).
 - A punctuated campaign name ("Baldur's Gate: Book 1") splitting across two directories.
-  Every path — creation, extraction, the shell wrappers — now slugs through
-  `CampaignManager._slugify` (`lib/campaign_manager.py`), exposed to shell as
-  `campaign_manager.py slugify`. Never re-implement it in a `tr | sed` pipeline. It also
+  A **new** name gets its folder from one rule everywhere — `CampaignManager._slugify`
+  (`lib/campaign_manager.py`), used by campaign creation and by extraction, exposed to shell
+  as `campaign_manager.py slugify`. Never re-implement it in a `tr | sed` pipeline. It also
   never returns empty — a name with no ASCII alphanumerics ("龍の伝説") gets a deterministic
   `campaign-<hash>` slug, because an empty slug joined onto `campaigns/` is what an
-  `rm -rf` in `gm-extract.sh clean` would read as *every* campaign. Folders created under
-  the older, looser rule (`baldur's-gate`, `curse_of_strahd`) stay reachable: `_resolve_name`
-  falls back to matching directories whose slugified name equals the input's, so nothing on
-  disk needs renaming.
+  `rm -rf` in `gm-extract.sh clean` would read as *every* campaign. A shell caller that needs
+  an **existing** directory does not slug at all: it asks `campaign_manager.py resolve`
+  (every `gm-extract.sh` verb that needs one does), which routes through `_resolve_name` /
+  `_resolve_in` and matches against what is on disk. That is what keeps folders created under
+  the older, looser rule (`baldur's-gate`, `curse_of_strahd`) reachable — re-slugifying
+  `curse_of_strahd` yields `curse-of-strahd` and reports a real campaign as missing. Nothing
+  on disk is renamed. Resolution only ever returns a **direct child** of `campaigns/`:
+  slugging used to make `clean "../rag"` impossible by stripping slashes, and matching real
+  folder names has to refuse paths explicitly instead — `campaigns/../rag` is a directory,
+  and `rm -rf` does not care that it sits outside the campaign tree.
 - `integrity` failing strict: read its unresolved list. Each entry names the owner and the
   reference; the fix is almost always a missed `reconcile` or an out-of-order run, not a
   bad extraction.

@@ -17,23 +17,61 @@ source "$(dirname "$0")/common.sh"
 CAMPAIGNS_DIR="$WORLD_STATE_BASE/campaigns"
 EXTRACT_DIR="$WORLD_STATE_BASE/extraction-temp"  # Default if no campaign specified
 
-# The ONE slug rule lives in lib/campaign_manager.py; never re-implement it here,
-# or extraction writes to a different directory than the campaign it belongs to.
-campaign_slug() {
-    local slug
-    # `|| slug=""` keeps a failed interpreter launch (missing venv on first run)
-    # from killing the script mid-command with no diagnostic; stderr from python
-    # is left visible so the real cause still prints.
-    slug=$($PYTHON_CMD "$LIB_DIR/campaign_manager.py" slugify "$1") || slug=""
-    # _slugify never returns empty, but an empty slug here would make every
-    # "$CAMPAIGNS_DIR/$(campaign_slug ...)" resolve to the campaigns ROOT — and
-    # clean_temp would rm -rf every campaign. Refuse rather than guess.
-    if [ -z "$slug" ]; then
+# The campaign a verb operates on: the explicit argument, else the active one.
+# A raw `cat active-campaign.txt` used to stand at every call site — under this
+# file's `set -e` a missing file made cat return 1 and killed the script with
+# zero output, so on a fresh install every verb looked like a silent no-op.
+# get_active_campaign (common.sh) always exits 0 and echoes empty when there is
+# no campaign, which turns that case into a message.
+require_campaign() {
+    local campaign_name="$1"
+    local verb="$2"
+    if [ -z "$campaign_name" ]; then
+        campaign_name=$(get_active_campaign)
+    fi
+    if [ -z "$campaign_name" ]; then
+        echo "Error: No campaign specified and no active campaign found." >&2
+        echo "  Name one: bash tools/gm-extract.sh $verb <campaign-name>" >&2
+        echo "  Or activate one: bash tools/gm-campaign.sh switch <campaign-name> (or run /gm)" >&2
+        return 1
+    fi
+    printf '%s' "$campaign_name"
+}
+
+# Directory of an EXISTING campaign. Display names, current slugs and folders
+# written under the older slug rule (curse_of_strahd) all resolve through
+# lib/campaign_manager.py, which looks at what is actually on disk; re-slugifying
+# here would miss the legacy ones and report a real campaign as not found.
+# Returns 3 for "no such campaign" and 1 for "the helper could not run at all",
+# so `clean` can stay idempotent about the first without swallowing the second.
+campaign_dir() {
+    local resolved rc=0
+    # A campaign is a folder NAME, never a path. "../rag" names a real directory
+    # outside campaigns/, and clean would rm -rf it. Refuse loudly here — this is
+    # a caller mistake, not "no such campaign".
+    case "$1" in
+        */*|.|..)
+            echo "Error: a campaign is a folder name, not a path: $1" >&2
+            return 1
+            ;;
+    esac
+    resolved=$($PYTHON_CMD "$LIB_DIR/campaign_manager.py" resolve "$1" --world-state "$WORLD_STATE_BASE") || rc=$?
+    # A non-zero exit is a failure even when something reached stdout: trusting
+    # stdout alone would hand back a path built from whatever junk a broken
+    # interpreter printed, and clean_temp would rm -rf it. An empty result is
+    # just as fatal — joined onto CAMPAIGNS_DIR it resolves to the campaigns
+    # ROOT, i.e. every campaign. Refuse rather than guess.
+    if [ "$rc" -ne 0 ] || [ -z "$resolved" ]; then
+        if [ "$rc" -eq 3 ]; then
+            echo "Campaign directory not found for: $1" >&2
+            echo "  See what exists: bash tools/gm-campaign.sh list" >&2
+            return 3
+        fi
         echo "Error: could not derive a campaign slug from: $1" >&2
         echo "  ($PYTHON_CMD could not run lib/campaign_manager.py — run /setup if the venv is missing)" >&2
-        exit 1
+        return 1
     fi
-    printf '%s' "$slug"
+    printf '%s/%s' "$CAMPAIGNS_DIR" "$resolved"
 }
 
 show_usage() {
@@ -144,15 +182,7 @@ merge_results() {
     # Build command with optional campaign name
     if [ -n "$campaign_name" ]; then
         echo "Campaign: $campaign_name"
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-
-        # Check if campaign directory exists
-        if [ ! -d "$CAMPAIGN_DIR" ]; then
-            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"
-            echo "Available campaigns:"
-            list_campaigns
-            exit 1
-        fi
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || { list_campaigns; exit 1; }
 
         # Check for agent results
         if [ ! -d "$CAMPAIGN_DIR/extracted" ] || [ -z "$(ls -A $CAMPAIGN_DIR/extracted 2>/dev/null)" ]; then
@@ -196,7 +226,7 @@ save_to_world() {
     # Build command with optional campaign name
     if [ -n "$campaign_name" ]; then
         echo "Campaign: $campaign_name"
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
 
         if [ ! -f "$CAMPAIGN_DIR/merged-results.json" ]; then
             echo "Error: No merged results found for campaign: $campaign_name"
@@ -227,7 +257,7 @@ review_content() {
     # Build command with optional campaign name
     if [ -n "$campaign_name" ]; then
         echo "Campaign: $campaign_name"
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
 
         if [ ! -f "$CAMPAIGN_DIR/merged-results.json" ]; then
             echo "Error: No merged results to review for campaign: $campaign_name"
@@ -262,21 +292,31 @@ clean_temp() {
 
     if [ -n "$campaign_name" ]; then
         echo "Cleaning campaign extraction directory: $campaign_name"
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-
-        # Last line of defense before an rm -rf: the target must be a directory
-        # strictly INSIDE campaigns/, never the campaigns root itself.
-        if [ "${CAMPAIGN_DIR%/}" = "${CAMPAIGNS_DIR%/}" ]; then
-            echo "Error: refusing to clean the campaigns root ($CAMPAIGNS_DIR)" >&2
+        local rc=0
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || rc=$?
+        # Cleaning is idempotent: nothing left to remove is the job already done,
+        # so a campaign that isn't there (rc 3) exits 0. A helper that could not
+        # run (rc 1) is NOT that case — it means we don't know, so it still fails.
+        if [ "$rc" -eq 3 ]; then
+            exit 0
+        elif [ "$rc" -ne 0 ]; then
             exit 1
         fi
 
-        if [ -d "$CAMPAIGN_DIR" ]; then
-            rm -rf "$CAMPAIGN_DIR"
-            echo "Cleaned: $CAMPAIGN_DIR"
-        else
-            echo "Campaign directory not found: $CAMPAIGN_DIR"
+        # Last line of defense before an rm -rf: the target's REAL path must be a
+        # direct child of the real campaigns dir — never the root itself, never
+        # outside the tree. A string compare passed "campaigns/../rag" straight
+        # through, so this resolves both sides before comparing.
+        local real_target real_campaigns
+        real_target=$(cd "$CAMPAIGN_DIR" 2>/dev/null && pwd -P) || real_target=""
+        real_campaigns=$(cd "$CAMPAIGNS_DIR" && pwd -P)
+        if [ -z "$real_target" ] || [ "$(dirname "$real_target")" != "$real_campaigns" ]; then
+            echo "Error: refusing to clean a path outside $CAMPAIGNS_DIR: $CAMPAIGN_DIR" >&2
+            exit 1
         fi
+
+        rm -rf "$CAMPAIGN_DIR"
+        echo "Cleaned: $CAMPAIGN_DIR"
     else
         echo "Cleaning default extraction temp directory..."
         if [ -d "$EXTRACT_DIR" ]; then
@@ -291,17 +331,8 @@ clean_temp() {
 archive_extracted() {
     local campaign_name="$1"
 
-    if [ -z "$campaign_name" ]; then
-        # Try to get active campaign
-        campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        if [ -z "$campaign_name" ]; then
-            echo "Error: No campaign specified and no active campaign found."
-            echo "Usage: gm-extract.sh archive <campaign-name>"
-            exit 1
-        fi
-    fi
-
-    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
+    campaign_name=$(require_campaign "$campaign_name" archive) || exit 1
+    CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
     EXTRACTED_DIR="$CAMPAIGN_DIR/extracted"
 
     if [ ! -d "$EXTRACTED_DIR" ]; then
@@ -364,22 +395,8 @@ list_campaigns() {
 validate_extraction() {
     local campaign_name="$1"
 
-    if [ -z "$campaign_name" ]; then
-        # Try to get active campaign
-        campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        if [ -z "$campaign_name" ]; then
-            echo "Error: No campaign specified and no active campaign found."
-            echo "Usage: gm-extract.sh validate <campaign-name>"
-            exit 1
-        fi
-    fi
-
-    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-
-    if [ ! -d "$CAMPAIGN_DIR" ]; then
-        echo "Error: Campaign directory not found: $CAMPAIGN_DIR"
-        exit 1
-    fi
+    campaign_name=$(require_campaign "$campaign_name" validate) || exit 1
+    CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
 
     echo "Validating extraction for: $campaign_name"
     echo "================================="
@@ -450,16 +467,8 @@ normalize_extracted() {
     # the one rule that flattens all of them, shared with validate_extraction.
     local campaign_name="$1"
 
-    if [ -z "$campaign_name" ]; then
-        campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        if [ -z "$campaign_name" ]; then
-            echo "Error: No campaign specified and no active campaign found."
-            echo "Usage: gm-extract.sh normalize <campaign-name>"
-            exit 1
-        fi
-    fi
-
-    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
+    campaign_name=$(require_campaign "$campaign_name" normalize) || exit 1
+    CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
 
     if [ ! -d "$CAMPAIGN_DIR/extracted" ]; then
         echo "Error: No extracted/ directory for campaign: $campaign_name"
@@ -529,20 +538,8 @@ cap_extracted() {
     local campaign_name="$1"
     local limit="${2:-30}"
 
-    if [ -z "$campaign_name" ]; then
-        campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        if [ -z "$campaign_name" ]; then
-            echo "Error: No campaign specified and no active campaign found."
-            echo "Usage: gm-extract.sh cap <campaign-name> [limit]"
-            exit 1
-        fi
-    fi
-
-    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-    if [ ! -d "$CAMPAIGN_DIR" ]; then
-        echo "Error: Campaign directory not found: $CAMPAIGN_DIR"
-        exit 1
-    fi
+    campaign_name=$(require_campaign "$campaign_name" cap) || exit 1
+    CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
 
     echo "Capping extracted entities to top-$limit per type: $campaign_name"
     echo "================================="
@@ -565,14 +562,8 @@ case "$1" in
 
     seed-opening)
         # Set starting position + opening beat + session-log hook from the spine.
-        campaign_name="$2"
-        if [ -z "$campaign_name" ]; then
-            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-        if [ ! -d "$CAMPAIGN_DIR" ]; then
-            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
-        fi
+        campaign_name=$(require_campaign "$2" "$1") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
         echo "Seeding opening beat: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/opening_seed.py" "$CAMPAIGN_DIR"
@@ -580,14 +571,8 @@ case "$1" in
 
     spine)
         # Derive plot arc ordering (sequence + depends_on) + through-line.
-        campaign_name="$2"
-        if [ -z "$campaign_name" ]; then
-            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-        if [ ! -d "$CAMPAIGN_DIR" ]; then
-            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
-        fi
+        campaign_name=$(require_campaign "$2" "$1") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
         echo "Deriving plot spine: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/plot_spine.py" "$CAMPAIGN_DIR"
@@ -595,14 +580,8 @@ case "$1" in
 
     seed-clocks)
         # Detect headline time pressure in plots and seed threat clocks.
-        campaign_name="$2"
-        if [ -z "$campaign_name" ]; then
-            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-        if [ ! -d "$CAMPAIGN_DIR" ]; then
-            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
-        fi
+        campaign_name=$(require_campaign "$2" "$1") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
         echo "Seeding threat clocks from plots: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/clock_seed.py" "$CAMPAIGN_DIR" --world-state "$WORLD_STATE_BASE"
@@ -610,14 +589,8 @@ case "$1" in
 
     stat-npcs)
         # Assign difficulty-proxy stats to combat NPCs; flag non-combatants statless.
-        campaign_name="$2"
-        if [ -z "$campaign_name" ]; then
-            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-        if [ ! -d "$CAMPAIGN_DIR" ]; then
-            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
-        fi
+        campaign_name=$(require_campaign "$2" "$1") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
         echo "Enriching NPC stats (difficulty proxy): $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/npc_stats.py" "$CAMPAIGN_DIR"
@@ -625,14 +598,8 @@ case "$1" in
 
     stub-npcs)
         # Stub plot-referenced NPCs dropped by the cap; validate plot taxonomy.
-        campaign_name="$2"
-        if [ -z "$campaign_name" ]; then
-            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-        if [ ! -d "$CAMPAIGN_DIR" ]; then
-            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
-        fi
+        campaign_name=$(require_campaign "$2" "$1") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
         echo "Stubbing missing NPC refs + validating plot taxonomy: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/minor_stubs.py" "$CAMPAIGN_DIR"
@@ -640,14 +607,8 @@ case "$1" in
 
     fix-items)
         # Item correctness: cursed flag, type taxonomy, value field.
-        campaign_name="$2"
-        if [ -z "$campaign_name" ]; then
-            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-        if [ ! -d "$CAMPAIGN_DIR" ]; then
-            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
-        fi
+        campaign_name=$(require_campaign "$2" "$1") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
         echo "Fixing item correctness: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/item_fixup.py" "$CAMPAIGN_DIR"
@@ -655,14 +616,8 @@ case "$1" in
 
     normalize-connections)
         # Canonicalize connection targets; move routing rule-phrases into notes.
-        campaign_name="$2"
-        if [ -z "$campaign_name" ]; then
-            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-        if [ ! -d "$CAMPAIGN_DIR" ]; then
-            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
-        fi
+        campaign_name=$(require_campaign "$2" "$1") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
         echo "Normalizing connection targets: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/connection_normalize.py" "$CAMPAIGN_DIR"
@@ -670,14 +625,8 @@ case "$1" in
 
     reconcile)
         # Stub or drop location references that don't resolve to a real node.
-        campaign_name="$2"
-        if [ -z "$campaign_name" ]; then
-            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-        if [ ! -d "$CAMPAIGN_DIR" ]; then
-            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
-        fi
+        campaign_name=$(require_campaign "$2" "$1") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
         echo "Reconciling missing locations: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/location_reconcile.py" "$CAMPAIGN_DIR"
@@ -685,14 +634,8 @@ case "$1" in
 
     integrity)
         # Canonicalize cross-references; fail (exit 1) on unresolved unless --no-strict.
-        campaign_name="$2"
-        if [ -z "$campaign_name" ]; then
-            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
-        fi
-        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(campaign_slug "$campaign_name")"
-        if [ ! -d "$CAMPAIGN_DIR" ]; then
-            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
-        fi
+        campaign_name=$(require_campaign "$2" "$1") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
         echo "Running integrity gate: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/integrity_gate.py" "$CAMPAIGN_DIR" $3
