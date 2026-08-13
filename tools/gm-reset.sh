@@ -22,21 +22,48 @@ echo ""
 
 ACTION="${1:-}"
 
+# --yes / --confirm: answer every prompt affirmatively (non-interactive use)
+ASSUME_YES=0
+for arg in "$@"; do
+    case "$arg" in
+        --yes|--confirm) ASSUME_YES=1 ;;
+    esac
+done
+
+ARCHIVE_BASE="$WORLD_STATE_BASE/archive"
+
 show_usage() {
-    echo "Usage: gm-reset.sh <action>"
+    echo "Usage: gm-reset.sh <action> [--yes]"
     echo ""
     echo "Actions:"
     echo "  preview     - Show what would be reset (safe)"
-    echo "  archive     - Archive current world to git branch, then reset"
+    echo "  archive     - Copy the campaign to world-state/archive/, then reset"
     echo "  hard        - Delete everything and start fresh (destructive!)"
+    echo ""
+    echo "Options:"
+    echo "  --yes       - Skip confirmation prompts (also: --confirm)"
     echo ""
     echo "Examples:"
     echo "  gm-reset.sh preview              # See what exists"
     echo "  gm-reset.sh archive              # Safe reset with backup"
+    echo "  gm-reset.sh archive --yes        # Same, no prompt (scripts/CI)"
     echo "  gm-reset.sh hard                 # Nuclear option"
     echo ""
     echo "Note: This resets the ACTIVE CAMPAIGN only."
     echo "Use 'gm-campaign.sh switch <name>' to change campaigns first."
+}
+
+# True when we still need to ask the user. --yes means already answered; a non-tty
+# without --yes aborts here rather than hanging on a read nobody can answer.
+should_prompt() {
+    if [ "$ASSUME_YES" -eq 1 ]; then
+        return 1
+    fi
+    if [ ! -t 0 ]; then
+        error "No terminal to confirm on. Re-run with --yes to proceed non-interactively."
+        exit 1
+    fi
+    return 0
 }
 
 preview_world() {
@@ -132,49 +159,34 @@ case "$ACTION" in
         ;;
 
     archive)
-        echo "📦 Archiving current campaign..."
-        echo ""
+        require_active_campaign
 
-        if ! git rev-parse --git-dir > /dev/null 2>&1; then
-            echo "❌ Not a git repository - cannot archive"
-            echo "   Use 'gm-reset.sh hard' for destructive reset"
-            exit 1
-        fi
-
-        # Get campaign name for branch
-        CAMPAIGN_NAME=$($PYTHON_CMD "$LIB_DIR/json_ops.py" get "$CAMPAIGN_OVERVIEW" --key campaign_name 2>/dev/null | tr -d '"' | tr ' ' '-' | tr '[:upper:]' '[:lower:]')
-        [ -z "$CAMPAIGN_NAME" ] && CAMPAIGN_NAME="unknown"
-
-        ARCHIVE_BRANCH="archive/${CAMPAIGN_NAME}-$(date +%Y%m%d-%H%M%S)"
-
-        # Commit any pending changes
-        cd "$PROJECT_ROOT"
-        git add world-state/
-        git commit -m "Final state before reset: $CAMPAIGN_NAME" --quiet 2>/dev/null || true
-
-        # Create archive branch
-        CURRENT_BRANCH=$(git branch --show-current)
-        git branch "$ARCHIVE_BRANCH"
-
-        echo "  ✓ Archived to branch: $ARCHIVE_BRANCH"
-        echo ""
+        ARCHIVE_DIR="$ARCHIVE_BASE/${ACTIVE_CAMPAIGN}-$(date +%Y%m%d-%H%M%S)"
 
         preview_world
         echo ""
 
-        read -p "⚠️  Reset this world? Archive saved to '$ARCHIVE_BRANCH' (y/N) " -n 1 -r
-        echo
+        REPLY=""
+        if should_prompt; then
+            read -p "⚠️  Reset this world? A copy is archived to '$ARCHIVE_DIR' first (y/N) " -n 1 -r
+            echo
+        else
+            REPLY="y"
+        fi
 
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            reset_world
+            echo "📦 Archiving current campaign..."
+            # Never reset on a failed/partial copy — the archive IS the safety net.
+            mkdir -p "$ARCHIVE_DIR" || { error "Could not create archive directory '$ARCHIVE_DIR' — world unchanged."; exit 1; }
+            cp -R "$WORLD_STATE_DIR/." "$ARCHIVE_DIR/" || { error "Archive failed — world unchanged."; exit 1; }
+            echo "  ✓ Archived to: $ARCHIVE_DIR"
+            echo ""
 
-            # Commit the reset
-            git add world-state/
-            git commit -m "Fresh start: World reset for new campaign" --quiet
+            reset_world
 
             echo ""
             echo "📜 To restore archived campaign:"
-            echo "   git checkout $ARCHIVE_BRANCH -- world-state/"
+            echo "   cp -R \"$ARCHIVE_DIR/.\" \"$WORLD_STATE_DIR/\""
         else
             echo "Reset cancelled. World unchanged."
         fi
@@ -186,7 +198,10 @@ case "$ACTION" in
         preview_world
         echo ""
 
-        read -p "💀 This is DESTRUCTIVE. Type 'DELETE' to confirm: " CONFIRM
+        CONFIRM="DELETE"
+        if should_prompt; then
+            read -p "💀 This is DESTRUCTIVE. Type 'DELETE' to confirm: " CONFIRM
+        fi
 
         if [ "$CONFIRM" = "DELETE" ]; then
             reset_world

@@ -18,7 +18,7 @@ show_usage() {
     echo "  list                  - List all campaigns"
     echo "  switch <name>         - Switch to a different campaign"
     echo "  create <name>         - Create a new campaign"
-    echo "  delete <name>         - Delete a campaign (requires confirmation)"
+    echo "  delete <name> [--yes] - Delete a campaign (requires confirmation)"
     echo "  info [name]           - Show campaign details (defaults to active)"
     echo "  active                - Show active campaign name"
     echo "  path [name]           - Show campaign directory path"
@@ -61,18 +61,37 @@ case "$ACTION" in
         ;;
 
     "delete")
-        if [ -z "$1" ]; then
-            echo "Usage: gm-campaign.sh delete <campaign_name>"
-            exit 1
-        fi
+        # A flag in the name slot means the name was omitted — never treat it as one.
+        case "${1:-}" in
+            ""|-*)
+                echo "Usage: gm-campaign.sh delete <campaign_name> [--yes]"
+                exit 1
+                ;;
+        esac
         CAMPAIGN_NAME="$1"
+        shift
+
+        # --yes / --confirm: delete without prompting (non-interactive use)
+        ASSUME_YES=0
+        for arg in "$@"; do
+            case "$arg" in
+                --yes|--confirm) ASSUME_YES=1 ;;
+            esac
+        done
 
         # Show info about what will be deleted
         echo "Campaign to delete: $CAMPAIGN_NAME"
         $PYTHON_CMD "$LIB_DIR/campaign_manager.py" info "$CAMPAIGN_NAME"
         echo ""
 
-        read -p "Are you sure you want to DELETE this campaign? (type 'yes' to confirm): " CONFIRM
+        CONFIRM="yes"
+        if [ "$ASSUME_YES" -eq 0 ]; then
+            if [ ! -t 0 ]; then
+                error "No terminal to confirm on. Re-run with --yes to delete non-interactively."
+                exit 1
+            fi
+            read -p "Are you sure you want to DELETE this campaign? (type 'yes' to confirm): " CONFIRM
+        fi
 
         if [ "$CONFIRM" = "yes" ]; then
             $PYTHON_CMD "$LIB_DIR/campaign_manager.py" delete "$CAMPAIGN_NAME" --confirm

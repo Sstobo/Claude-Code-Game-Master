@@ -20,7 +20,7 @@ This will clear ALL world state:
   • Player characters
 
 Options:
-1. ARCHIVE - Save current world to git branch, then reset (safe)
+1. ARCHIVE - Copy current world to world-state/archive/, then reset (safe)
 2. HARD RESET - Delete everything permanently (destructive)
 3. CANCEL - Abort reset
 
@@ -33,18 +33,20 @@ What would you like?
 
 ### If ARCHIVE:
 ```bash
-bash tools/gm-reset.sh archive
+bash tools/gm-reset.sh archive --yes
 ```
 
+`--yes` is required: the tool has no terminal when run through the Bash tool, and
+STEP 1 already got the player's confirmation in chat.
+
 This will:
-- Create git branch `archive/[campaign-name]-[timestamp]`
-- Commit current world state
+- Copy the whole campaign directory to `world-state/archive/[campaign]-[timestamp]/`
 - Clear all world-state files
-- Return to main branch with empty world
+- Abort without resetting if the copy fails (the archive is the safety net)
 
 ### If HARD RESET:
 ```bash
-bash tools/gm-reset.sh hard
+bash tools/gm-reset.sh hard --yes
 ```
 
 This will:
@@ -71,12 +73,12 @@ After successful reset, display:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-If archived, also show:
+If archived, also show the archive path the tool printed:
 ```
-  Archived to: archive/[branch-name]
+  Archived to: world-state/archive/[campaign]-[timestamp]/
 
   To restore later:
-  git checkout [branch-name] -- world-state/
+  cp -R "world-state/archive/[campaign]-[timestamp]/." "world-state/campaigns/[campaign]/"
 ```
 
 ---
@@ -85,5 +87,5 @@ If archived, also show:
 
 If user runs `/reset hard` or `/reset archive` directly:
 - Skip confirmation
-- Execute immediately
+- Execute immediately: `bash tools/gm-reset.sh archive --yes` / `bash tools/gm-reset.sh hard --yes`
 - Show completion message
