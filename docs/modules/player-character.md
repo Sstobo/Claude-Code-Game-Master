@@ -5,7 +5,7 @@ description: Why the sheet has two shapes, which one is canonical, and how XP, d
 sources:
   - { resource: /lib/character_schema.py }
   - { resource: /lib/player_manager.py }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
 ---
 
 # The player character sheet
@@ -28,18 +28,15 @@ converts an open-schema file and **writes it back immediately**. So loading a le
 character mutates it on disk as a side effect — expected, but surprising the first time a
 read-only operation dirties the campaign.
 
-## There are two `validate_character` functions
+## One validator: `schemas.validate_character`
 
-`character_schema.validate_character` requires the **open** keys (`identity`, `vitals`,
-`attributes`, …) and reports a loaded flat sheet as entirely missing.
-`schemas.validate_character` normalizes with `to_flat` first and accepts either. Details
-and the still-red test this causes:
-[two validate_character functions](../gotchas/identity-onboarding-schema-drift.md).
-
-The open-shape one earns its place with the kit check: given a `WorldKit`, attributes
-outside the kit's declared `stat_schema.attributes` are reported. An empty declared schema
-disables the check entirely — which is exactly what the auto-drafted ruleset ships with,
-so a freshly imported world validates everything.
+Shape-agnostic (normalizes via `to_flat`), kit-aware: given a `WorldKit`, stats outside
+the kit's declared `stat_schema.attributes` are reported. Only `name` and `level` are
+required — `race`/`class` are 5e-flavored and legitimately absent on a nameless traveler
+or a non-D&D character. Two caveats: an empty declared stat schema disables the kit check
+(which is what the auto-drafted ruleset ships with), and the open-vs-flat trap that once
+produced a duplicate validator still exists at the builder boundary — see
+[the shape trap](../gotchas/identity-onboarding-schema-drift.md).
 
 ## XP delegates to the kit, then falls back
 

@@ -22,16 +22,14 @@ and converts; producers should write flat (see to_flat / to_open_schema):
   "details":     {<preserved legacy extras: saves, skills, features, notes, ...>}
 }
 
-validate_character checks the shape and, when a World Kit is supplied, that the
-character's attributes are within the kit's declared stat schema.
+Validation lives in schemas.validate_character (shape-agnostic, kit-aware).
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict
 
 _IDENTITY_KEYS = ('name', 'race', 'class', 'pronouns', 'background',
                   'alignment', 'traits', 'ideals', 'bonds', 'flaws')
 _DETAIL_KEYS = ('saves', 'skills', 'features', 'notes', 'id', 'current_location')
-_REQUIRED = ('identity', 'vitals', 'attributes', 'progression', 'inventory', 'conditions')
 
 
 def is_open_schema(char: Any) -> bool:
@@ -136,20 +134,6 @@ def to_flat(char: Dict[str, Any]) -> Dict[str, Any]:
     return flat
 
 
-def validate_character(char: Dict[str, Any], kit=None) -> Tuple[bool, List[str]]:
-    """Validate an open-schema character. With a kit, check attributes ⊆ kit schema."""
-    errors: List[str] = []
-    if not isinstance(char, dict):
-        return False, ['character must be an object']
-    for key in _REQUIRED:
-        if key not in char:
-            errors.append(f'missing required key: {key}')
-    if not isinstance(char.get('attributes', {}), dict):
-        errors.append('attributes must be an object (open, kit-defined)')
-    if kit is not None:
-        allowed = set((kit.stat_schema() or {}).get('attributes', []))
-        if allowed:
-            extra = set(char.get('attributes', {}).keys()) - allowed
-            if extra:
-                errors.append(f'attributes not in active kit schema: {sorted(extra)}')
-    return (len(errors) == 0), errors
+# The character validator lives in schemas.validate_character (shape-agnostic,
+# kit-aware). The open-shape-only validator that used to live here reported a
+# loaded flat sheet as entirely missing — deleted 2026-08-13.

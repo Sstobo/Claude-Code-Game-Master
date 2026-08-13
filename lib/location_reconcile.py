@@ -101,9 +101,15 @@ def reconcile(npcs: dict, locations: dict, plots: dict, passage_fn=None) -> dict
         if isinstance(plot, dict) and "locations" in plot:
             plot["locations"] = [k for k in (ensure(r) for r in plot["locations"]) if k]
 
-    # npc.location_tags
+    # npc location tags — canonical tags.locations (legacy location_tags handled
+    # too, for campaigns predating tag unification).
     for npc in (npcs or {}).values():
-        if isinstance(npc, dict) and "location_tags" in npc:
+        if not isinstance(npc, dict):
+            continue
+        tags = npc.get("tags")
+        if isinstance(tags, dict) and "locations" in tags:
+            tags["locations"] = [k for k in (ensure(t) for t in tags["locations"]) if k]
+        if "location_tags" in npc:
             npc["location_tags"] = [k for k in (ensure(t) for t in npc["location_tags"]) if k]
 
     # location.connections[].to  (iterate over a snapshot of names; stubs may be added)

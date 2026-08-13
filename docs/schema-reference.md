@@ -8,7 +8,7 @@ sources:
   - { resource: /lib/consequence_manager.py }
   - { resource: /lib/world_kit.py }
   - { resource: /lib/world_bible.py }
-generated: { by: claude-fable-5, at: 2026-08-13T14:41:47Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
 ---
 
@@ -130,18 +130,18 @@ A dictionary keyed by NPC name.
     "voice": "string — how they SOUND (not their lines; those are `context`)",
     "bonds": {},
     "stats": {"ac": null, "hp": 45, "cr": 3, "difficulty": "minion|standard|boss",
-              "statless": false},
-    "location_tags": ["import-side spelling — see the gotcha below"]
+              "statless": false}
   }
 }
 ```
 
-Two field pairs are routinely confused:
+Notes:
 
-- **`context` vs `voice`** — `context` holds quotable lines; `voice` describes the sound.
-  See [NPC model](modules/npc-model.md).
-- **`tags.locations` vs `location_tags`** — both exist, and only the first is read at
-  runtime. See [the NPC location tag split](gotchas/npc-location-tag-split.md).
+- **`context` vs `voice`** are routinely confused — `context` holds quotable lines;
+  `voice` describes the sound. See [NPC model](modules/npc-model.md).
+- **`tags.locations` is the only location field** (since 2026-08-13). A campaign imported
+  earlier may still carry a legacy `location_tags` — migrate with
+  `gm-npc.sh unify-tags`. See [the tag-split gotcha](gotchas/npc-location-tag-split.md).
 
 `attitude` values above are the `VALID_ATTITUDES` set in `lib/schemas.py`; an invalid
 attitude is coerced to `neutral` on batch import rather than rejected.

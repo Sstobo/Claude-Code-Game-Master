@@ -26,7 +26,7 @@ def _make_npc_stub(name: str, referenced_by: str) -> dict:
         "description": f"(Auto-stubbed minor character/threat referenced by '{referenced_by}' "
                        f"but not in the top-cap cast. Spawn monster-manual/npc-builder to flesh out.)",
         "attitude": "neutral",
-        "location_tags": [],
+        "tags": {"locations": [], "quests": []},
         "events": [],
         "stats": {},
         "dialogue": [],

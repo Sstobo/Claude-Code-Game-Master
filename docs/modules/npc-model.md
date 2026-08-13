@@ -5,7 +5,7 @@ description: What an NPC carries beyond a description — inner life, canonical 
 sources:
   - { resource: /lib/npc_manager.py }
   - { resource: /lib/npc_stats.py }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -65,11 +65,12 @@ encounter; treat a tier as a difficulty dial to adjust in the moment, never as a
 statblock. For a real statblock in a D&D-kit campaign, the `monster-manual` agent is the
 authority.
 
-## Location tags are two fields that drift
+## Location tags: one field, since 2026-08-13
 
-`get_tags` reads `tags.locations`, but extraction and several passes write `location_tags`.
-Both exist. See [the NPC location tag split](../gotchas/npc-location-tag-split.md) before
-moving an NPC.
+`tags.locations` is the only location field — the legacy `location_tags` split was
+unified (`lib/tag_unify.py`, run at import normalize). Campaigns imported before then
+need the one-time `gm-npc.sh unify-tags`; see
+[the tag-split gotcha](../gotchas/npc-location-tag-split.md).
 
 ## Related
 

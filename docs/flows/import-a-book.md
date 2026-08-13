@@ -10,7 +10,7 @@ sources:
   - { resource: /lib/plot_spine.py }
   - { resource: /lib/clock_seed.py }
   - { resource: /lib/opening_seed.py }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
 ---
 
 # Importing a book
@@ -41,7 +41,7 @@ have repaired:
 
 | Pass | Does | Depends on |
 |---|---|---|
-| `normalize` | copy `extracted/*.json` to the campaign root, unwrapping agent wrappers | agents finished |
+| `normalize` | copy `extracted/*.json` to the campaign root, unwrapping agent wrappers; unify `location_tags` → `tags.locations` | agents finished |
 | `cap` | keep only the top-N per type by importance | normalize |
 | `fix-items` | clear lore-only cursed flags, reclassify wondrous, null non-price values | cap |
 | `normalize-connections` | canonicalize `connections[].to`; move rule-phrases into `notes` | cap |

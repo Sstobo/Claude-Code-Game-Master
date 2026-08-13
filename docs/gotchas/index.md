@@ -4,8 +4,8 @@
 
 ## Gotcha
 
-* [An NPC's location lives in two fields](npc-location-tag-split.md) - Import passes fix `location_tags`; the runtime reads `tags.locations`. The mapping happens once, at creation — so patch both when you move someone.
+* [An NPC's location lived in two fields (unified 2026-08-13)](npc-location-tag-split.md) - tags.locations is now the only location field — but pre-unification campaigns still carry the legacy split and need a one-time migration.
 * [Extractor output silently vanishes on the wrong wrapper key](wrapped-vs-unwrapped-merge.md) - The merge branches on filename and key name; a mismatch drops the entities with no error, and the whole loop swallows exceptions.
 * [The extraction schema is not the runtime schema](extraction-vs-runtime-schema.md) - Extractor output and the live campaign files share filenames and differ in fields — validating one against the other corrupts both.
-* [Two validate_character functions, and one stale test](identity-onboarding-schema-drift.md) - The same function name means two different contracts — and asserting the open shape against the flat file has already produced one long-lived red test.
+* [The open/flat character-shape trap](identity-onboarding-schema-drift.md) - Builders work in the open shape, disk holds flat — asserting one against the other's home has produced a duplicate validator and a long-lived red test.
 

@@ -3,8 +3,9 @@
 import json
 from pathlib import Path
 
-from lib.character_schema import is_open_schema, to_open_schema, validate_character
+from lib.character_schema import is_open_schema, to_open_schema
 from lib.player_manager import PlayerManager
+from lib.schemas import validate_character
 from lib.world_kit import WorldKit
 
 
@@ -79,3 +80,15 @@ def test_xp_thresholds_default_when_kit_not_xp_levels(dcc_world):
     # DCC ships resource-axis -> falls back to the default table (unchanged behavior).
     pm = PlayerManager(dcc_world)
     assert pm._xp_thresholds() == PlayerManager.DEFAULT_XP_THRESHOLDS
+
+
+def test_flat_sheet_validates_directly(dcc_world):
+    # Regression: the old open-shape validator reported a loaded (flat) sheet as
+    # entirely missing. The consolidated validator accepts both shapes.
+    ok, errs = validate_character(_char(dcc_world), WorldKit(dcc_world))
+    assert ok, errs
+
+
+def test_nameless_traveler_validates_without_race_or_class():
+    ok, errs = validate_character({"name": "A nameless traveler", "level": 1})
+    assert ok, errs

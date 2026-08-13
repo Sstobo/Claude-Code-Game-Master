@@ -1,57 +1,47 @@
 ---
 type: Gotcha
-title: An NPC's location lives in two fields
-description: Import passes fix `location_tags`; the runtime reads `tags.locations`. The mapping happens once, at creation — so patch both when you move someone.
+title: An NPC's location lived in two fields (unified 2026-08-13)
+description: tags.locations is now the only location field — but pre-unification campaigns still carry the legacy split and need a one-time migration.
 sources:
+  - { resource: /lib/tag_unify.py }
   - { resource: /lib/npc_manager.py }
   - { resource: /lib/search.py }
-  - { resource: /lib/integrity_gate.py }
-  - { resource: /lib/location_reconcile.py }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
 ---
 
-# An NPC's location lives in two fields
+# An NPC's location lived in two fields (unified 2026-08-13)
 
-Two spellings, two halves of the system, one conversion point.
+From the first imports until 2026-08-13, "where is this NPC" had two spellings:
+extraction wrote a flat `location_tags`, the runtime read `tags.locations`, and the
+conversion happened only at NPC creation — so import passes that canonicalized one field
+left the other stale, and an NPC tagged only the legacy way was invisible to scene
+presence and `on_npc` triggers. The world read emptier than its data.
 
-| Field | Shape | Used by |
-|---|---|---|
-| `location_tags` | flat list on the NPC | extraction schema, `minor_stubs`, `location_reconcile`, `integrity_gate` |
-| `tags.locations` | nested under `tags` | every runtime read: `search_npcs_by_tag`, the session brief, consequence presence |
+**Now `tags.locations` is the only field.** `lib/tag_unify.py` merges the legacy list in
+(case-insensitive dedupe) and deletes it; import runs it inside `normalize`, so every
+downstream pass and the whole runtime see one field. `location_tags` survives only as the
+extraction agents' *output* spelling, converted at the normalize boundary — consistent
+with [extraction schema ≠ runtime schema](extraction-vs-runtime-schema.md).
 
-**The conversion happens only when the NPC record is built** — `lib/npc_manager.py:784` and
-`lib/agent_extractor.py:428` both map `location_tags` → `tags['locations']` at creation
-time. Nothing re-syncs them afterward.
+## The part that still bites: old campaigns
 
-So an import pass that canonicalizes `location_tags` (which is what
-`integrity_gate` and `location_reconcile` do) does **not** update `tags.locations` on an
-NPC record that already exists. And an NPC that only ever carried `location_tags` is
-invisible to "who is present" — it will not appear in the scene brief and will not fire
-`on_npc` consequences.
-
-**The rule: when you move an NPC, write both fields.** `gm-npc.sh tag-location` writes the
-runtime one; the import-side field needs patching separately if it is present.
-
-To check a live campaign rather than trusting this:
+A campaign imported before the unification still carries the split on disk. Nothing
+migrates it automatically — run the one-time migration:
 
 ```bash
-uv run python -c "
-import json,sys; d=json.load(open(sys.argv[1]))
-print('tags.locations:', sum(1 for v in d.values() if isinstance(v,dict) and v.get('tags',{}).get('locations')))
-print('location_tags :', sum(1 for v in d.values() if isinstance(v,dict) and v.get('location_tags')))
-" "$(bash tools/gm-campaign.sh path)/npcs.json"
+bash tools/gm-npc.sh unify-tags
 ```
 
-## Matching is substring, case-insensitive — and duplicates are common
+Idempotent; prints what it merged. If an NPC in an old campaign never shows up in scenes,
+run this before debugging anything else. (`integrity_gate` and `location_reconcile` still
+handle the legacy field defensively for exactly these campaigns.)
 
-`search_npcs_by_tag` lowercases both sides and tests `tag_lower in t.lower()`
-(`lib/search.py:90`). That is forgiving of case and of a location name that is a prefix of
-another, but it also means a tag list routinely holds the same place twice in different
-casings — the shipped fixture campaign has an NPC tagged both `Tutorial Guild Hall` and
-`tutorial-guild-hall`. Harmless for presence checks; misleading if you count tags.
+## Matching is substring, case-insensitive
 
-Note the field is spelled inconsistently *within* the runtime side too: the method accepts
-`location` or `locations` and normalizes (`lib/search.py:76`).
+`search_npcs_by_tag` lowercases both sides and tests containment (`lib/search.py:90`) —
+forgiving of case and of a location name that prefixes another. Tag lists can still hold
+near-duplicate spellings (`Tutorial Guild Hall` / `tutorial-guild-hall`); harmless for
+presence, misleading if you count tags.
 
 ## Related
 

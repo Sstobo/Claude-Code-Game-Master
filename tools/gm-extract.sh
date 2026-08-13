@@ -456,6 +456,14 @@ if type_name == "locations" and isinstance(flat, dict):
     n = coerce_connections(flat)
     if n:
         print(f"  {type_name}: coerced {n} string connection(s) to dict shape")
+# Collapse extraction-side location_tags into canonical tags.locations so every
+# downstream pass (cap, reconcile, integrity) and the whole runtime see ONE field.
+if type_name == "npcs" and isinstance(flat, dict):
+    sys.path.insert(0, lib_dir)
+    from tag_unify import unify_location_tags
+    r = unify_location_tags(flat)
+    if r["migrated"]:
+        print(f"  {type_name}: unified location_tags -> tags.locations for {len(r['migrated'])} NPC(s)")
 json.dump(flat, open(dst, "w"), indent=2)
 print(f"  {type_name}: {len(flat)} entities -> {type_name}.json (flat)")
 PY

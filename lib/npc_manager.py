@@ -901,6 +901,9 @@ def main():
 
     party_parser = subparsers.add_parser('party', help='List all party members')
 
+    subparsers.add_parser('unify-tags',
+                          help='Migrate legacy location_tags into tags.locations (one-time per campaign)')
+
     hp_parser = subparsers.add_parser('hp', help='Update party member HP')
     hp_parser.add_argument('name', help='NPC name')
     hp_parser.add_argument('amount', help='HP change (+5 or -3)')
@@ -1001,6 +1004,18 @@ def main():
     elif args.action == 'untag-quest':
         if not manager.untag_quest(args.name, *args.quests):
             sys.exit(1)
+
+    elif args.action == 'unify-tags':
+        from tag_unify import unify_location_tags
+        npcs = manager.json_ops.load_json(manager.npcs_file) or {}
+        report = unify_location_tags(npcs)
+        if report['migrated']:
+            manager.json_ops.save_json(manager.npcs_file, npcs)
+            print(f"[SUCCESS] Unified location_tags -> tags.locations for "
+                  f"{len(report['migrated'])} NPC(s), {report['tags_added']} tag(s) merged: "
+                  f"{', '.join(report['migrated'])}")
+        else:
+            print("No legacy location_tags found — already unified.")
 
     elif args.action == 'tags':
         tags = manager.get_tags(args.name)

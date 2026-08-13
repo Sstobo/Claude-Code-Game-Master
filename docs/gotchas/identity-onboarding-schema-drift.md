@@ -1,29 +1,30 @@
 ---
 type: Gotcha
-title: Two validate_character functions, and one stale test
-description: The same function name means two different contracts — and asserting the open shape against the flat file has already produced one long-lived red test.
+title: The open/flat character-shape trap
+description: Builders work in the open shape, disk holds flat — asserting one against the other's home has produced a duplicate validator and a long-lived red test.
 sources:
   - { resource: /lib/character_schema.py }
   - { resource: /lib/schemas.py }
   - { resource: /lib/identity_onboarding.py }
   - { resource: /tests/test_identity_onboarding.py }
-generated: { by: claude-fable-5, at: 2026-08-13T14:28:15Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
 ---
 
-# Two `validate_character` functions, and one stale test
+# The open/flat shape trap, and the stale test it produced
 
-## Same name, opposite contracts
+## One validator now (since 2026-08-13)
 
-| Function | Accepts | Behaviour on a flat sheet |
-|---|---|---|
-| `character_schema.validate_character(char, kit=None)` | **open shape only** | reports every required key missing |
-| `schemas.validate_character(data)` | **either** — calls `to_flat` first (`lib/schemas.py:257`) | works |
+`schemas.validate_character(data, kit=None)` is THE character validator: it accepts either
+shape (normalizing via `to_flat` first) and carries the kit check (stats must be within
+the active kit's declared attributes). Until 2026-08-13 a second
+`validate_character` lived in `character_schema` that accepted **only** the open shape —
+it reported a loaded flat sheet as entirely missing, and which contract you got depended
+on which module you imported from. Deleted; a comment marks the grave.
 
-`schemas.validate_character` is the one to call on anything loaded from disk;
-`character_schema.validate_character` is for validating a builder's output before it is
-flattened, and is the only one that can check attributes against a World Kit's stat
-schema. Importing "the" validator without checking which module it came from is a coin
-flip.
+The underlying trap survives the consolidation, which is why this gotcha does:
+**builders work in the open shape, disk holds flat.** `IdentityOnboarding.build()`
+returns open; `character.json` is always flat. Asserting one shape against the other's
+home always looks like a code bug first.
 
 ## The stale test this caused (fixed 2026-08-13)
 

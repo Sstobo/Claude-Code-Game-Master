@@ -64,7 +64,12 @@ def canonicalize(npcs: dict, locations: dict, plots: dict) -> dict:
             plot["locations"] = _resolve_list(plot["locations"], locations, "plot.loc", pname, report)
 
     for nname, npc in (npcs or {}).items():
-        if isinstance(npc, dict) and "location_tags" in npc:
+        if not isinstance(npc, dict):
+            continue
+        tags = npc.get("tags")
+        if isinstance(tags, dict) and "locations" in tags:
+            tags["locations"] = _resolve_list(tags["locations"], locations, "npc.tag", nname, report)
+        if "location_tags" in npc:  # legacy, pre-unification campaigns
             npc["location_tags"] = _resolve_list(npc["location_tags"], locations, "npc.tag", nname, report)
 
     for lname, loc in (locations or {}).items():

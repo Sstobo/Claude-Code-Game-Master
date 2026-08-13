@@ -9,7 +9,7 @@ sources:
   - { resource: /tools/gm-time.sh }
   - { resource: /tools/gm-session.sh }
   - { resource: /tools/gm-clock.sh }
-generated: { by: claude-fable-5, at: 2026-08-13T14:27:00Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -75,9 +75,10 @@ un-rollbackable state (`lib/world_tick.py:49-56`).
 
 `tick_from_session` builds its own "who is present" list (`lib/consequence_manager.py:260-269`):
 party members are always present, everyone else must have the current location in
-`tags['locations']`. That is the same field the context builder reads, and the same field
-with two spellings — see [the NPC location tag split](../gotchas/npc-location-tag-split.md).
-An NPC tagged only via `location_tags` is invisible to `on_npc` triggers.
+`tags['locations']` — the canonical (and, since 2026-08-13, only) location field. In a
+pre-unification campaign an NPC tagged only via the legacy `location_tags` is invisible to
+`on_npc` triggers until `gm-npc.sh unify-tags` runs — see
+[the tag-split gotcha](../gotchas/npc-location-tag-split.md).
 
 ## Choices are consequences
 

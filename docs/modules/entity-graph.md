@@ -6,9 +6,10 @@ sources:
   - { resource: /lib/entity_aliases.py }
   - { resource: /lib/entity_manager.py }
   - { resource: /lib/connection_normalize.py }
+  - { resource: /lib/tag_unify.py }
   - { resource: /lib/location_reconcile.py }
   - { resource: /lib/integrity_gate.py }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
 ---
 
 # The entity graph and name resolution
@@ -47,6 +48,9 @@ Each pass exists because the pass after it would otherwise fail on work it could
 fixed. Running them out of order produces a strict-mode failure on references that were
 repairable.
 
+0. **`tag_unify`** (inside normalize, since 2026-08-13) — collapse extraction-side
+   `location_tags` into canonical `tags.locations`, so every pass below and the whole
+   runtime read one field.
 1. **cap** — drop all but the top-N entities per type. *Creates* dangling references, by
    design. See [importing a book](../flows/import-a-book.md).
 2. **`connection_normalize`** — canonicalize resolvable `connections[].to`, and move

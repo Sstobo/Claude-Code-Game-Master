@@ -78,3 +78,20 @@ def test_review_drift_set_resolution_rate():
     ]
     resolved = sum(1 for q, m in drift if resolve_entity_name(q, m) is not None)
     assert resolved / len(drift) >= 0.92, f"only {resolved}/{len(drift)} resolved"
+
+
+def test_unify_location_tags_merges_and_deletes_legacy():
+    from lib.tag_unify import unify_location_tags
+    npcs = {
+        "Mordecai": {"location_tags": ["Guild Hall", "safe zone"],
+                     "tags": {"locations": ["Safe Zone"], "quests": []}},
+        "Donut": {"tags": {"locations": ["Safe Zone"], "quests": []}},
+        "Stubby": {"location_tags": ["The Pit"]},  # no tags dict at all
+    }
+    report = unify_location_tags(npcs)
+    assert sorted(report["migrated"]) == ["Mordecai", "Stubby"]
+    m = npcs["Mordecai"]
+    assert "location_tags" not in m
+    assert m["tags"]["locations"] == ["Safe Zone", "Guild Hall"]  # case-insensitive dedupe
+    assert npcs["Stubby"]["tags"]["locations"] == ["The Pit"]
+    assert "location_tags" not in npcs["Stubby"]

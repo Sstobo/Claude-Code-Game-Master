@@ -242,22 +242,31 @@ def validate_campaign_overview(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def validate_character(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
-    """Validate player character data against schema.
+def validate_character(data: Dict[str, Any], kit=None) -> Tuple[bool, List[str]]:
+    """Validate player character data against schema. THE character validator —
+    accepts either shape (open is normalized via to_flat first).
 
-    Args:
-        data: Character data dictionary
+    With a World Kit supplied, also checks that the character's stats are within
+    the kit's declared stat schema (an empty declared schema disables the check).
 
-    Returns:
-        Tuple of (is_valid, list of error messages)
+    Returns (is_valid, list of error messages).
     """
     errors = []
 
     # Accept either shape: normalize legacy open-schema to canonical flat first.
     data = to_flat(data)
 
-    # Required fields
-    required = ['name', 'race', 'class', 'level']
+    # Kit check: stats must be within the active kit's declared attributes.
+    if kit is not None:
+        allowed = set((kit.stat_schema() or {}).get('attributes', []))
+        if allowed:
+            extra = set((data.get('stats', {}) or {}).keys()) - allowed
+            if extra:
+                errors.append(f"Character: attributes not in active kit schema: {sorted(extra)}")
+
+    # Required fields — only what every kit shares. race/class are 5e-flavored
+    # and legitimately absent on e.g. a nameless traveler or a Dune character.
+    required = ['name', 'level']
     for field in required:
         if not data.get(field):
             errors.append(f"Character: missing {field}")
