@@ -130,8 +130,20 @@ case "$ACTION" in
         # Reactivity: fire any consequences whose triggers match the new scene.
         bash "$TOOLS_DIR/gm-consequence.sh" tick
 
-        # Auto-query RAG for new location context (GM-internal, minimal output)
+        # Grounded lore brief on FIRST visit to a place with retained book text.
+        # The loremaster cache gates this: revisits are silent, so the deep read
+        # fires once per location. (--full is the GM's explicit follow-up.)
         CAMPAIGN_DIR=$(bash "$TOOLS_DIR/gm-campaign.sh" path 2>/dev/null)
+        if [ -f "$CAMPAIGN_DIR/current-document.txt" ] || [ -f "$CAMPAIGN_DIR/book-text.txt" ]; then
+            # ponytail: grep-for-key on the JSON cache, jq-free; a false hit just skips one auto-brief
+            if ! grep -qF "\"$1\":" "$CAMPAIGN_DIR/loremaster-cache.json" 2>/dev/null; then
+                echo ""
+                echo "First visit — grounding in the source (gm-lore.sh \"$1\" --full for the whole chapter):"
+                $PYTHON_CMD "$LIB_DIR/loremaster.py" "$1" 2>/dev/null || true
+            fi
+        fi
+
+        # Auto-query RAG for new location context (GM-internal, minimal output)
         if [ -d "$CAMPAIGN_DIR/vectors" ]; then
             echo ""
             # Minimal GM context - silently queries/auto-enhances

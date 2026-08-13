@@ -35,3 +35,20 @@ def test_no_book_text_degrades_gracefully(dcc_world):
     lm = Loremaster(dcc_world, book_text="")
     brief = lm.brief_for("Anywhere")
     assert brief["chapters"] == [] and brief["grounded_excerpt"] == ""
+
+
+def test_full_brief_includes_entire_chapter_span(dcc_world):
+    lm = Loremaster(dcc_world, book_text=BOOK)
+    brief = lm.brief_for("Chapter 2", full=True)
+    assert brief["chapter_text"]
+    assert brief["grounded_excerpt"] in brief["chapter_text"]
+    # The full text rides the return, never the cache.
+    cached = lm._cache()["Chapter 2"]
+    assert "chapter_text" not in cached
+
+
+def test_full_on_cache_hit_still_resolves_chapter(dcc_world):
+    lm = Loremaster(dcc_world, book_text=BOOK)
+    lm.brief_for("Chapter 2")                      # seed the cache
+    hit = lm.brief_for("Chapter 2", full=True)     # revisit, no deep read
+    assert hit["cache_hit"] and hit["chapter_text"]

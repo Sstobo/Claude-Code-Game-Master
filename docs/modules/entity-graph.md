@@ -9,13 +9,13 @@ sources:
   - { resource: /lib/tag_unify.py }
   - { resource: /lib/location_reconcile.py }
   - { resource: /lib/integrity_gate.py }
-generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:48:10Z }
 ---
 
 # The entity graph and name resolution
 
 Campaign state is a graph held together by **names, not IDs**: `plots.npcs`,
-`plots.locations`, `npc.location_tags`, `location.connections[].to`. That choice makes
+`plots.locations`, `npc.tags.locations`, `location.connections[].to`. That choice makes
 extracted JSON readable and hand-editable, and it makes every naming wobble a broken
 edge — a plot referencing "Princess Donut" when the NPC key is "Donut" resolves to
 nothing at runtime.

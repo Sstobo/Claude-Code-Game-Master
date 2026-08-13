@@ -2,6 +2,7 @@
 # gm-lore.sh - Grounded scene brief from the source book (Loremaster)
 #
 #   gm-lore.sh "The Sunken Crypt"              Chapter pointers + excerpt (cached per location)
+#   gm-lore.sh "The Sunken Crypt" --full       ...plus the ENTIRE chapter span (long-context read)
 #   gm-lore.sh "The Sunken Crypt" --important  Force a fresh deep read on a big beat
 #
 # Finds the relevant CHAPTER via the coarse index, returns pointers + a grounded

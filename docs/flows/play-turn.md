@@ -7,7 +7,7 @@ sources:
   - { resource: /tools/gm-session.sh }
   - { resource: /tools/gm-context.sh }
   - { resource: /.claude/settings.json }
-generated: { by: claude-fable-5, at: 2026-08-13T14:25:55Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:48:10Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -38,7 +38,7 @@ appears in the transcript:
 
 | Trigger | What fires | Where |
 |---|---|---|
-| `gm-session.sh move` | consequence tick for the new scene | `tools/gm-session.sh` |
+| `gm-session.sh move` | consequence tick, then a lore brief on *first* visit to a place with retained book text | `tools/gm-session.sh` |
 | `gm-time.sh` | time-clock advance (`threat_clocks.py tick-time`), then consequence tick | `tools/gm-time.sh` |
 | every turn end | `session-autosave.sh` Stop hook → `gm-session.sh save autosave` | `.claude/settings.json` |
 

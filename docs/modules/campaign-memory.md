@@ -7,7 +7,7 @@ sources:
   - { resource: /lib/loremaster.py }
   - { resource: /tools/gm-recall.sh }
   - { resource: /tools/gm-lore.sh }
-generated: { by: claude-fable-5, at: 2026-08-13T14:25:55Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:48:10Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -72,10 +72,18 @@ for new/important scenes, not something wired into every context load. It reads 
 has no book text and every brief comes back with empty chapters.
 
 The gate is the point of the module: a cached location that is not flagged `important`
-returns immediately with no read. Note what a deep read actually returns —
-the chapter is loaded and token-logged in full, but `grounded_excerpt` is the **first 500
-characters** (`lib/loremaster.py:63`). The large span is for the model call the /gm flow
-makes; this module hands back a pointer and a taste.
+returns immediately with no read. Two tiers of output (since 2026-08-13):
+
+- **Default** — pointers + a bounded `grounded_excerpt` (`EXCERPT_CHARS`). This is what
+  `gm-session.sh move` auto-runs on the **first visit** to a location when the campaign
+  retains book text — the cache gates it, so revisits are silent and the deep read fires
+  once per place.
+- **`--full`** — the same brief plus `chapter_text`, the *entire* chapter span, for the
+  long-context read when the GM actually narrates the place. The full text rides the
+  return, never the cache — the book file is the storage.
+
+(Until 2026-08-13 the excerpt was 500 chars and nothing returned the full span, so the
+"long-context read" the module was built for had no way to happen.)
 
 ## Related
 

@@ -43,8 +43,20 @@ class Loremaster(EntityManager):
     def _cache(self) -> Dict[str, Any]:
         return self.json_ops.load_json(self.cache_file) or {}
 
-    def brief_for(self, location: str, important: bool = False) -> Dict[str, Any]:
-        """Grounded brief for a scene. Deep-reads only on a new or important scene."""
+    # Excerpt kept in the cache / default output. The FULL chapter span is
+    # returned only on request (full=True) so a routine move never floods the
+    # context with 20k chars.
+    EXCERPT_CHARS = 1500
+
+    def brief_for(self, location: str, important: bool = False,
+                  full: bool = False) -> Dict[str, Any]:
+        """Grounded brief for a scene. Deep-reads only on a new or important scene.
+
+        full=True attaches the entire chapter span as `chapter_text` — the
+        long-context read the GM does when it actually narrates the place. The
+        full text is never cached (the cache holds pointers + excerpt; the book
+        file is the storage).
+        """
         cache = self._cache()
         in_cache = location in cache
 
@@ -53,6 +65,8 @@ class Loremaster(EntityManager):
             cached = dict(cache[location])
             cached["cache_hit"] = True
             cached["deep_read"] = False
+            if full:
+                cached["chapter_text"] = self._chapter_text(cached.get("chapters", []))
             return cached
 
         # New or important scene: find the chapter, read a span, ground the brief.
@@ -60,7 +74,7 @@ class Loremaster(EntityManager):
         excerpt = ""
         if pointers:
             chapter = self.index.load_chapter(pointers[0]["index"])
-            excerpt = chapter.get("text", "")[:500]
+            excerpt = chapter.get("text", "")[:self.EXCERPT_CHARS]
             log_token_estimate(chapter.get("text", ""), label="loremaster")
 
         brief = {
@@ -72,7 +86,19 @@ class Loremaster(EntityManager):
         }
         cache[location] = brief
         self.json_ops.save_json(self.cache_file, cache)
+        if full:
+            brief = dict(brief)
+            brief["chapter_text"] = self._chapter_text(pointers)
         return brief
+
+    def _chapter_text(self, pointers) -> str:
+        """Resolve the top chapter pointer to its full span text ("" if none)."""
+        if not pointers:
+            return ""
+        return self.index.load_chapter(pointers[0].get("index", -1)).get("text", "")
+
+    def has_book_text(self) -> bool:
+        return bool(self.index.chapters)
 
 
 def main():
@@ -83,12 +109,20 @@ def main():
     parser = argparse.ArgumentParser(description="Loremaster scene brief")
     parser.add_argument("location", nargs="+")
     parser.add_argument("--important", action="store_true")
+    parser.add_argument("--full", action="store_true",
+                        help="include the entire chapter span (the long-context read)")
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
 
-    brief = Loremaster().brief_for(" ".join(args.location), important=args.important)
+    brief = Loremaster().brief_for(" ".join(args.location),
+                                   important=args.important, full=args.full)
     if json_mode:
         emit(brief, json_mode=True)
+    elif args.full and brief.get("chapter_text"):
+        meta = {k: v for k, v in brief.items() if k != "chapter_text"}
+        print(json.dumps(meta, indent=2))
+        print("\n--- FULL CHAPTER SPAN (ground the scene in this) ---")
+        print(brief["chapter_text"])
     else:
         print(json.dumps(brief, indent=2))
 
