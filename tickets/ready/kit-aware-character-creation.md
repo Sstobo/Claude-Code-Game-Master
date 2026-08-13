@@ -93,3 +93,11 @@ an unplayable 10/10 with no saves block and no warning. Until this ticket
 lands, consider the interim mitigations: derive HP when the sheet carries
 class+level, or at minimum warn in the save payload (first triage note).
 Also coordinate: create-character.md:153's save-json example must author hp.
+
+## Triage note 3 (2026-08-13, fable-sott1, from review-detox round 1)
+
+Pre-existing in both create-character files, fix while restructuring:
+- "Step 1 - Introduction" jumps to "Step 3 - Background" (numbering gap) in
+  both the agent (:105-110) and command (:83-88).
+- The agent's save-json example (:150) omits visual_appearance even though
+  :85-89 mandates authoring it.

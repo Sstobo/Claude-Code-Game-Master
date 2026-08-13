@@ -13,10 +13,7 @@ Before reaching for the D&D 5e API, resolve creatures in this order:
 2. **Fall back to your own knowledge** of that fictional world if the book is thin.
 3. **Use the dnd5eapi.co path ONLY when the active kit is `dnd5e`.** For non-D&D worlds, do not invent 5e stat blocks — express the threat in the generic core's terms.
 
-You also fetch monster data from the D&D 5e API (334+ official monsters) when the kit is D&D.
-
-## EFFICIENCY DIRECTIVE
-Use the LEAST amount of steps possible. If you have a good result after one search or command, use it and be done. For encounters, generate once and move on. Don't iterate through multiple searches when one will answer the question.
+You also fetch monster data from the D&D 5e API (334+ official monsters) when the kit is D&D. Don't re-fetch data you already have.
 
 ## API Endpoints Available
 

@@ -1,6 +1,10 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-13T22:45:08Z  done: agent-detox — six agents unclamped, quotas gone  [fable-sott1]
+- 2026-08-13T22:44:25Z  in-review: executable-world-kit — verified, review dispatched  [fable-sott1]
+- 2026-08-13T21:58:08Z  in-review: agent-detox — verified, review dispatched  [fable-sott1]
+- 2026-08-13T21:52:24Z  in-review: extraction-tiering — verified, review dispatched  [fable-sott1]
 - 2026-08-13T21:44:47Z  done: skill-guidance-pass — doctrine adopted + softened  [fable-sott1]
 - 2026-08-13T21:40:48Z  in-review: skill-guidance-pass — verified, review dispatched  [fable-sott1]
 - 2026-08-13T21:38:24Z  done: gm-extract-silent-cat — loud failures, legacy resolve, traversal closed  [fable-sott1]

@@ -86,10 +86,10 @@ Generate JSON for each room following this schema:
 - **Exits must be bidirectional** - if Room 1 has north→Room 2, Room 2 needs south→Room 1
 - **Create logical flow** - entry → transition → challenges → boss/goal
 - **Include dead ends** - not every room connects everywhere
-- **One secret minimum** - players love finding hidden areas
+- **Reward curiosity** - players love finding hidden areas
 
 ### Room Variety
-Include a mix of:
+Dungeons that play well tend to draw on a mix of:
 - **Entry/Exit**: How players get in and out
 - **Transition**: Corridors, hallways, natural caves
 - **Challenge**: Combat rooms, trapped areas
@@ -270,6 +270,5 @@ When querying source material, use these patterns:
 **When improvising (no source):**
 - Follow the theme consistently
 - Create logical flow (entry → middle → goal)
-- Include variety (combat, exploration, puzzle)
-- Add at least one secret
+- A good dungeon usually mixes encounter types and rewards curiosity — let the theme and the fiction decide
 - Scale difficulty appropriately
