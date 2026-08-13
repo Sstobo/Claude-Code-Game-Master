@@ -6,10 +6,12 @@ sources:
   - { resource: /lib/schemas.py }
   - { resource: /lib/minor_stubs.py }
   - { resource: /lib/npc_manager.py }
+  - { resource: /lib/extraction_cap.py }
+  - { resource: /lib/location_reconcile.py }
   - { resource: /lib/consequence_manager.py }
   - { resource: /lib/world_kit.py }
   - { resource: /lib/world_bible.py }
-generated: { by: claude-opus-5, at: 2026-08-13T18:09:14Z }
+generated: { by: claude-opus-5, at: 2026-08-13T22:46:28Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
 ---
 
@@ -119,6 +121,7 @@ A dictionary keyed by NPC name.
     "context": ["canonical voice lines — verbatim source dialogue"],
     "enhanced": false,
     "enhanced_at": "ISO timestamp",
+    "background": true,
     "is_party_member": false,
     "became_pc": false,
     "character_sheet": null,
@@ -143,6 +146,16 @@ Notes:
 - **`tags.locations` is the only location field** (since 2026-08-13). A campaign imported
   earlier may still carry a legacy `location_tags` — migrate with
   `gm-npc.sh unify-tags`. See [the tag-split gotcha](gotchas/npc-location-tag-split.md).
+- **`background: true` is the import's entity tier** (`extraction_cap`), present on
+  npcs, locations, items and plots alike. It marks everything the importance ranking
+  put below the top-N — a real entity the book named, kept whole on disk, just not part
+  of the playable core. Absent means active; the key is omitted rather than set false.
+  It changes three things: `gm-enhance.sh batch` skips these entities (a RAG round-trip
+  each); `gm-npc.sh promote` clears the flag, because a party member is active by
+  definition; and a background **plot** is left out of the scene context's STORY THREADS
+  and of `gm-plot.sh threads`, which discloses how many it held back. It does **not**
+  gate an NPC's presence in a scene — that is decided by `tags.locations` against the
+  party's location, for background and active NPCs alike.
 
 `attitude` values above are the `VALID_ATTITUDES` set in `lib/schemas.py`; an invalid
 attitude is coerced to `neutral` on batch import rather than rejected.
@@ -212,10 +225,22 @@ A dictionary keyed by location name.
     ],
     "discovered": "ISO timestamp",
     "notes": "optional string",
-    "source": "optional string"
+    "source": "optional string",
+    "background": true,
+    "low_confidence": true
   }
 }
 ```
+
+Notes:
+
+- **`low_confidence: true` marks a reconcile stub** (`location_reconcile`): the source
+  referenced this place from a plot, an NPC tag, or a connection, but no extractor
+  produced a node for it, so the import created one and wired it to the most-connected
+  hub. The flag says the name is the book's and everything else is a guess — flesh it
+  out in play. These nodes also carry `source: "auto-stub"` and a `notes` line saying so.
+- **`background: true`** on a location is the same entity tier described under
+  [npcs.json](#npcsjson).
 
 ### Dungeon Rooms (Extended Schema)
 
@@ -269,6 +294,9 @@ our-story. See [campaign memory](modules/campaign-memory.md).
 - `plot_world` - World-shaking revelations
 - `player_choices` - Key decisions made
 - `npc_relations` - How NPCs feel about the party
+- `dropped_references` - Import provenance: place references `location_reconcile` could
+  not turn into a node (a connection's routing rule, or a blank). Written by the import,
+  not by play — it exists so a discarded name is recoverable instead of stdout-only.
 
 ---
 

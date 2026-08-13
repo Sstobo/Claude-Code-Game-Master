@@ -83,16 +83,18 @@ Commands:
                             Optional: specify campaign name (defaults to filename)
   normalize [campaign]      Copy extracted/*.json to campaign root, unwrapping
                             agent wrapper keys into the flat {name:...} runtime shape
-  cap [campaign] [limit]    Cap each type to top-N (default 30) by importance
-                            (mention-frequency + plot-reference/party boost)
-  stub-npcs [campaign]      Stub plot-referenced NPCs dropped by the cap; validate
-                            plot taxonomy (runs before the integrity gate)
+  cap [campaign] [limit]    Tier each type: top-N (default 30) by importance stay
+                            active, the rest are marked background:true. Nothing
+                            is deleted (mention-frequency + plot-reference/party boost)
+  stub-npcs [campaign]      Stub plot NPCs the source names but extraction never
+                            produced; validate plot taxonomy (before the integrity gate)
   stat-npcs [campaign]      Difficulty-proxy stats for combat NPCs; flag statless
   fix-items [campaign]      Item correctness: cursed flag, type taxonomy, value field
   normalize-connections [campaign]  Canonicalize connection targets; move routing
                             rule-phrases into notes (runs before reconcile)
-  reconcile [campaign]      Stub or drop location refs that don't resolve to a node
-                            (runs before the integrity gate)
+  reconcile [campaign]      Stub every location ref that doesn't resolve to a node
+                            (low_confidence:true); only routing rule-prose is dropped,
+                            and that is recorded as a fact (before the integrity gate)
   spine [campaign]          Derive plot arc (sequence + depends_on + through-line)
   seed-clocks [campaign]    Seed threat clocks from headline time-pressure in plots
   seed-opening [campaign]   Set starting position + opening beat from the spine
@@ -533,15 +535,16 @@ PY
 }
 
 cap_extracted() {
-    # Cap each entity type in the campaign root to the top-N most important
-    # (mention-frequency + plot-reference/party boost). Run after normalize.
+    # Tier each entity type in the campaign root: the top-N most important
+    # (mention-frequency + plot-reference/party boost) stay active, the rest are
+    # marked background:true in the same file. Nothing is deleted. After normalize.
     local campaign_name="$1"
     local limit="${2:-30}"
 
     campaign_name=$(require_campaign "$campaign_name" cap) || exit 1
     CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
 
-    echo "Capping extracted entities to top-$limit per type: $campaign_name"
+    echo "Tiering extracted entities (top-$limit active, rest background): $campaign_name"
     echo "================================="
     $PYTHON_CMD "$LIB_DIR/extraction_cap.py" "$CAMPAIGN_DIR" --limit "$limit"
 }
@@ -597,10 +600,10 @@ case "$1" in
         ;;
 
     stub-npcs)
-        # Stub plot-referenced NPCs dropped by the cap; validate plot taxonomy.
+        # Stub plot NPCs extraction never produced; validate plot taxonomy.
         campaign_name=$(require_campaign "$2" "$1") || exit 1
         CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-        echo "Stubbing missing NPC refs + validating plot taxonomy: $campaign_name"
+        echo "Stubbing never-extracted NPC refs + validating plot taxonomy: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/minor_stubs.py" "$CAMPAIGN_DIR"
         ;;
@@ -624,7 +627,8 @@ case "$1" in
         ;;
 
     reconcile)
-        # Stub or drop location references that don't resolve to a real node.
+        # Stub every unresolved location reference (low_confidence); drop only
+        # routing rule-prose, recorded as a dropped_references fact.
         campaign_name=$(require_campaign "$2" "$1") || exit 1
         CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
         echo "Reconciling missing locations: $campaign_name"

@@ -590,6 +590,11 @@ class EntityEnhancer:
         """
         List entities that haven't been enhanced yet.
 
+        Background-tiered entities (`background: true`, set by extraction_cap) are
+        skipped: the import keeps the book's whole cast, but a RAG round-trip per
+        entity would then cost several times what the playable core costs. They are
+        enhanced when they are promoted into play, not up front.
+
         Args:
             entity_type: Optional filter by type (npc, location, dungeon, item, plot)
 
@@ -619,6 +624,8 @@ class EntityEnhancer:
                 continue
 
             for name, entity_data in data.items():
+                if not isinstance(entity_data, dict) or entity_data.get("background"):
+                    continue
                 if not entity_data.get("enhanced"):
                     # Determine actual type (location vs dungeon)
                     actual_type = etype

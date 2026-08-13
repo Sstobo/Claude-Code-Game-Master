@@ -9,10 +9,12 @@ sources:
   - { resource: /lib/agent_extractor.py }
   - { resource: /lib/campaign_manager.py }
   - { resource: /lib/extraction_cap.py }
+  - { resource: /lib/minor_stubs.py }
+  - { resource: /lib/location_reconcile.py }
   - { resource: /lib/plot_spine.py }
   - { resource: /lib/clock_seed.py }
   - { resource: /lib/opening_seed.py }
-generated: { by: claude-opus-5, at: 2026-08-13T21:19:33Z }
+generated: { by: claude-opus-5, at: 2026-08-13T22:05:54Z }
 ---
 
 # Importing a book
@@ -42,8 +44,11 @@ their output into runtime state. That split is what keeps the fan-out race-free.
 4. **`validate`** then the repair-and-seed chain (below).
 5. **Bible → kit → overview → voice → chronicler** — the world's identity, drafted from
    large-span reads rather than chunks. See [the World Bible](../modules/world-bible.md).
-6. **`gm-enhance.sh batch`** — RAG enrichment of every entity. Marked "critical for
-   quality" in the command, and it is: this is what fills NPC `context` with real dialogue.
+6. **`gm-enhance.sh batch`** — RAG enrichment of every **active** entity. Marked "critical
+   for quality" in the command, and it is: this is what fills NPC `context` with real
+   dialogue. `EntityEnhancer.list_unenhanced` skips `background: true` entities, which is
+   what keeps tiering-instead-of-deleting from multiplying the enhancement bill by the
+   size of the book's walk-on cast; a background entity is enhanced when it is promoted.
 
 ## The chain is ordered, and the order is load-bearing
 
@@ -53,11 +58,11 @@ have repaired:
 | Pass | Does | Depends on |
 |---|---|---|
 | `normalize` | copy `extracted/*.json` to the campaign root, unwrapping agent wrappers; unify `location_tags` → `tags.locations` | agents finished |
-| `cap` | keep only the top-N per type by importance | normalize |
+| `cap` | rank each type; top-N stay active, the rest get `background: true` | normalize |
 | `fix-items` | clear lore-only cursed flags, reclassify wondrous, null non-price values | cap |
 | `normalize-connections` | canonicalize `connections[].to`; move rule-phrases into `notes` | cap |
-| `reconcile` | stub or drop unresolved location references | connections normalized |
-| `stub-npcs` | create stubs for plot-referenced NPCs the cap dropped | cap |
+| `reconcile` | stub unresolved location references (`low_confidence`); drop only a dead connection edge whose target is routing prose | connections normalized |
+| `stub-npcs` | stub plot-referenced NPCs extraction never produced | cap |
 | `stat-npcs` | assign difficulty-tier proxy stats, flag non-combatants statless | NPC set final |
 | `integrity` | canonicalize every cross-reference; **strict-fail on unresolved** | all repairs done |
 | `spine` | order main plots into an arc by source position | plots final |
@@ -65,16 +70,33 @@ have repaired:
 | `seed-opening` | set starting position + opening beat + session-log hook | spine |
 | `archive` | move `extracted/` aside | everything |
 
-The two passes most likely to surprise:
+The passes most likely to surprise:
 
-- **`cap` deliberately breaks the graph.** It keeps the top 30 by importance, which orphans
-  references from surviving entities to dropped ones. `reconcile` and `stub-npcs` exist to
-  repair exactly that damage — so `cap` must run *before* them, and `integrity` must run
-  after. See [the entity graph](../modules/entity-graph.md).
+- **`cap` tiers, it does not delete.** Every entity the agents extracted stays in
+  `npcs.json` / `locations.json` / `items.json` / `plots.json`; the ones ranked below the
+  limit are rewritten in place with `"background": true`. The pipeline must not pre-make
+  the creative decision of who exists in the world — a walk-on the book named is still a
+  person the GM can pull into a scene. Because nothing leaves the file, no cross-reference
+  is orphaned by capping, and `reconcile` / `stub-npcs` repair only what extraction
+  genuinely missed. See [the entity graph](../modules/entity-graph.md).
 - **Importance is book-agnostic on purpose.** `extraction_cap` scores by source mention
   frequency, plus a large boost for being referenced by a plot, plus a party-member boost.
-  No name is hardcoded, which is what guarantees the main cast survives any book: the main
-  cast is precisely who the main plots reference.
+  No name is hardcoded, which is what guarantees the main cast is active in any book: the
+  main cast is precisely who the main plots reference. Plots rank by their canonical type's
+  priority, read from `schemas.PLOT_TYPE_SORT` — so `threat` and `mystery` outrank `side`
+  and `optional` instead of falling to the unknown-type floor, as a local hardcoded weight
+  table used to make them. The cap also maps `PLOT_TYPE_SYNONYMS` itself, because
+  `validate_plot_types` runs a pass later in `stub-npcs`: a plot the agent typed
+  "main quest" arrives here raw, and ranking it raw files the book's spine below an errand.
+- **`reconcile` keeps places it cannot verify.** A reference that resolves to no node
+  becomes a stub flagged `low_confidence: true` rather than a deletion: "the book named
+  this, nobody has checked what it is" is a judgment for play, not for a shape heuristic.
+  The one thing still dropped is a **connection target** that states a routing rule instead
+  of a destination ("Transfer stations ending in 1"), and each dropped name lands in
+  `facts.json` under `dropped_references`. The same string arriving from a plot or an NPC
+  tag is stubbed, not dropped — "The Upper Level of the Tower of the Elephant" and
+  "Kandahar via the Zhaibar Pass" are places, and a phrase test run over them deletes real
+  geography.
 
 ## Ordering is deterministic, not model judgment
 

@@ -345,11 +345,17 @@ class PlotManager(EntityManager):
         """
         Get active plot threads grouped by type, with staleness info.
         Returns dict keyed by type, each containing list of thread summaries.
+
+        Background-tiered plots (`background: true`, set by the import's cap) are
+        left out — they are real plots the book carries, not live threads. How many
+        were held back is recorded for `format_threads` to disclose, so the GM knows
+        they exist and can promote one.
         """
         from datetime import datetime, timezone
 
         plots = self._load_entities(self.plots_file)
         threads = {t: [] for t in PLOT_TYPE_ORDER}
+        self._background_thread_count = 0
 
         # Try to get session count for staleness
         try:
@@ -366,6 +372,10 @@ class PlotManager(EntityManager):
 
             status = data.get('status', 'active').lower()
             if status != 'active':
+                continue
+
+            if data.get('background'):
+                self._background_thread_count += 1
                 continue
 
             plot_type = data.get('type', 'other').lower()
@@ -406,11 +416,18 @@ class PlotManager(EntityManager):
         """
         Format active threads for display — GM notes style, not a database query.
         """
+        background = getattr(self, '_background_thread_count', 0)
+        disclosure = (f"(+{background} background plot{'s' if background != 1 else ''} "
+                      f"held back by the import's cap — still on disk, promote to run one)")
+
         has_any = any(threads[t] for t in threads)
         if not has_any:
-            return "No active story threads. Time to create some plot hooks!"
+            base = "No active story threads. Time to create some plot hooks!"
+            return f"{base}\n{disclosure}" if background else base
 
         lines = ["=== ACTIVE STORY THREADS ===", ""]
+        if background:
+            lines.extend([disclosure, ""])
 
         for plot_type in PLOT_TYPE_ORDER:
             label = _plot_type_label(plot_type)

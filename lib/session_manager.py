@@ -742,6 +742,8 @@ class SessionManager(EntityManager):
                 continue
             if str(p.get('status', 'active')).lower() in closed:
                 continue
+            if p.get('background'):
+                continue  # import's background tier: real, but not a live thread
             ptype = str(p.get('type', 'side')).lower()
             # Within a type, order by spine `sequence` when present (arc order);
             # unsequenced plots sort last via a large fallback key.

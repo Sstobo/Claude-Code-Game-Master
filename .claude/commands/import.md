@@ -306,10 +306,13 @@ bash tools/gm-extract.sh validate "<campaign-name>"
 # cannot key, or one giant entity named "npcs". NEVER `cp` these files.
 bash tools/gm-extract.sh normalize "<campaign-name>"
 
-# Cap each type to the top-30 most important entities (mention-frequency +
-# plot-reference/party boost). We do NOT need every walk-on NPC or one-off
-# platform — just the playable core. Runs before enhancement so dropped
-# entities aren't enhanced. Reports dropped counts to the user.
+# Tier each type: the top-30 most important entities (mention-frequency +
+# plot-reference/party boost) stay active; every walk-on NPC and one-off platform
+# below the line is written back to the same file with `background: true`. NOTHING
+# is deleted — the book's world stays whole, and who steps into a scene is the GM's
+# call, not the pipeline's. Runs before enhancement: `gm-enhance.sh batch` skips
+# background entities (EntityEnhancer.list_unenhanced), so keeping the whole cast
+# costs disk, not a RAG round-trip each. Reports "N active, M background".
 bash tools/gm-extract.sh cap "<campaign-name>" 30
 
 # Item correctness: clear lore-only `cursed` flags (keep only mechanical penalties),
@@ -321,14 +324,17 @@ bash tools/gm-extract.sh fix-items "<campaign-name>"
 # notes so reconcile doesn't drop them. Runs BEFORE reconcile.
 bash tools/gm-extract.sh normalize-connections "<campaign-name>"
 
-# Reconcile missing locations: stub (with a source passage + bidirectional hub
-# link) or drop every location reference that doesn't resolve to a node. Runs
-# BEFORE the integrity gate so location refs resolve.
+# Reconcile missing locations: every location reference that doesn't resolve to a
+# node becomes a stub (source passage + bidirectional hub link) marked
+# `low_confidence: true`. Only routing rule-prose is dropped, and that is recorded
+# as a `dropped_references` fact. Runs BEFORE the integrity gate so location refs
+# resolve.
 bash tools/gm-extract.sh reconcile "<campaign-name>"
 
-# Stub missing NPC refs: the hard cap can drop NPCs that plots still reference;
-# create a minimal stub for each so plot.npcs resolves, and normalize plot types.
-# Runs BEFORE the integrity gate.
+# Stub never-extracted NPC refs: plots can name a character extraction never
+# produced; create a minimal stub for each so plot.npcs resolves, and normalize
+# plot types. (Background-tiered NPCs are real entities — they resolve, and are
+# never stubbed over.) Runs BEFORE the integrity gate.
 bash tools/gm-extract.sh stub-npcs "<campaign-name>"
 
 # Stat combat NPCs: assign a coarse difficulty-proxy (hp + cr/difficulty) so every

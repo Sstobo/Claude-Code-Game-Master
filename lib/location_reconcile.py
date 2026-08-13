@@ -2,33 +2,51 @@
 """Reconcile referenced-but-missing locations before the integrity gate.
 
 Plots, NPC location_tags, and location connections reference places that were
-never extracted as nodes (e.g. stairwell stations 24/36/48/72) or were dropped by
-the cap. This pass, for every location reference that does not resolve to a real
-key via the alias resolver:
-  - STUB it (create a lightweight node with a source passage + a bidirectional
-    connection to the most-connected hub) when the name looks like a real place; or
-  - DROP the reference (and report it) when it is a one-off descriptive phrase
-    ("location unknown", slashes, long prose).
+never extracted as nodes (e.g. stairwell stations 24/36/48/72). This pass, for
+every location reference that does not resolve to a real key via the alias
+resolver, STUBS it: a lightweight node with a source passage, a bidirectional
+connection to the most-connected hub, and `low_confidence: true` — the flag says
+"the book named this place, nobody has verified what it is", which is a judgment
+the GM can make in play and a shape heuristic cannot.
+
+The old heuristic (drop anything with a slash, the word "unknown", or more than
+six words) deleted real places from the world to protect a machine gate. What is
+still dropped depends on where the reference came from:
+
+  - a **connection target** may be a routing rule rather than a destination
+    ("Transfer stations ending in 1", "Any line") — `connection_normalize`'s test
+    for that runs here too, on its home ground;
+  - a **plot or tag reference** names a place the book put someone in, so only a
+    blank is dropped. "The Upper Level of the Tower of the Elephant" and
+    "Kandahar via the Zhaibar Pass" are places, and a phrase test applied to them
+    deletes real geography.
+
+Dropped names are persisted as facts rather than printed and lost.
 
 Runs after cap, before the integrity gate's strict fail check.
 """
 
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+from connection_normalize import _is_rule_phrase
 from entity_aliases import resolve_entity_name
 
 
-def _is_stubbable(name: str) -> bool:
-    """A real-place name vs a descriptive phrase. Conservative."""
+def _is_stubbable(name: str, is_connection: bool = False) -> bool:
+    """False only for what names no place at all.
+
+    Blanks never name a place. Routing rule-prose only fails as a CONNECTION
+    target — that is the shape `connection_normalize` was written against. The
+    same test on a plot or tag reference throws away real geography, so when in
+    doubt the answer is a low-confidence stub, not a deletion.
+    """
     if not name or len(name.strip()) < 2:
         return False
-    low = name.lower()
-    if "unknown" in low or "/" in name:
-        return False
-    if len(name.split()) > 6:
+    if is_connection and _is_rule_phrase(name):
         return False
     return True
 
@@ -56,6 +74,7 @@ def _make_stub(name: str, hub: str, passage: str = "") -> dict:
         "hazards": [],
         "notes": "auto-stub: created by missing-location-reconcile",
         "source": "auto-stub",
+        "low_confidence": True,
     }
     if hub:
         stub["connections"].append({"to": hub, "path": "(auto-linked; refine in play)"})
@@ -72,13 +91,13 @@ def reconcile(npcs: dict, locations: dict, plots: dict, passage_fn=None) -> dict
     report = {"stubbed": [], "dropped": [], "kept": 0}
     hub = _hub_name(locations)
 
-    def ensure(name):
+    def ensure(name, is_connection=False):
         """Return a real key for `name`, creating a stub if needed; None if dropped."""
         key = resolve_entity_name(name, locations)
         if key:
             report["kept"] += 1
             return key
-        if _is_stubbable(name):
+        if _is_stubbable(name, is_connection):
             passage = ""
             if passage_fn:
                 try:
@@ -120,7 +139,7 @@ def reconcile(npcs: dict, locations: dict, plots: dict, passage_fn=None) -> dict
         new_conns = []
         for conn in loc.get("connections", []) or []:
             if isinstance(conn, dict) and "to" in conn:
-                key = ensure(conn["to"])
+                key = ensure(conn["to"], is_connection=True)
                 if key:
                     conn["to"] = key
                     new_conns.append(conn)
@@ -130,6 +149,33 @@ def reconcile(npcs: dict, locations: dict, plots: dict, passage_fn=None) -> dict
         loc["connections"] = new_conns
 
     return report
+
+
+FACT_CATEGORY = "dropped_references"
+
+
+def _persist_dropped(cdir: Path, dropped: list):
+    """Record dropped references as campaign facts, not stdout the import loses.
+
+    facts.json shape ({category: [{fact, timestamp}]}) is written directly —
+    NoteManager needs an active campaign, and reconcile only has a directory.
+    """
+    if not dropped:
+        return
+    path = cdir / "facts.json"
+    facts = json.loads(path.read_text()) if path.exists() else {}
+    if not isinstance(facts, dict):
+        return
+    bucket = facts.setdefault(FACT_CATEGORY, [])
+    known = {f.get("fact") for f in bucket if isinstance(f, dict)}
+    stamp = datetime.now(timezone.utc).isoformat()
+    for name in dropped:
+        fact = (f"Import dropped a location reference that named no destination: "
+                f"'{name}' (a connection routing rule, or blank).")
+        if fact not in known:
+            bucket.append({"fact": fact, "timestamp": stamp})
+            known.add(fact)
+    path.write_text(json.dumps(facts, indent=2))
 
 
 def run_reconcile(campaign_dir) -> dict:
@@ -154,6 +200,7 @@ def run_reconcile(campaign_dir) -> dict:
         passage_fn = None
 
     report = reconcile(npcs, locations, plots, passage_fn=passage_fn)
+    _persist_dropped(cdir, report["dropped"])
 
     if locations:
         (cdir / "locations.json").write_text(json.dumps(locations, indent=2))

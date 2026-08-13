@@ -415,6 +415,10 @@ class NPCManager(EntityManager):
         existing_sheet = npcs[name].get('character_sheet')
 
         npcs[name]['is_party_member'] = True
+        # A party member is active by definition. Clearing the import's background
+        # tier also puts them back in scope for `gm-enhance.sh batch`, which skips
+        # background entities.
+        npcs[name].pop('background', None)
 
         if existing_sheet:
             # Restore existing character sheet (NPC was previously demoted)

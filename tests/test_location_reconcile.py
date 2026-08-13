@@ -6,8 +6,13 @@ from lib.location_reconcile import reconcile, run_reconcile, _is_stubbable
 
 def test_stubbable_heuristic():
     assert _is_stubbable("Station 24")
-    assert not _is_stubbable("Skull Empire / dungeon (location unknown)")
-    assert not _is_stubbable("the upper level reached via the central stairwell after a long climb")
+    # a messy name is still a place — only prose that names no destination is not
+    assert _is_stubbable("Skull Empire / dungeon (location unknown)")
+    assert _is_stubbable("The Upper Level of the Tower of the Elephant")
+    # routing prose fails only where it is routing prose: a connection target
+    assert _is_stubbable("Transfer stations ending in 1")
+    assert not _is_stubbable("Transfer stations ending in 1", is_connection=True)
+    assert not _is_stubbable("")
 
 
 def test_missing_plot_location_gets_stubbed_and_linked():
@@ -22,13 +27,22 @@ def test_missing_plot_location_gets_stubbed_and_linked():
     assert plots["P"]["locations"] == ["Station 24"]
 
 
-def test_descriptive_phrase_dropped_not_stubbed():
+def test_rule_prose_dropped_as_a_connection_target():
+    locations = {"Hub": {"connections": [{"to": "Transfer stations ending in 1"}]}}
+    report = reconcile({}, locations, {})
+    assert "Transfer stations ending in 1" in report["dropped"]
+    assert locations["Hub"]["connections"] == []      # dead edge removed
+    assert "Transfer stations ending in 1" not in locations
+
+
+def test_tag_reference_to_the_same_string_is_stubbed():
+    """A tag says someone stands there, so it names a place — stub, never drop."""
     locations = {"Hub": {"connections": []}}
-    npcs = {"Bob": {"location_tags": ["Skull Empire / dungeon (location unknown)"]}}
+    npcs = {"Bob": {"location_tags": ["Transfer stations ending in 1"]}}
     report = reconcile(npcs, locations, {})
-    assert "Skull Empire / dungeon (location unknown)" in report["dropped"]
-    assert npcs["Bob"]["location_tags"] == []        # dead ref removed
-    assert "Skull Empire / dungeon (location unknown)" not in locations
+    assert report["dropped"] == []
+    assert npcs["Bob"]["location_tags"] == ["Transfer stations ending in 1"]
+    assert locations["Transfer stations ending in 1"]["low_confidence"] is True
 
 
 def test_existing_reference_kept_via_alias():
@@ -40,12 +54,10 @@ def test_existing_reference_kept_via_alias():
     assert report["stubbed"] == []
 
 
-def test_dead_connection_edge_to_droppable_is_removed():
-    locations = {
-        "Hub": {"connections": [{"to": "somewhere vague that cannot possibly be a real place name here"}]},
-    }
+def test_dead_connection_edge_to_rule_prose_is_removed():
+    locations = {"Hub": {"connections": [{"to": "Any line from here"}]}}
     reconcile({}, locations, {})
-    assert locations["Hub"]["connections"] == []   # unresolved+undroppable edge pruned
+    assert locations["Hub"]["connections"] == []   # edge to a non-destination pruned
 
 
 def test_run_reconcile_writes_files(tmp_path):

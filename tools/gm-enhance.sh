@@ -26,7 +26,8 @@ show_usage() {
     echo "  apply <name>             Apply enhancements (after approval)"
     echo "  summary <name>           Get full enhancement summary"
     echo "  list-unenhanced [type]   List entities needing enhancement"
-    echo "  batch                    Enhance ALL unenhanced entities (run after /import)"
+    echo "  batch                    Enhance all unenhanced ACTIVE entities (background tier
+                           skipped; enhance on promote). Run after /import"
     echo "  dungeon-check <name>     Check if dungeon has room structure"
     echo "  scene <location>         Get scene context for gameplay (quick RAG)"
     echo ""

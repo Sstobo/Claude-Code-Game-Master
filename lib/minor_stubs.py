@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Extraction shape normalization; stub plot-referenced NPCs that the cap dropped.
+"""Extraction shape normalization; stub plot NPCs the book names but extraction missed.
 
-The hard 30-cap can drop NPCs that plots still reference (when >30 are referenced),
-leaving plot.npcs links that don't resolve. This creates a minimal NPC stub for each
-such reference (a generic, monster-manual-statveable placeholder) and rewrites the
-reference to the stub key — so the strict integrity gate passes. Also validates
+Since the cap tiers instead of deleting (`extraction_cap`), a plot reference to a
+low-ranked NPC resolves to that real NPC — background or active — and no placeholder
+is invented for it. What is left over is the genuinely absent: a name the book's
+plots reference that extraction never produced at all. Those get a minimal stub and
+the reference is rewritten to the stub key, so the strict integrity gate passes on a
+real entity rather than a dangling name. Also validates
 plot `type` against the canonical enum (`schemas.PLOT_TYPES`), mapping known
 synonyms and falling back to 'side' — with a warning — for anything unknown.
 
@@ -122,7 +124,8 @@ def _make_npc_stub(name: str, referenced_by: str) -> dict:
     return {
         "name": name,
         "description": f"(Auto-stubbed minor character/threat referenced by '{referenced_by}' "
-                       f"but not in the top-cap cast. Spawn monster-manual/npc-builder to flesh out.)",
+                       f"but never extracted from the source. Spawn monster-manual/npc-builder "
+                       f"to flesh out.)",
         "attitude": "neutral",
         "tags": {"locations": [], "quests": []},
         "events": [],
@@ -133,7 +136,11 @@ def _make_npc_stub(name: str, referenced_by: str) -> dict:
 
 
 def stub_missing_npcs(npcs: dict, plots: dict) -> dict:
-    """Stub unresolved plot.npcs refs and rewrite them to canonical keys."""
+    """Stub never-extracted plot.npcs refs; rewrite the rest to canonical keys.
+
+    `npcs` holds the whole extraction (active and background alike), so a stub is
+    only created for a name that is not in it under any spelling.
+    """
     report = {"stubbed": [], "kept": 0}
     for pname, plot in (plots or {}).items():
         if not isinstance(plot, dict) or "npcs" not in plot:

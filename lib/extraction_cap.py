@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-"""Cap extracted entities to the most playable top-N per type.
+"""Tier extracted entities into an ACTIVE top-N and a BACKGROUND remainder.
 
-Imports extract every entity in a book (65 NPCs, etc.) — too many, dilutes the
-playable core, costs tokens downstream. This caps each type (npcs/locations/items/
-plots) to the top-N by IMPORTANCE, deterministically, after extraction.
+Imports extract every entity in a book (65 NPCs, etc.). Only a fraction of them
+belong in the foreground of a scene, but the pipeline must not pre-make the
+creative decision of who exists in the world — so nothing is deleted. Each type
+(npcs/locations/items/plots) is ranked by IMPORTANCE, deterministically; the
+top-N stay as-is and everything below is written back to the SAME file with
+`"background": true` on the entity. The GM (and the entity graph) still sees
+them; they simply are not the playable core.
 
 Importance is book-agnostic (no hardcoded names):
   score = source mention-frequency (count across chunks)
         + large boost if the entity is referenced by a plot (plot.npcs / plot.locations)
         + boost for party members (is_party_member)
-This guarantees the main cast survives — they are exactly the entities the main
-plots reference. Plots themselves rank by type weight (main > others > optional),
+This guarantees the main cast is active — they are exactly the entities the main
+plots reference. Plots themselves rank by their canonical type's priority
+(`schemas.PLOT_TYPE_SORT`: main > threat > mystery > side > ... > optional),
 then by how connected they are.
 """
 
@@ -20,11 +25,37 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from entity_aliases import normalize_entity_name
+from minor_stubs import PLOT_TYPE_SYNONYMS
+from schemas import PLOT_TYPE_SORT
 
 DEFAULT_LIMIT = 30
 _PLOT_REF_BOOST = 100_000
 _PARTY_BOOST = 50_000
-_PLOT_TYPE_WEIGHT = {"main": 3, "side": 2, "world": 2, "personal": 2, "optional": 1}
+
+
+def plot_type_weight(plot_type: str) -> int:
+    """Rank weight for a plot type, derived from the canonical enum's priority.
+
+    `PLOT_TYPE_SORT` is the one place plot priority is declared (0 = the spine).
+    Inverting it here means a type added there — `threat`, `mystery` — ranks
+    above `side` automatically, instead of silently falling to the unknown-type
+    floor as a local hardcoded table used to make it.
+
+    Extractor synonyms are mapped first, because `validate_plot_types` runs in
+    `stub-npcs`, AFTER the cap: a plot the agent typed "main quest" reaches this
+    function raw, and without the mapping the book's spine would rank below an
+    `optional` errand.
+    """
+    n = len(PLOT_TYPE_SORT)
+    t = (plot_type or "").strip().lower()
+    t = PLOT_TYPE_SYNONYMS.get(t, t)
+    rank = PLOT_TYPE_SORT.get(t)
+    if rank is None:
+        # The fallback `validate_plot_types` will apply later. Ranking an unknown
+        # or blank type at the bottom here and calling it 'side' there is the same
+        # disagreement, one pass apart.
+        rank = PLOT_TYPE_SORT["side"]
+    return n - rank
 
 
 def load_corpus(chunks_dir) -> str:
@@ -62,9 +93,9 @@ def mention_count(name: str, corpus: str) -> int:
 
 
 def importance_score(name, entity, type_name, corpus, plot_refs):
-    """Higher = more important / more likely to be kept."""
+    """Higher = more important / more likely to stay active."""
     if type_name == "plots":
-        weight = _PLOT_TYPE_WEIGHT.get((entity or {}).get("type", "").lower(), 1)
+        weight = plot_type_weight((entity or {}).get("type", ""))
         connectedness = len((entity or {}).get("npcs", []) or []) + \
             len((entity or {}).get("locations", []) or []) + \
             len((entity or {}).get("objectives", []) or [])
@@ -79,8 +110,14 @@ def importance_score(name, entity, type_name, corpus, plot_refs):
 
 
 def cap_type(entities: dict, type_name: str, corpus: str, plot_refs: set, limit: int):
-    """Return (kept_dict, dropped_names). Stable: ties broken by original order."""
-    if not isinstance(entities, dict) or len(entities) <= limit:
+    """Tier one type in place. Returns (entities, background_names).
+
+    The dict that comes in is the dict that goes out — every entity survives.
+    Entities ranked below `limit` get `"background": true`; the active top-N
+    have any stale flag cleared, so re-running is idempotent. Stable: ties are
+    broken by original order.
+    """
+    if not isinstance(entities, dict):
         return entities, []
     items = list(entities.items())
     ranked = sorted(
@@ -88,15 +125,25 @@ def cap_type(entities: dict, type_name: str, corpus: str, plot_refs: set, limit:
         key=lambda iv: (importance_score(iv[1][0], iv[1][1], type_name, corpus, plot_refs), -iv[0]),
         reverse=True,
     )
-    kept_pairs = [items[i] for i, _ in ranked[:limit]]
-    dropped = [items[i][0] for i, _ in ranked[limit:]]
-    return dict(kept_pairs), dropped
+    background = []
+    for position, (i, _) in enumerate(ranked):
+        name, entity = items[i]
+        if not isinstance(entity, dict):
+            continue
+        if position < limit:
+            entity.pop("background", None)
+        else:
+            entity["background"] = True
+            background.append(name)
+    return entities, background
 
 
 def cap_campaign(campaign_dir, limit: int = DEFAULT_LIMIT) -> dict:
-    """Cap npcs/locations/items/plots files in a campaign root in place.
+    """Tier npcs/locations/items/plots files in a campaign root in place.
 
-    Returns a report: {type: {"kept": n, "dropped": [names]}}.
+    Nothing is removed from disk: each file is rewritten with the same entities,
+    the ones past the top-N carrying `"background": true`.
+    Returns a report: {type: {"active": n, "background": [names]}}.
     """
     cdir = Path(campaign_dir)
     corpus = load_corpus(cdir / "chunks")
@@ -112,25 +159,27 @@ def cap_campaign(campaign_dir, limit: int = DEFAULT_LIMIT) -> dict:
         entities = json.loads(path.read_text())
         if not isinstance(entities, dict):
             continue
-        kept, dropped = cap_type(entities, type_name, corpus, plot_refs, limit)
-        if dropped:
-            path.write_text(json.dumps(kept, indent=2))
-        report[type_name] = {"kept": len(kept), "dropped": dropped}
+        entities, background = cap_type(entities, type_name, corpus, plot_refs, limit)
+        path.write_text(json.dumps(entities, indent=2))
+        # Only real entities can carry a tier — a stray scalar is neither active
+        # nor background, and counting it would overstate the playable core.
+        entity_count = sum(1 for v in entities.values() if isinstance(v, dict))
+        report[type_name] = {"active": entity_count - len(background), "background": background}
     return report
 
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Cap extracted entities to top-N per type")
+    parser = argparse.ArgumentParser(description="Tier extracted entities: active top-N + background")
     parser.add_argument("campaign_dir")
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     args = parser.parse_args()
     report = cap_campaign(args.campaign_dir, args.limit)
     for t, r in report.items():
-        n_drop = len(r["dropped"])
-        print(f"  {t}: kept {r['kept']}, dropped {n_drop}")
-        if n_drop:
-            print(f"    dropped: {', '.join(r['dropped'][:10])}{' ...' if n_drop > 10 else ''}")
+        n_bg = len(r["background"])
+        print(f"  {t}: {r['active']} active, {n_bg} background")
+        if n_bg:
+            print(f"    background: {', '.join(r['background'][:10])}{' ...' if n_bg > 10 else ''}")
 
 
 if __name__ == "__main__":

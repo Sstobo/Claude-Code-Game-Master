@@ -6,8 +6,10 @@ sources:
   - { resource: /tools/gm-extract.sh }
   - { resource: /tools/gm-search.sh }
   - { resource: /lib/minor_stubs.py }
+  - { resource: /lib/extraction_cap.py }
+  - { resource: /lib/entity_enhancer.py }
   - { resource: /.claude/commands/import.md }
-generated: { by: claude-opus-5, at: 2026-08-13T19:18:50Z }
+generated: { by: claude-opus-5, at: 2026-08-13T22:05:54Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
@@ -96,7 +98,8 @@ See [the RAG stack](modules/rag-stack.md).
 | An entity literally named `npcs` | same bug, other direction |
 | Entities present but bland | enhancement didn't ground — check `context_name_match_fraction`, then re-run `gm-enhance.sh batch` |
 | No source passages during play | RAG deps missing, or the campaign was never vectorized |
-| Main cast missing after `cap` | they weren't referenced by any main plot; raise the limit rather than hand-editing |
+| Main cast missing after `cap` | `cap` deletes nothing — they are still in `npcs.json`, tiered `background: true` because no plot referenced them. Promote the ones you want active (`gm-npc.sh promote` clears the flag for party members) or re-run `cap` with a higher limit; never hand-edit the file to add them back |
+| A background entity reads bland in play | `gm-enhance.sh batch` skips background entities on purpose (a RAG round-trip each). Ground it when you promote it: `gm-enhance.sh query "<name>"` then `apply "<name>"` |
 | Agents produced nothing | `validate` fails and names each bad type — re-run those agents alone |
 
 ## Notes that are easy to get wrong
