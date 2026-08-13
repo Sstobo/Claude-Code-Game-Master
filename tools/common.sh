@@ -70,7 +70,9 @@ mkdir -p "$WORLD_STATE_BASE"
 mkdir -p "$CAMPAIGNS_DIR"
 
 # Set paths dynamically based on active campaign
-WORLD_STATE_DIR=$(get_campaign_dir)
+# ponytail: `|| true` so a no-active-campaign return 1 doesn't kill `set -e` callers
+# during first-run bootstrap (import/create run before any campaign exists).
+WORLD_STATE_DIR=$(get_campaign_dir) || true
 
 # Only set file paths if we have an active campaign
 if [ -n "$WORLD_STATE_DIR" ]; then
