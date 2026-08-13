@@ -1,13 +1,13 @@
 ---
 type: Gotcha
 title: Two validate_character functions, and one stale test
-description: The same function name means two different contracts, and a red test in the suite is the test's fault, not the code's.
+description: The same function name means two different contracts — and asserting the open shape against the flat file has already produced one long-lived red test.
 sources:
   - { resource: /lib/character_schema.py }
   - { resource: /lib/schemas.py }
   - { resource: /lib/identity_onboarding.py }
   - { resource: /tests/test_identity_onboarding.py }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:28:15Z }
 ---
 
 # Two `validate_character` functions, and one stale test
@@ -25,24 +25,18 @@ flattened, and is the only one that can check attributes against a World Kit's s
 schema. Importing "the" validator without checking which module it came from is a coin
 flip.
 
-## The failing test asserts a shape that stopped being written
+## The stale test this caused (fixed 2026-08-13)
 
-`tests/test_identity_onboarding.py::test_build_dispatches_and_saves` fails with
-`KeyError: 'identity'`. It saves a character, reloads `character.json`, and asserts
-`reloaded["identity"]["name"]` (`tests/test_identity_onboarding.py:53-54`).
+`test_build_dispatches_and_saves` failed with `KeyError: 'identity'` from 2026-06-07
+(filed in commit `9ef38ba`) until 2026-08-13: it saved a character, reloaded
+`character.json`, and asserted the **open** shape (`reloaded["identity"]["name"]`) on a
+file that `save_character` persists flat (`lib/identity_onboarding.py:83-89` states this
+in its own docstring; flat has been canonical since `efd1cb7`). The code was right and the
+test was stale — the fix asserted the flat keys. The confusion pattern survives the fix,
+which is why this gotcha does: `build()` returns open, disk holds flat, and asserting one
+shape against the other's home always looks like a code bug first.
 
-**The code is right and the test is stale.** `IdentityOnboarding.build` deliberately works
-in the open shape — that is the internal builder shape — and `save_character` persists
-`to_flat(char)`, which its own docstring states (`lib/identity_onboarding.py:83-89`). The
-flat shape has been canonical since commit `efd1cb7`. The other tests in the file assert
-against `build()`'s return value, not the reloaded file, and pass.
-
-The fix is to assert `reloaded["name"] == "Kira"`. Filed as a `p2` bug in commit `9ef38ba`
-(`tickets/needs-triage/identity-onboarding-schema-drift.md`); still open as of
-2026-08-13, and still the only known red test.
-
-Consequence for anyone running the suite: **one pre-existing failure is expected.** See
-[testing](../playbooks/testing.md).
+The suite is fully green as of 2026-08-13. See [testing](../playbooks/testing.md).
 
 ## Related
 

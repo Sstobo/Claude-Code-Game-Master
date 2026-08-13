@@ -1,11 +1,11 @@
 ---
 type: Playbook
 title: Running the tests
-description: How to run the suite, why one failure and one skip are expected, and the hermetic-campaign fixture every state test depends on.
+description: How to run the suite, its expected green-with-one-skip state, and the hermetic-campaign fixture every state test depends on.
 sources:
   - { resource: /tests/conftest.py }
   - { resource: /pyproject.toml }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:28:15Z }
 ---
 
 # Running the tests
@@ -20,20 +20,15 @@ is not installed by default. `pyproject.toml` sets `testpaths = ["tests"]`,
 `pythonpath = ["."]`, and `addopts = "-q"`, so tests import `lib.*` without any path
 juggling and the default output is quiet.
 
-## Two non-failures to expect
+## Expected state: green, one dependency-gated skip
 
-Measured 2026-08-13 at `58c7cd4`: **245 passed, 1 failed, 1 skipped.**
+As of 2026-08-13 the suite passes fully. **Any failure means something real broke.**
+(A stale identity-onboarding assertion was red from 2026-06-07 to 2026-08-13 — see
+[the schema-drift gotcha](../gotchas/identity-onboarding-schema-drift.md).)
 
-- **The failure is known and the test is wrong**, not the code:
-  `test_identity_onboarding.py::test_build_dispatches_and_saves` asserts a nested
-  `identity` key on a file that is now persisted flat. Filed as a `p2` in commit `9ef38ba`.
-  See [two validate_character functions](../gotchas/identity-onboarding-schema-drift.md).
-- **The skip is dependency-gated:** `test_creation_grounding.py:127` skips without
-  `sentence_transformers`. Install the `rag` extra to run it —
-  `uv run --extra dev --extra rag pytest`.
-
-Re-derive the counts rather than trusting them; a second failure means something real
-broke.
+The one skip is dependency-gated: `test_creation_grounding.py:127` skips without
+`sentence_transformers`. Install the `rag` extra to run it —
+`uv run --extra dev --extra rag pytest`.
 
 ## Everything state-related runs against a hermetic campaign copy
 

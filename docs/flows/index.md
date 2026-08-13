@@ -6,7 +6,7 @@
 
 * [A play turn](play-turn.md) - What happens between the player typing an action and reading the result — the loop, the routing table, and the three things that fire without being asked.
 * [Authoring an original world](author-a-world.md) - /new-game's five phases — and the two mechanisms that stop a generated world from collapsing into generic fantasy.
-* [Illustrating a scene](scene-illustration.md) - Beat to picture — the enablement gate, the background agent, the two auto-injections that keep a campaign on-model, and the one that quietly doesn't fire.
+* [Illustrating a scene](scene-illustration.md) - Beat to picture — the enablement gate, the background agent, and the two auto-injections that keep a campaign on-model.
 * [Importing a book](import-a-book.md) - How a PDF becomes a playable campaign — parallel extraction, then a strictly-ordered sequence of repair and seeding passes.
 * [Onboarding and the death hand-off](onboarding-and-death.md) - How a player enters a world in one question, and how the story continues after the PC dies rather than ending.
 

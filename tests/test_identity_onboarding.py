@@ -50,5 +50,8 @@ def test_build_dispatches_and_saves(dcc_world):
     onb = IdentityOnboarding(dcc_world)
     char = onb.build("original", name="Kira", concept="a pilot")
     assert onb.save_character(char) is True
+    # character.json is persisted in the canonical FLAT shape (save_character
+    # runs to_flat), so the reloaded sheet has top-level keys, not identity.*.
     reloaded = onb.json_ops.load_json("character.json")
-    assert reloaded["identity"]["name"] == "Kira"
+    assert reloaded["name"] == "Kira"
+    assert reloaded["concept"] == "a pilot"

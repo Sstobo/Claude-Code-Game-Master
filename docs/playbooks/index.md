@@ -5,5 +5,5 @@
 ## Playbook
 
 * [Install and setup](install-and-setup.md) - Getting from a clean machine to a playable harness, which dependencies are actually optional, and every environment variable the code reads.
-* [Running the tests](testing.md) - How to run the suite, why one failure and one skip are expected, and the hermetic-campaign fixture every state test depends on.
+* [Running the tests](testing.md) - How to run the suite, its expected green-with-one-skip state, and the hermetic-campaign fixture every state test depends on.
 
