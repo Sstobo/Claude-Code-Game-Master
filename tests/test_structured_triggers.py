@@ -49,3 +49,18 @@ def test_fixture_exercises_all_trigger_types_and_a_legacy(dcc_world):
 def test_existing_consequences_round_trip(dcc_world):
     pending = ConsequenceManager(dcc_world).check_pending()
     assert all("consequence" in c and "trigger" in c for c in pending)
+
+
+def test_expiry_matches_whole_words_not_substrings(dcc_world):
+    # Regression: --expiry "dawn" must not self-archive at a place named Dawnhollow.
+    cm = ConsequenceManager(dcc_world)
+    cid = cm.add_consequence("ambush at first light", "when dawn comes",
+                             trigger_type="on_time", match="dawn", expiry="dawn")
+    hollow = {"location": "Dawnhollow", "time": "midnight", "present_npcs": [], "events": []}
+    assert not cm._is_expired({"expiry": "dawn"}, hollow)
+    still_active = [c["id"] for c in cm.check_pending(hollow, limit=10)] + \
+                   [c["id"] for c in cm.check_pending()]
+    assert cid in still_active
+
+    at_dawn = {"location": "camp", "time": "dawn", "present_npcs": [], "events": []}
+    assert cm._is_expired({"expiry": "dawn"}, at_dawn)

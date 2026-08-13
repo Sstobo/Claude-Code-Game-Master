@@ -135,7 +135,11 @@ class ConsequenceManager(EntityManager):
         expiry = consequence.get('expiry')
         if not expiry:
             return False
-        return str(expiry).lower() in self._world_text(world_state)
+        # Whole-word match, not substring: --expiry "dawn" must not self-archive
+        # the moment the party stands anywhere named "Dawnhollow".
+        import re
+        pattern = r'\b' + re.escape(str(expiry).lower()) + r'\b'
+        return re.search(pattern, self._world_text(world_state)) is not None
 
     def _evaluate_trigger(self, consequence: Dict[str, Any], world_state: Dict[str, Any]):
         """Return (score, reason). score 0 = no fire. Structured = 1.0; fuzzy < 1."""

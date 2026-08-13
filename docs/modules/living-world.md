@@ -8,7 +8,7 @@ sources:
   - { resource: /lib/world_tick.py }
   - { resource: /tools/gm-time.sh }
   - { resource: /tools/gm-session.sh }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:23:00Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -50,11 +50,13 @@ triggers fall back to word-overlap scoring against the whole scene, and need **�
 non-stopword trigger words** present to fire at all. Prefer structured triggers; the fuzzy
 path is a compatibility fallback, not a feature.
 
-**The expiry check is a substring test against the entire scene text**
-(`_is_expired`, `lib/consequence_manager.py:134-138`) — location, time, date, present NPC
-names, and events concatenated. So a consequence with `--expiry "dawn"` silently
-auto-archives the moment the party stands anywhere named *Dawnhollow*. Expiry values want
-to be distinctive strings, not common words.
+**The expiry check is a whole-word match against the entire scene text** (`_is_expired`) —
+location, time, date, present NPC names, and events concatenated. It was a bare substring
+test until 2026-08-13, when `--expiry "dawn"` could self-archive at a place named
+*Dawnhollow*; word boundaries now prevent that (regression test in
+`tests/test_structured_triggers.py`). The scene-wide scope remains, though: an expiry word
+that legitimately appears in any field — an NPC named "Dawn" walking in — still ages the
+consequence out, so distinctive expiry strings are still the safer choice.
 
 ## Provenance and the one-beat undo
 

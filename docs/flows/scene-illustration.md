@@ -1,7 +1,7 @@
 ---
 type: Flow
 title: Illustrating a scene
-description: Beat to picture — the enablement gate, the background agent, the two auto-injections that keep a campaign on-model, and the one that quietly doesn't fire.
+description: Beat to picture — the enablement gate, the background agent, and the two auto-injections that keep a campaign on-model.
 sources:
   - { resource: /lib/image_gen.py }
   - { resource: /lib/visual_appearance.py }
