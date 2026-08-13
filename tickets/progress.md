@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-13T19:18:13Z  note: bootstrap late review verdict folded into test-fixture-isolation  [fable-sott1]
+- 2026-08-13T19:11:21Z  in-review: extraction-output-verification — verified, review dispatched  [fable-sott1]
+- 2026-08-13T19:10:56Z  in-review: reset-scope-completeness — verified, review dispatched  [fable-sott1]
 - 2026-08-13T18:54:01Z  done: import-extraction-repair — extraction path repaired end-to-end  [fable-sott1]
 - 2026-08-13T18:51:32Z  done: character-save-kit-vitals — kit-honoring save path + first-class vitals  [fable-sott1]
 - 2026-08-13T18:44:44Z  done: plot-type-enum-unify — canonical enum, threat/mystery preserved  [fable-sott1]

@@ -98,3 +98,14 @@ out of this ticket's file scope).
 - 2026-08-13T18:04:14Z  doc-grounding confirmed  [fable-sott1]
 - 2026-08-13T18:09:18Z  verified → in-review  [fable-sott1]
 - 2026-08-13T18:42:45Z  review approved → done, committed  [fable-sott1]
+
+### 2026-08-13T19:18:13Z — late review verdict [review-bootstrap]
+The reviewer's formal verdict (needs-changes) arrived AFTER commit cbf1f89 —
+the commit was made on its earlier notification output, which showed only a
+low in-scope finding. The late findings are all test-hygiene in
+tests/test_bootstrap_no_campaign.py (non-atomic save/restore of
+active-campaign.txt, restore-assertion gap, weak output assertions) and are
+folded as concrete acceptance criteria into the test-fixture-isolation
+ticket rather than reopening this one. The reviewer confirmed the common.sh
+guard itself is correct and minimal, all 25 tools print diagnostics with no
+campaign, and the full suite passes.
