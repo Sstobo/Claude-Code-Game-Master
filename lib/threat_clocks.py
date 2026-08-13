@@ -49,6 +49,28 @@ class ThreatClockManager(EntityManager):
         self.json_ops.save_json(self.clocks_file, data)
         return c
 
+    def tick_time_clocks(self, ticks: int = 1) -> Dict[str, Any]:
+        """Advance every advance_on=='time' clock that isn't already full.
+
+        The automatic pressure wire: gm-time.sh calls this after each time
+        update, so declared time-clocks mount on their own. Event clocks
+        (advance_on != 'time') are untouched — the GM advances those by hand.
+        Returns {name: clock} for the clocks that moved.
+        """
+        data = self._load()
+        advanced = {}
+        for name, c in data.items():
+            if c.get("advance_on", "time") != "time":
+                continue
+            cur, mx = int(c.get("current", 0)), int(c.get("max", 1))
+            if cur >= mx:
+                continue
+            c["current"] = min(mx, cur + int(ticks))
+            advanced[name] = c
+        if advanced:
+            self.json_ops.save_json(self.clocks_file, data)
+        return advanced
+
     def remove_clock(self, name: str) -> bool:
         data = self._load()
         if name in data:
@@ -106,6 +128,7 @@ def main():
     p = sub.add_parser("add"); p.add_argument("name"); p.add_argument("segments", type=int)
     p.add_argument("--on", default="time")
     p = sub.add_parser("advance"); p.add_argument("name"); p.add_argument("--ticks", type=int, default=1)
+    p = sub.add_parser("tick-time"); p.add_argument("--ticks", type=int, default=1)
     p = sub.add_parser("remove"); p.add_argument("name")
     sub.add_parser("list")
     sub.add_parser("beats")  # filled clocks = beats due
@@ -124,6 +147,13 @@ def main():
         out = m.add_clock(args.name, args.segments, advance_on=args.on)
     elif args.action == "advance":
         out = m.advance(args.name, args.ticks)
+    elif args.action == "tick-time":
+        out = m.tick_time_clocks(args.ticks)
+        if not json_mode:
+            for n, c in out.items():
+                if c.get("current", 0) >= c.get("max", 1):
+                    print(f"⚠ {n} is FULL — a dramatic beat is due"
+                          + (f": {c['consequence']}" if c.get("consequence") else ""))
     elif args.action == "remove":
         out = {"removed": m.remove_clock(args.name)}
     elif args.action == "beats":

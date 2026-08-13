@@ -51,11 +51,12 @@ class CoarseIndex:
         if self.embedder == "keyword":
             return _keyword_score(query, text)
         # A real embedder is loaded lazily only when configured (kept out of tests).
+        # Falls back to keyword scoring when RAG deps are missing.
         try:
-            from rag.embedder import Embedder  # type: ignore
-            emb = Embedder(self.embedder)
-            return float(emb.similarity(query, text))
-        except Exception:
+            from rag.embedder import LocalEmbedder
+            emb = LocalEmbedder(self.embedder)
+            return float(emb.similarity(emb.embed(query), emb.embed(text)))
+        except ImportError:
             return _keyword_score(query, text)
 
     def query(self, query: str, content_type: str = "literary", top_k: int = 3) -> List[Dict[str, Any]]:

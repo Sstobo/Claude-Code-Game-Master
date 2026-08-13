@@ -9,7 +9,7 @@ sources:
   - { resource: /lib/rag/embedder.py }
   - { resource: /lib/rag/coarse_index.py }
   - { resource: /lib/entity_enhancer.py }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:27:00Z }
 ---
 
 # RAG stack
@@ -38,21 +38,20 @@ degrade rather than fail — see the bare `except` in
 campaign, and a genuinely irrelevant query are indistinguishable from the outside.** Check
 `RAG_AVAILABLE` before concluding a campaign has no material.
 
-## The coarse index's pluggable embedder is dead code
+## The coarse index defaults to keyword scoring, deliberately
 
-`CoarseIndex(embedder=…)` defaults to `"keyword"` — set-intersection word counting,
-no model, no vectors (`lib/rag/coarse_index.py:31-36`). Configuring any other embedder
-does **not** change behaviour:
+`CoarseIndex(embedder=…)` defaults to `"keyword"` — set-intersection word counting, no
+model, no vectors — so building the chapter index never requires loading a heavy model.
+Passing a sentence-transformers model name gets real embedding similarity, falling back to
+keyword scoring only when the RAG deps are missing.
 
-- `_score` imports `Embedder` from `rag.embedder` (`lib/rag/coarse_index.py:55`), but that
-  module defines only `LocalEmbedder`. The import raises.
-- The call is also shaped wrong: `LocalEmbedder.similarity` takes two **embeddings**
-  (`lib/rag/embedder.py:95`), not a query string and a text.
-- Both failures land in a bare `except Exception` that returns the keyword score.
+(Until 2026-08-13 the non-keyword path was dead — it imported a class that didn't exist
+with a call shape that didn't match, and a bare `except Exception` silently returned the
+keyword score for every configuration. If embedder tuning appears to do nothing on an old
+checkout, that is why.)
 
-So chapter finding is keyword-only in every configuration. That is defensible — it is why
-indexing needs no heavy model — but it means tuning the embedder setting is wasted effort
-until the class name and signature are reconciled.
+Note that no caller currently passes a non-keyword embedder — the Loremaster constructs
+`CoarseIndex()` bare — so keyword scoring is still what runs in practice.
 
 ## Query templating is the anti-D&D lever
 

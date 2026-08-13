@@ -66,3 +66,22 @@ def test_clocks_surface_in_session_context(dcc_world):
     ctx = SessionManager(dcc_world).get_full_context()
     assert "THREAT CLOCKS" in ctx
     assert "Floor Collapse" in ctx and "2/4" in ctx
+
+
+def test_tick_time_advances_only_time_clocks(dcc_world):
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Collapse", segments=3, advance_on="time")
+    m.add_clock("Ritual", segments=3, advance_on="event")
+    advanced = m.tick_time_clocks()
+    assert "Collapse" in advanced and "Ritual" not in advanced
+    assert m.get_clocks()["Collapse"]["current"] == 1
+    assert m.get_clocks()["Ritual"]["current"] == 0
+
+
+def test_tick_time_stops_at_full(dcc_world):
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Doom", segments=1, advance_on="time")
+    m.tick_time_clocks()
+    assert m.is_full("Doom")
+    # A full clock is a pending beat, not a re-ticking counter.
+    assert "Doom" not in m.tick_time_clocks()

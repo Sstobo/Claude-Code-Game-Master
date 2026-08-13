@@ -7,7 +7,7 @@ sources:
   - { resource: /tools/gm-session.sh }
   - { resource: /tools/gm-context.sh }
   - { resource: /.claude/settings.json }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:25:55Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -38,8 +38,8 @@ appears in the transcript:
 
 | Trigger | What fires | Where |
 |---|---|---|
-| `gm-session.sh move` | consequence tick for the new scene | `tools/gm-session.sh:112` |
-| `gm-time.sh` | consequence tick (time-based triggers) | `tools/gm-time.sh` |
+| `gm-session.sh move` | consequence tick for the new scene | `tools/gm-session.sh` |
+| `gm-time.sh` | time-clock advance (`threat_clocks.py tick-time`), then consequence tick | `tools/gm-time.sh` |
 | every turn end | `session-autosave.sh` Stop hook → `gm-session.sh save autosave` | `.claude/settings.json` |
 
 So moving the party is never *only* moving the party — it can surface a consequence that

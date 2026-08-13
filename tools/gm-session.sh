@@ -13,6 +13,9 @@ if [ "$#" -lt 1 ]; then
     echo "  move <location>          - Move party to new location"
     echo "  context                  - Full session context (character, party, consequences, rules)"
     echo "  choices [on|off|toggle]  - Toggle the [A]-[E] action menu (no arg: show state)"
+    echo "  world-tick '<json>'      - Persist 1-3 off-screen developments (capped, rollback-able)"
+    echo "  world-tick-rollback      - Undo the most recent world tick"
+    echo "  world-tick-log           - Show world-tick history"
     echo ""
     echo "Save System (JSON snapshots):"
     echo "  save <name>              - Create named save point"
@@ -86,6 +89,22 @@ case "$ACTION" in
         echo ""
         echo "Pending Consequences:"
         bash "$TOOLS_DIR/gm-consequence.sh" check
+        echo ""
+        echo "World tick: optionally advance 1-3 SMALL off-screen developments"
+        echo "  (grounded in plots/RAG) with: gm-session.sh world-tick '<json list>'"
+        ;;
+
+    world-tick)
+        # Persist GM-proposed off-screen developments (capped, logged, rollback-able).
+        $PYTHON_CMD "$LIB_DIR/world_tick.py" apply "$@"
+        ;;
+
+    world-tick-rollback)
+        $PYTHON_CMD "$LIB_DIR/world_tick.py" rollback "$@"
+        ;;
+
+    world-tick-log)
+        $PYTHON_CMD "$LIB_DIR/world_tick.py" history "$@"
         ;;
 
     status)

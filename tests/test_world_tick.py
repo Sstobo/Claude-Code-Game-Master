@@ -45,3 +45,21 @@ def test_tick_is_logged_and_rollbackable(dcc_world):
 
 def test_rollback_without_a_tick_is_safe(dcc_world):
     assert WorldTick(dcc_world).rollback_last() is False
+
+
+def test_cli_apply_and_rollback(dcc_world, monkeypatch):
+    # Smoke the CLI wiring end to end (json envelope, apply -> rollback).
+    import json as _json
+    import subprocess, sys as _sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    def run(*args):
+        return subprocess.run(
+            [_sys.executable, str(root / "lib" / "world_tick.py"), *args, "--json"],
+            capture_output=True, text=True, cwd=str(Path(dcc_world).parent))
+    r = run("apply", _json.dumps([{"text": "a rumor spreads", "trigger": "next visit to town"}]))
+    assert r.returncode == 0, r.stderr
+    out = _json.loads(r.stdout)
+    assert out["ok"] and len(out["data"]["applied"]) == 1
+    r = run("rollback")
+    assert _json.loads(r.stdout)["data"]["rolled_back"] is True

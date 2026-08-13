@@ -6,7 +6,8 @@ sources:
   - { resource: /lib/campaign_memory.py }
   - { resource: /lib/loremaster.py }
   - { resource: /tools/gm-recall.sh }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+  - { resource: /tools/gm-lore.sh }
+generated: { by: claude-fable-5, at: 2026-08-13T14:25:55Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -18,7 +19,7 @@ Two memories, easily confused, with different subjects:
 |---|---|---|
 | Remembers | **what we did** — session summaries + facts | **what the book says** — chapters of the source text |
 | Backed by | keyword overlap over `campaign-memory.json` | the coarse chapter index over the retained book text |
-| Wired | yes — refreshed on every save | **no caller** outside tests |
+| Front door | `gm-recall.sh` | `gm-lore.sh "<location>" [--important]` (wrapper added 2026-08-13; had no caller before that) |
 
 Neither uses embeddings. The vector store is a third, separate thing —
 see [RAG stack](rag-stack.md).
@@ -65,7 +66,8 @@ summary has to generate it.
 
 `Loremaster.__init__` loads the campaign's book text and calls `index.build(text)` every
 time it is constructed (`lib/loremaster.py:29-31`). There is no persisted index, so
-construction cost scales with book size. It reads `current-document.txt` or
+construction cost scales with book size — which is why `gm-lore.sh` is an on-demand call
+for new/important scenes, not something wired into every context load. It reads `current-document.txt` or
 `book-text.txt` from the campaign directory — both are gitignored, so a cloned campaign
 has no book text and every brief comes back with empty chapters.
 

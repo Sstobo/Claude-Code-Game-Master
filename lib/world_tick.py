@@ -75,3 +75,68 @@ class WorldTick:
 
     def history(self) -> List[Dict[str, Any]]:
         return (self.json_ops.load_json(self.log_file) or {}).get("ticks", [])
+
+
+def main():
+    """CLI: the GM proposes developments (a model call in /gm); this persists them.
+
+    apply '<json>'   json = [{"text": "...", "trigger": "...",
+                              "trigger_type": "on_location", "match": "..."}]
+    rollback         undo the most recent tick
+    history          show all ticks
+    """
+    import argparse
+    import json
+    from cli_output import wants_json, strip_json_flag, emit, emit_error
+
+    parser = argparse.ArgumentParser(description="Between-session world tick")
+    sub = parser.add_subparsers(dest="action")
+    p = sub.add_parser("apply"); p.add_argument("developments", help="JSON list of developments")
+    p.add_argument("--cap", type=int, default=3)
+    sub.add_parser("rollback")
+    sub.add_parser("history")
+
+    json_mode = wants_json()
+    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+    if not args.action:
+        parser.print_help(); sys.exit(1)
+
+    wt = WorldTick()
+    if args.action == "apply":
+        try:
+            devs = json.loads(args.developments)
+        except ValueError:
+            sys.exit(emit_error("developments must be a JSON list", json_mode=json_mode))
+        if not isinstance(devs, list):
+            sys.exit(emit_error("developments must be a JSON list", json_mode=json_mode))
+        if json_mode:
+            # add_consequence prints human lines; keep stdout JSON-only.
+            import contextlib
+            import io
+            with contextlib.redirect_stdout(io.StringIO()):
+                applied = wt.apply(devs, cap=args.cap)
+            emit({"applied": applied}, json_mode=True)
+        else:
+            applied = wt.apply(devs, cap=args.cap)
+            for a in applied:
+                print(f"[WORLD TICK] [{a['id']}] {a['text']}")
+            if not applied:
+                print("[WORLD TICK] nothing applied")
+    elif args.action == "rollback":
+        ok = wt.rollback_last()
+        if json_mode:
+            emit({"rolled_back": ok}, json_mode=True)
+        else:
+            print("[WORLD TICK] rolled back last tick" if ok else "[WORLD TICK] nothing to roll back")
+        if not ok:
+            sys.exit(1)
+    else:
+        out = wt.history()
+        if json_mode:
+            emit({"ticks": out}, json_mode=True)
+        else:
+            print(json.dumps(out, indent=2))
+
+
+if __name__ == "__main__":
+    main()

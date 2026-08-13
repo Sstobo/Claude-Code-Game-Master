@@ -51,13 +51,16 @@ pass to subtract.
 the pre-existing stale test filed in `9ef38ba`; the skip is RAG-dependency-gated. Both
 documented in `playbooks/testing.md`.
 
-**Worth acting on** — surfaced while reading, not fixed here (each would be a code change):
+**Worth acting on** — surfaced while reading, not fixed in this pass (each was a code
+change). Status as of the same day, after the fix pass:
 
-- `CoarseIndex`'s non-keyword embedder path is dead — wrong class name *and* wrong call
-  signature, swallowed by a bare `except`. See `modules/rag-stack.md`.
-- `WorldTick` and `Loremaster` have no caller outside tests; threat clocks never advance
-  automatically. See `modules/living-world.md`.
-- The scene-illustrator appearance injection is suppressed whenever the character's name
-  appears in the prompt — the common case. See `flows/scene-illustration.md`.
-- Consequence `expiry` is a substring test against the whole scene text, so a common word
-  auto-archives on an unrelated location name. See `modules/living-world.md`.
+- ~~The appearance injection was suppressed whenever the character's name appeared in the
+  prompt~~ — fixed 2026-08-13 (`inject_appearances`, `tests/test_image_prompt_injection.py`).
+- ~~Consequence `expiry` was a substring test~~ — fixed 2026-08-13 (whole-word match).
+- ~~Threat clocks never advanced automatically~~ — fixed 2026-08-13: `gm-time.sh` ticks
+  time-clocks; `gm-clock.sh` wrapper added.
+- ~~`WorldTick` and `Loremaster` had no caller~~ — wired 2026-08-13:
+  `gm-session.sh world-tick` / `gm-lore.sh`.
+- ~~`CoarseIndex`'s non-keyword embedder path was dead~~ — fixed 2026-08-13: correct class
+  (`LocalEmbedder`), correct embed-then-similarity call, fallback narrowed to
+  `ImportError`. Keyword remains the default and the only configuration any caller uses.
