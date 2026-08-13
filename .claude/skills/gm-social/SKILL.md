@@ -26,7 +26,13 @@ Modifiers: unreasonable request +5 DC; good rapport -2 DC.
 `bash tools/gm-npc.sh update "[name]" "[what happened]"` and `bash tools/gm-npc.sh mood "[name]" "[new mood]"` — reactions compound across sessions.
 
 ## 5. Consequences
-Positive (NPC helps later) / negative (NPC hinders) → `bash tools/gm-consequence.sh add "[event]" "[trigger]" [--trigger-type on_npc --match "[name]"]`.
+Positive (NPC helps later) / negative (NPC hinders) → `bash tools/gm-consequence.sh add "[event]" "[trigger]" [--trigger-type on_npc --match "[name]"]`. **Mandatory** whenever the interaction leaves ongoing fallout — a failed ask that changes how this NPC treats you later is exactly that.
+
+## Failure — the ask is DENIED and it costs (see `gm-skills → Failure consequences`)
+Decide before rolling what refusal COSTS (never tell the player). On a failed social check:
+- **The ask does not happen.** Don't refund the stake by ending on a softer re-ask that costs nothing. If the NPC leaves a door open, that's escalation the fiction has to price — new leverage, new information, or something the player gives up.
+- **Whatever was on the table is spent.** If the player was bargaining for lives, cargo, passage, or mercy, the failure is where that thing is lost — not deferred. The NPC responds from their own goals and power; sometimes that's ugly.
+- **Persist the shift** so refusals compound like wins do: `bash tools/gm-npc.sh mood "[name]" "[new mood]"` + `gm-npc.sh set-inner` (goal/attitude), and `gm-npc.sh update "[name]" "[what happened]"`.
 
 ## Reward a social win (award spectacle XP)
 A real social victory — a hard persuasion landed, a daring bluff, turning a hostile NPC, talking your way past a threat — EARNS progress like a kill. Persist it before the payoff: `bash tools/gm-player.sh award --tier minor|major|legendary --reason "..."` (kit-aware, level-scaled, co-awards followers in DCC). See `gm-craft → Reward the spectacle`.

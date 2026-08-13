@@ -7,14 +7,14 @@ priority: p1
 lane: agent
 parentPrd: state-of-the-table
 blockedBy: []
-claimedBy: null
-claimedAt: null
+claimedBy: fable-sott1
+claimedAt: 2026-08-13T21:38:35Z
 changedFiles: []
 resolution: null
 reviewRounds: null
 implementer: null
 createdAt: 2026-08-13T21:30:00Z
-updatedAt: 2026-08-13T21:30:00Z
+updatedAt: 2026-08-13T21:38:35Z
 ---
 
 ## Parent
@@ -82,3 +82,5 @@ None.
 ## History
 
 - 2026-08-13T21:30:00Z  created → ready (Trust the Agent review; supersedes extraction-cap-importance)  [fable-sott1]
+- 2026-08-13T21:38:35Z  claimed  [fable-sott1]
+- 2026-08-13T21:40:06Z  doc-grounding confirmed  [fable-sott1]

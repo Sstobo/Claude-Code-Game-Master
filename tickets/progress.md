@@ -1,6 +1,8 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-13T21:44:47Z  done: skill-guidance-pass — doctrine adopted + softened  [fable-sott1]
+- 2026-08-13T21:40:48Z  in-review: skill-guidance-pass — verified, review dispatched  [fable-sott1]
 - 2026-08-13T21:38:24Z  done: gm-extract-silent-cat — loud failures, legacy resolve, traversal closed  [fable-sott1]
 - 2026-08-13T21:37:30Z  unblocked: skill-guidance-pass — adopt+soften per user decision  [fable-sott1]
 - 2026-08-13T21:31:56Z  blocked: skill-guidance-pass — collision with live GM session's uncommitted failure-doctrine edits  [fable-sott1]
