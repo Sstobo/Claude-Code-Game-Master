@@ -72,6 +72,19 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/player_manager.py" hp "$NAME" "$AMT" "$@"
         ;;
 
+    "vital")
+        if [ -z "$1" ]; then
+            echo "Usage: gm-player.sh vital <vital_name> [<+/-amount> | set <value>]"
+            echo "Example: gm-player.sh vital vigor -2      (spend 2 vigor)"
+            echo "Example: gm-player.sh vital corruption +1 (gain 1 corruption)"
+            echo "Example: gm-player.sh vital vigor set 5   (set vigor to 5)"
+            echo "Example: gm-player.sh vital corruption    (show current)"
+            echo "Vitals are whatever the World Kit declares (ruleset.json stat_schema.vitals)."
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" vital "$@"
+        ;;
+
     "get")
         if [ -z "$1" ]; then
             echo "Usage: gm-player.sh get <character_name>"
@@ -181,6 +194,7 @@ case "$ACTION" in
         echo "  xp <name> +<amount>          - Award XP to character"
         echo "  award [name] --tier T        - Spectacle XP for a clever/effective/unique/punishing beat (T=minor|major|legendary; --reason \"...\"; co-awards followers)"
         echo "  hp <name> <+/-amount>        - Modify character HP"
+        echo "  vital <vital> <+/-N|set N>   - Read/change a kit vital (vigor, corruption, ...)"
         echo "  kill <name> [--cause ...]    - Mark PC dead (then run Death Protocol)"
         echo "  become <party_member>        - Take over a party member as the active PC"
         echo "  gold <name> [+/-amount]      - Modify or show character gold"

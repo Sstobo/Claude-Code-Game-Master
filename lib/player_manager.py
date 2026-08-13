@@ -213,6 +213,7 @@ class PlayerManager(EntityManager):
         hp = char.get('hp', {})
         gold = char.get('gold', 0)
         summary = f"{char.get('name', name)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
+        summary += self._vitals_summary(char)
         status = char.get('status')
         if status in ('dying', 'dead'):
             summary += f" | {status.upper()}"
@@ -233,6 +234,7 @@ class PlayerManager(EntityManager):
                 gold = char.get('gold', 0)
                 summaries.append(
                     f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
+                    + self._vitals_summary(char)
                 )
             return summaries
 
@@ -499,6 +501,104 @@ class PlayerManager(EntityManager):
             'unconscious': new_hp == 0,
             'bloodied': 0 < new_hp <= max_hp // 4,
             'status': char.get('status', 'alive'),
+        }
+
+    def _kit_vitals(self) -> List[str]:
+        """Vital tracks the active World Kit declares — 'hp' plus whatever else the
+        world runs on (vigor, corruption, water, heat). Read straight off
+        ruleset.json like _xp_thresholds, so a manager pointed at any campaign
+        directory reports that campaign's kit.
+        """
+        ruleset = self.json_ops.load_json("ruleset.json") or {}
+        return (ruleset.get("stat_schema", {}) or {}).get("vitals", []) or []
+
+    @staticmethod
+    def _read_vital(char: Dict, vital: str):
+        """(current, max) for a vital. max is None for plain-number tracks, and an
+        undeclared-but-untracked vital reads as 0 rather than erroring."""
+        raw = char.get(vital)
+        if isinstance(raw, dict):
+            return raw.get('current', 0), raw.get('max')
+        if isinstance(raw, (int, float)):
+            return raw, None
+        return 0, None
+
+    def _vitals_summary(self, char: Dict) -> str:
+        """' | Vigor: 3/5 | Corruption: 2' for the kit vitals present on the sheet."""
+        parts = []
+        for vital in self._kit_vitals():
+            if vital == 'hp' or vital not in char:
+                continue
+            current, maximum = self._read_vital(char, vital)
+            value = f"{current}/{maximum}" if maximum is not None else f"{current}"
+            parts.append(f"{vital.capitalize()}: {value}")
+        return f" | {' | '.join(parts)}" if parts else ""
+
+    def modify_vital(self, name: str, vital: str, amount: Optional[int] = None,
+                     set_value: Optional[int] = None) -> Dict[str, Any]:
+        """Read or change any vital the active World Kit declares.
+
+        `hp` keeps its dedicated path (dying gate, max clamp) — a vital call for it
+        delegates to modify_hp. Other tracks keep whatever shape the sheet stores:
+        a {current, max} dict stays a dict (and clamps to max), a plain number
+        stays a plain number. A vital the kit never declared is refused.
+        """
+        declared = self._kit_vitals()
+        if vital not in declared:
+            print(f"[ERROR] '{vital}' is not a vital in this world. "
+                  f"Declared: {', '.join(declared) if declared else '(none)'}")
+            return {'success': False, 'error': f"unknown vital: {vital}"}
+
+        char = self._load_character(name)
+        if not char:
+            print(f"[ERROR] Character '{name}' not found")
+            return {'success': False}
+
+        char_name = char.get('name', name)
+        current, maximum = self._read_vital(char, vital)
+
+        if amount is None and set_value is None:
+            value = f"{current}/{maximum}" if maximum is not None else f"{current}"
+            print(f"{char_name} - {vital}: {value}")
+            return {'success': True, 'name': char_name, 'vital': vital,
+                    'current': current, 'max': maximum}
+
+        if vital == 'hp':
+            delta = (set_value - current) if set_value is not None else amount
+            result = self.modify_hp(char_name, delta)
+            if result.get('success'):
+                # One verb, one response shape: every vital result carries
+                # vital/current/max, hp's own keys included.
+                result.update({'vital': 'hp', 'previous': current,
+                               'current': result['current_hp'], 'max': result['max_hp']})
+            return result
+
+        new_value = set_value if set_value is not None else current + amount
+        new_value = max(0, new_value)
+        if maximum is not None:
+            new_value = min(new_value, maximum)
+
+        if isinstance(char.get(vital), dict):
+            char[vital]['current'] = new_value
+        else:
+            char[vital] = new_value
+
+        # Save under the resolved name: `name` is None on every CLI call, and the
+        # legacy characters/<id>.json layout needs a real name to build the path.
+        if not self._save_character(char_name, char):
+            return {'success': False}
+
+        shown = f"{new_value}/{maximum}" if maximum is not None else f"{new_value}"
+        print(f"VITAL {char_name} {vital}: {current} -> {new_value}")
+        print(f"{vital.capitalize()}: {shown}")
+
+        return {
+            'success': True,
+            'name': char_name,
+            'vital': vital,
+            'previous': current,
+            'current': new_value,
+            'max': maximum,
         }
 
     def kill_character(self, name: str, cause: Optional[str] = None) -> Dict[str, Any]:
@@ -859,6 +959,18 @@ class PlayerManager(EntityManager):
             return {'success': False}
 
 
+def _parse_vital_change(args):
+    """(amount, set_value) for `vital <name> [<+/-N> | set N]`. Both None = read only.
+    Raises ValueError on a malformed amount."""
+    if args.amount is None:
+        return None, None
+    if args.amount.lower() == 'set':
+        if args.value is None:
+            raise ValueError("set requires a value")
+        return None, int(args.value)
+    return int(args.amount.lstrip('+')), None
+
+
 def main():
     """CLI interface for player management"""
     import argparse
@@ -896,6 +1008,12 @@ def main():
     hp_parser = subparsers.add_parser('hp', help='Modify character HP')
     hp_parser.add_argument('name', help='Character name')
     hp_parser.add_argument('amount', help='HP change (+5 to heal, -3 for damage)')
+
+    # Modify any vital the active World Kit declares (vigor, corruption, ...)
+    vital_parser = subparsers.add_parser('vital', help="Read or change a kit vital on the active PC")
+    vital_parser.add_argument('vital', help='Vital name as declared in ruleset.json stat_schema.vitals')
+    vital_parser.add_argument('amount', nargs='?', help='+N / -N to adjust, or the literal "set"')
+    vital_parser.add_argument('value', nargs='?', help='New value (only with "set")')
 
     # Kill character (death state)
     kill_parser = subparsers.add_parser('kill', help='Mark character dead (status + HP 0 + cause)')
@@ -973,6 +1091,21 @@ def main():
             emit(result, json_mode=True)
         else:
             sys.exit(emit_error(result.get('error', 'hp update failed'), json_mode=True))
+        return
+    if json_mode and args.action == 'vital':
+        import contextlib
+        import io
+        try:
+            amount, set_value = _parse_vital_change(args)
+        except ValueError:
+            sys.exit(emit_error(f"invalid vital amount: {args.amount} {args.value or ''}".strip(),
+                                json_mode=True))
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = manager.modify_vital(None, args.vital, amount, set_value)
+        if result.get('success'):
+            emit(result, json_mode=True)
+        else:
+            sys.exit(emit_error(result.get('error', 'vital update failed'), json_mode=True))
         return
     if json_mode and args.action in ('kill', 'become'):
         import contextlib
@@ -1055,6 +1188,16 @@ def main():
             sys.exit(1)
 
         result = manager.modify_hp(args.name, amount)
+        if not result.get('success'):
+            sys.exit(1)
+
+    elif args.action == 'vital':
+        try:
+            amount, set_value = _parse_vital_change(args)
+        except ValueError:
+            print(f"[ERROR] Invalid vital amount: {args.amount} {args.value or ''}".rstrip())
+            sys.exit(1)
+        result = manager.modify_vital(None, args.vital, amount, set_value)
         if not result.get('success'):
             sys.exit(1)
 

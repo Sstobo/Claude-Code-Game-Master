@@ -74,6 +74,11 @@ class WorldKit:
     def stat_schema(self) -> Dict[str, Any]:
         return self.ruleset.get("stat_schema", {})
 
+    def vitals(self) -> List[str]:
+        """Vital tracks this world declares ('hp' plus kit vitals: vigor,
+        corruption, water, ...). Empty when the kit declares none."""
+        return (self.stat_schema() or {}).get("vitals", []) or []
+
     def resolution_model(self) -> str:
         return (self.ruleset.get("resolution", {}) or {}).get("model", "d20-vs-dc")
 

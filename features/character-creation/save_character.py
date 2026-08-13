@@ -15,6 +15,7 @@ lib_path = Path(__file__).parent.parent.parent / "lib"
 sys.path.insert(0, str(lib_path))
 
 from campaign_manager import CampaignManager
+from world_kit import WorldKit
 import visual_appearance as va_mod
 
 def calculate_modifier(score):
@@ -75,6 +76,23 @@ def calculate_saves(class_name, level, stats):
     
     return saves
 
+def resolve_hp(character_data, stats, is_dnd5e):
+    """HP as {current, max}. An authored HP is preserved exactly — only the
+    dnd5e kit derives it from the class hit die + CON formula."""
+    authored = character_data.get('hp')
+    if isinstance(authored, dict):
+        max_hp = authored.get('max', authored.get('current', 0))
+        return {"current": authored.get('current', max_hp), "max": max_hp}
+    if isinstance(authored, (int, float)):
+        return {"current": authored, "max": authored}
+    if is_dnd5e:
+        rolled = calculate_hp(character_data['class'], character_data['level'],
+                              calculate_modifier(stats.get('con', 10)))
+        return {"current": rolled, "max": rolled}
+    # Non-5e kits own their own HP curve; nothing here can guess it.
+    return {"current": 10, "max": 10}
+
+
 def create_character_id(name):
     """Convert character name to file-safe ID"""
     return name.lower().replace(' ', '-').replace("'", '').replace('"', '')
@@ -82,17 +100,23 @@ def create_character_id(name):
 def save_character(character_data):
     """Save character to campaign's character.json file"""
 
-    # Validate required fields
-    required_fields = ['name', 'race', 'class', 'level', 'stats']
+    # Validate required fields. `attributes` is the World Kit's stat_schema name;
+    # `stats` is the legacy alias (and the canonical flat key we persist).
+    required_fields = ['name', 'race', 'class', 'level']
     for field in required_fields:
         if field not in character_data:
             return {"error": f"Missing required field: {field}"}
+    stats = character_data.get('attributes', character_data.get('stats'))
+    if stats is None:
+        return {"error": "Missing required field: attributes (legacy alias: stats)"}
 
     # Generate character ID
     char_id = create_character_id(character_data['name'])
 
-    # Calculate derived values
-    con_modifier = calculate_modifier(character_data['stats']['con'])
+    # The active kit decides which derivations are legitimate. 5e hit dice and
+    # saving throws belong to dnd5e; every other world declares its own.
+    kit = WorldKit()
+    is_dnd5e = kit.kit() == 'dnd5e'
 
     # Build complete character object
     character = {
@@ -101,13 +125,9 @@ def save_character(character_data):
         "race": character_data['race'],
         "class": character_data['class'],
         "level": character_data['level'],
-        "hp": {
-            "current": calculate_hp(character_data['class'], character_data['level'], con_modifier),
-            "max": calculate_hp(character_data['class'], character_data['level'], con_modifier)
-        },
+        "hp": resolve_hp(character_data, stats, is_dnd5e),
         "ac": character_data.get('ac', 10),  # Default AC, can be overridden
-        "stats": character_data['stats'],
-        "saves": calculate_saves(character_data['class'], character_data['level'], character_data['stats']),
+        "stats": stats,
         "skills": character_data.get('skills', {}),
         "equipment": character_data.get('equipment', []),
         "features": character_data.get('features', []),
@@ -123,6 +143,18 @@ def save_character(character_data):
         # Canonical look-of-the-character for consistent image generation.
         "visual_appearance": va_mod.normalize(character_data.get('visual_appearance'))
     }
+
+    # 5e saving throws only exist in a 5e world; elsewhere keep whatever was authored.
+    if is_dnd5e:
+        character['saves'] = calculate_saves(character_data['class'], character_data['level'], stats)
+    elif 'saves' in character_data:
+        character['saves'] = character_data['saves']
+
+    # Kit vitals beyond hp (vigor, corruption, water, ...) live top-level on the
+    # flat sheet — carry through whatever the kit declares and the author supplied.
+    for vital in kit.vitals():
+        if vital != 'hp' and vital in character_data:
+            character[vital] = character_data[vital]
 
     # Get the active campaign directory
     campaign_mgr = CampaignManager()

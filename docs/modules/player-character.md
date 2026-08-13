@@ -5,7 +5,8 @@ description: Why the sheet has two shapes, which one is canonical, and how XP, d
 sources:
   - { resource: /lib/character_schema.py }
   - { resource: /lib/player_manager.py }
-generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
+  - { resource: /features/character-creation/save_character.py }
+generated: { by: claude-opus-5, at: 2026-08-13T18:47:33Z }
 ---
 
 # The player character sheet
@@ -27,6 +28,30 @@ back to the top level on the way in. `stats` is an open dict, so "flat" does not
 converts an open-schema file and **writes it back immediately**. So loading a legacy
 character mutates it on disk as a side effect — expected, but surprising the first time a
 read-only operation dirties the campaign.
+
+## Kit vitals are tracked, not just carried
+
+Surviving the round-trip is the floor, not the ceiling. Any vital the active kit declares
+in `ruleset.json` → `stat_schema.vitals` is readable and writable through
+`modify_vital` (`lib/player_manager.py`) and `gm-player.sh vital <vital> <±N|set N>` — the
+argument is the vital's name, not a character's, unlike every sibling verb — and appears in
+`show` output. The declaration is the authority: a vital the kit never declared is refused
+rather than silently created, so a typo does not quietly grow a new track.
+
+Two shapes are honored because sheets use both — a `{current, max}` dict clamps to its max
+and stays a dict, a plain number stays a plain number. `hp` is declared like any other
+vital but keeps its dedicated path: a `vital hp` call delegates to `modify_hp`, so the
+dying gate described under [death](#death-is-a-state-not-a-deletion) still fires. That
+delegated result is re-keyed to `vital`/`previous`/`current`/`max` (keeping `modify_hp`'s
+own keys) so one verb never returns two response shapes.
+
+`save_character.py` is kit-aware at the same boundary. It takes the kit's own stat key
+`attributes` (`stats` remains a legacy alias) and derives HP from the class hit die + CON
+and writes a 5e `saves` block **only** when the active kit is `dnd5e`. An authored HP is
+preserved verbatim in **every** kit, `dnd5e` included — authoring beats deriving, so a
+rolled or hand-tuned sheet is never silently recomputed. Declared kit vitals supplied at
+creation are carried onto the sheet. See [the schema reference](../schema-reference.md) for
+where the declaration lives.
 
 ## One validator: `schemas.validate_character`
 

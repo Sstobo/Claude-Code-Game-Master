@@ -73,3 +73,13 @@ kit-block-in-context, executable-world-kit, identity-onboarding-wiring
 ## History
 
 - 2026-08-13T15:47:00Z  created → ready  [team-lead]
+
+## Triage note (2026-08-13, fable-sott1, from review-vitals-2)
+
+- Non-5e save with no authored hp silently persists a neutral 10/10
+  (features/character-creation/save_character.py:~91). Surface it: `warnings`
+  entry in the return payload naming the fallback; test-pinned.
+- .claude/agents/create-character.md's example JSON has no `hp` key, so the
+  documented creation path never authors HP in non-5e worlds — add it.
+- Live gap: conan's ruleset.json has no `kit` field → WorldKit.kit() reads
+  'custom'. Coordinate with import-bible-kit-wiring on legacy kit stamping.
