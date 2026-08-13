@@ -8,7 +8,7 @@ sources:
   - { resource: /lib/consequence_manager.py }
   - { resource: /lib/world_kit.py }
   - { resource: /lib/world_bible.py }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
 # World State JSON Schema Reference
@@ -118,6 +118,7 @@ A dictionary keyed by NPC name.
     "enhanced": false,
     "enhanced_at": "ISO timestamp",
     "is_party_member": false,
+    "became_pc": false,
     "character_sheet": null,
 
     "aliases": ["name variants recorded by the integrity gate"],

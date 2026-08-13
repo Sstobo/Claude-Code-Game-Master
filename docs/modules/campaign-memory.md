@@ -7,6 +7,7 @@ sources:
   - { resource: /lib/loremaster.py }
   - { resource: /tools/gm-recall.sh }
 generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
 # Campaign memory and the Loremaster

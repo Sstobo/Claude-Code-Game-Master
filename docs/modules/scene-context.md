@@ -8,6 +8,7 @@ sources:
   - { resource: /lib/search.py }
   - { resource: /tools/gm-context.sh }
 generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
 # Scene context — the two doors

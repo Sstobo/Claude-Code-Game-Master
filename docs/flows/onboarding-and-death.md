@@ -6,7 +6,7 @@ sources:
   - { resource: /lib/identity_onboarding.py }
   - { resource: /lib/player_manager.py }
   - { resource: /CLAUDE.md }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
 # Onboarding and the death hand-off
@@ -58,8 +58,9 @@ ordering exists to prevent.
 `gm-player.sh become "<name>"` (`lib/player_manager.py:542`) does five things in one call:
 resolves the name **alias-aware** (so "Princess Donut" finds "Donut"), flattens the party
 member's `character_sheet` into `character.json`, archives the fallen PC to
-`fallen/<name>-<id>.json`, updates `current_character` on the overview, and **removes the
-promoted NPC from the party** so they aren't tracked twice.
+`fallen/<name>-<id>.json`, updates `current_character` on the overview, and **demotes the
+promoted NPC from the party** (`is_party_member: false`, `became_pc: true`) so they aren't
+tracked twice. The NPC record itself stays — the world still knows who they were.
 
 Its two hard preconditions are worth knowing before the moment arrives, because both fail
 loudly mid-hand-off:

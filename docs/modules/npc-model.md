@@ -6,6 +6,7 @@ sources:
   - { resource: /lib/npc_manager.py }
   - { resource: /lib/npc_stats.py }
 generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
 # The NPC model
