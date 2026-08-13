@@ -68,7 +68,10 @@ Commands:
   list                      List all campaign extractions
   clean [campaign]          Clear extraction directory
   archive [campaign]        Archive extracted/ folder after merge
-  validate [campaign]       Check extraction output files for completeness
+  validate [campaign]       Gate the extraction output: exits non-zero (naming the
+                            type and the reason) when a file is missing, is invalid
+                            JSON, or npcs/locations came back empty. Empty
+                            items/plots only warn. Run BEFORE normalize.
 
 Examples:
   $0 prepare "curse_of_strahd.pdf"
@@ -382,56 +385,69 @@ validate_extraction() {
     echo "================================="
     echo ""
 
-    all_valid=true
-    total_entities=0
+    # This is a GATE: a non-zero exit stops the import before the repair chain
+    # touches anything. Counting runs through the same shape rule normalize uses,
+    # so a list-shaped file (what extraction_schemas.py declares) counts truthfully
+    # instead of reporting EMPTY.
+    $PYTHON_CMD - "$CAMPAIGN_DIR/extracted" "$LIB_DIR" "$campaign_name" <<'PY'
+import json, sys
+from pathlib import Path
 
-    for type in npcs locations items plots; do
-        file="$CAMPAIGN_DIR/extracted/${type}.json"
-        if [ ! -f "$file" ]; then
-            echo "  $type: ❌ MISSING"
-            all_valid=false
-        elif ! $PYTHON_CMD -c "import json; json.load(open('$file'))" 2>/dev/null; then
-            echo "  $type: ❌ INVALID JSON"
-            all_valid=false
-        else
-            # Get count from appropriate key based on type
-            case "$type" in
-                npcs) key="npcs" ;;
-                locations) key="locations" ;;
-                items) key="items" ;;
-                plots) key="plot_hooks" ;;
-            esac
-            count=$($PYTHON_CMD -c "import json; d=json.load(open('$file')); print(len(d.get('$key', d)))" 2>/dev/null || echo "0")
-            if [ "$count" -eq 0 ]; then
-                echo "  $type: ⚠️  EMPTY (0 entities)"
-            else
-                echo "  $type: ✓ $count entities"
-                total_entities=$((total_entities + count))
-            fi
-        fi
-    done
+extracted, lib_dir, campaign_name = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+sys.path.insert(0, lib_dir)
+from minor_stubs import EXTRACTION_TYPES, REQUIRED_NONEMPTY, entry_count, normalize_entity_shape
 
-    echo ""
-    if [ "$all_valid" = true ]; then
-        if [ "$total_entities" -eq 0 ]; then
-            echo "⚠️  All files valid but EMPTY. Extraction may have failed silently."
-            exit 1
-        else
-            echo "✓ All files valid. Total: $total_entities entities."
-            echo "Ready for merge: bash tools/gm-extract.sh merge \"$campaign_name\""
-        fi
-    else
-        echo "❌ Some files missing or invalid."
-        echo "Re-run extraction for failed types or use fallback extraction."
-        exit 1
-    fi
+failures, total = [], 0
+for type_name in EXTRACTION_TYPES:
+    path = extracted / f"{type_name}.json"
+    if not path.exists():
+        print(f"  {type_name}: MISSING ({path})")
+        failures.append(f"{type_name}: file missing")
+        continue
+    try:
+        data = json.loads(path.read_text())
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        print(f"  {type_name}: INVALID JSON ({e})")
+        failures.append(f"{type_name}: invalid JSON")
+        continue
+    try:
+        # A malformed entity is a named failure, never a bare traceback.
+        entities, entries = normalize_entity_shape(data, type_name), entry_count(data, type_name)
+    except ValueError as e:
+        print(f"  INVALID ENTITY - {e}")
+        failures.append(str(e))
+        continue
+    count = len(entities)
+    if count and entries != count:
+        # Same-name entities collapse onto one key; say so rather than lose them silently.
+        print(f"  {type_name}: {entries} entries, {count} unique names")
+        total += count
+    elif count:
+        print(f"  {type_name}: {count} entities")
+        total += count
+    elif type_name in REQUIRED_NONEMPTY:
+        print(f"  {type_name}: EMPTY (0 entities)")
+        failures.append(f"{type_name}: 0 entities")
+    else:
+        # An items- or plots-less book is unusual, not broken. Warn, don't fail.
+        print(f"  {type_name}: WARNING - 0 entities (optional type)")
+
+print("")
+if failures:
+    print("EXTRACTION FAILED: " + "; ".join(failures))
+    print("Re-run the extractor agent for each failed type before continuing the import.")
+    sys.exit(1)
+print(f"All required extraction output present. Total: {total} entities.")
+print(f'Ready to normalize: bash tools/gm-extract.sh normalize "{campaign_name}"')
+PY
 }
 
 normalize_extracted() {
     # Copy extracted/*.json to the campaign root in the flat {name: {...}} shape
     # the runtime managers expect. Extractor agents inconsistently wrap their
-    # output (e.g. {"npcs": {...}}, plus stray document/metadata keys on items);
-    # this unwraps using the same d.get(key, d) heuristic as validate_extraction.
+    # output (a bare list, a keyed dict, or either nested under a wrapper key
+    # beside stray document/metadata keys); minor_stubs.normalize_entity_shape is
+    # the one rule that flattens all of them, shared with validate_extraction.
     local campaign_name="$1"
 
     if [ -z "$campaign_name" ]; then
@@ -454,49 +470,57 @@ normalize_extracted() {
     echo "Normalizing extraction into campaign root: $campaign_name"
     echo "================================="
 
-    for type in npcs locations items plots; do
-        case "$type" in
-            npcs) key="npcs" ;;
-            locations) key="locations" ;;
-            items) key="items" ;;
-            plots) key="plot_hooks" ;;
-        esac
-        $PYTHON_CMD - "$CAMPAIGN_DIR/extracted/${type}.json" "$CAMPAIGN_DIR/${type}.json" "$key" "$type" "$LIB_DIR" <<'PY'
+    # All four types are normalized in ONE pass so nothing is written until every
+    # present file has come through cleanly — a half-written normalize leaves the
+    # campaign root part old, part new, with no record of which is which.
+    $PYTHON_CMD - "$CAMPAIGN_DIR" "$LIB_DIR" <<'PY'
 import json, sys
-src, dst, key, type_name, lib_dir = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
-try:
-    d = json.load(open(src))
-except FileNotFoundError:
-    print(f"  {type_name}: MISSING (skipped)")
-    sys.exit(0)
-# Unwrap a {key: {...}} wrapper if present; otherwise the file is already flat.
-flat = d.get(key, d) if isinstance(d, dict) else d
-if not isinstance(flat, dict):
-    print(f"  {type_name}: unexpected shape, copied verbatim")
-    flat = d
+from pathlib import Path
+
+cdir, lib_dir = Path(sys.argv[1]), sys.argv[2]
+sys.path.insert(0, lib_dir)
+from minor_stubs import EXTRACTION_TYPES, normalize_entity_shape
 # Coerce bare-string location connections to {"to": name} dicts so the runtime
 # (move, integrity) never sees a string where it indexes conn["to"].
-if type_name == "locations" and isinstance(flat, dict):
-    sys.path.insert(0, lib_dir)
-    from connection_normalize import coerce_connections
-    n = coerce_connections(flat)
-    if n:
-        print(f"  {type_name}: coerced {n} string connection(s) to dict shape")
+from connection_normalize import coerce_connections
 # Collapse extraction-side location_tags into canonical tags.locations so every
 # downstream pass (cap, reconcile, integrity) and the whole runtime see ONE field.
-if type_name == "npcs" and isinstance(flat, dict):
-    sys.path.insert(0, lib_dir)
-    from tag_unify import unify_location_tags
-    r = unify_location_tags(flat)
-    if r["migrated"]:
-        print(f"  {type_name}: unified location_tags -> tags.locations for {len(r['migrated'])} NPC(s)")
-json.dump(flat, open(dst, "w"), indent=2)
-print(f"  {type_name}: {len(flat)} entities -> {type_name}.json (flat)")
-PY
-    done
+from tag_unify import unify_location_tags
 
-    echo ""
-    echo "Normalized to flat format. Runtime tools can now read these files."
+staged, notes, errors = {}, [], []
+for type_name in EXTRACTION_TYPES:
+    src = cdir / "extracted" / f"{type_name}.json"
+    if not src.exists():
+        notes.append(f"  {type_name}: MISSING (skipped)")
+        continue
+    try:
+        # A list, a keyed dict, or either under a wrapper key all land flat here.
+        flat = normalize_entity_shape(json.loads(src.read_text()), type_name)
+    except ValueError as e:  # includes JSONDecodeError
+        errors.append(f"  {type_name}: {e}")
+        continue
+    if type_name == "locations":
+        n = coerce_connections(flat)
+        if n:
+            notes.append(f"  {type_name}: coerced {n} string connection(s) to dict shape")
+    if type_name == "npcs":
+        r = unify_location_tags(flat)
+        if r["migrated"]:
+            notes.append(f"  {type_name}: unified location_tags -> tags.locations for {len(r['migrated'])} NPC(s)")
+    staged[type_name] = flat
+    notes.append(f"  {type_name}: {len(flat)} entities -> {type_name}.json (flat)")
+
+print("\n".join(notes))
+if errors:
+    print("")
+    print("NORMALIZE FAILED - nothing written:")
+    print("\n".join(errors))
+    sys.exit(1)
+for type_name, flat in staged.items():
+    (cdir / f"{type_name}.json").write_text(json.dumps(flat, indent=2))
+print("")
+print("Normalized to flat format. Runtime tools can now read these files.")
+PY
 }
 
 cap_extracted() {

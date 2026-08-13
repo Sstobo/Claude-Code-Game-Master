@@ -5,8 +5,9 @@ description: Running, inspecting, and troubleshooting an import by hand — the 
 sources:
   - { resource: /tools/gm-extract.sh }
   - { resource: /tools/gm-search.sh }
+  - { resource: /lib/minor_stubs.py }
   - { resource: /.claude/commands/import.md }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-opus-5, at: 2026-08-13T19:18:50Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
@@ -36,6 +37,32 @@ bash tools/gm-extract.sh integrity "campaign-name" --no-strict   # report, don't
 
 Re-running a pass is safe — they are written to be idempotent — but **re-running one out of
 order is not**, because several passes depend on repairs made by earlier ones.
+
+## `validate` is a gate, not a report
+
+```bash
+bash tools/gm-extract.sh validate "campaign-name"
+```
+
+It exits **non-zero**, naming the type and the reason, when any of the four
+`extracted/*.json` files is missing, is unparseable, holds a malformed entity (a non-object
+entry, a non-string `name`), or when `npcs`/`locations` came back with zero entities. Empty
+`items` or `plots` only warn — a book with no treasure or no explicit quest hooks is
+unusual, not broken. Run it before `normalize`; `/import` runs the whole Step 6 chain under
+`set -e` behind it, so a failed extraction stops before anything is written to the campaign
+root. There is **no partial-data override**: everything the gate rejects is something the
+rest of the chain cannot work from, and a thin-but-valid extraction already passes.
+
+Two entities with the same `name` collapse onto one key, so a count reads
+`43 entries, 41 unique names` when they differ. That is the runtime shape being honest —
+the campaign root can only hold one entity per key.
+
+Counting goes through the same shape rule `normalize` uses
+(`minor_stubs.normalize_entity_shape`), because extractor agents emit **lists** in
+practice — even though `EXTRACTION_RESULT_SCHEMA` declares keyed dicts — while the
+runtime managers want a keyed `{name: {...}}` dict. A count that understood only
+one of those shapes is how 43 correctly extracted items once read as `EMPTY (0 entities)`
+while the run reported success.
 
 ## `merge` / `save` / `review` are the legacy path
 
@@ -70,7 +97,7 @@ See [the RAG stack](modules/rag-stack.md).
 | Entities present but bland | enhancement didn't ground — check `context_name_match_fraction`, then re-run `gm-enhance.sh batch` |
 | No source passages during play | RAG deps missing, or the campaign was never vectorized |
 | Main cast missing after `cap` | they weren't referenced by any main plot; raise the limit rather than hand-editing |
-| Agents produced nothing | `bash tools/gm-extract.sh validate "<campaign>"`, then re-run the failing agent alone |
+| Agents produced nothing | `validate` fails and names each bad type — re-run those agents alone |
 
 ## Notes that are easy to get wrong
 

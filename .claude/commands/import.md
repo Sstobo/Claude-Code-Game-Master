@@ -245,12 +245,20 @@ As each agent completes, update the display:
 bash tools/gm-extract.sh validate "<campaign-name>"
 ```
 
-This checks that all 4 extraction files exist and contain valid JSON.
+This is a **gate, not a report**. It checks that all 4 extraction files exist, contain
+valid JSON, and hold entities — counting list-shaped and dict-shaped agent output alike.
+It exits non-zero when a file is missing, is unparseable, or `npcs`/`locations` came back
+empty, naming the failing type and the reason. Empty `items`/`plots` only warn: a book with
+no treasure or no explicit quest hooks is unusual, not broken.
 
-**If validation passes** (all files present with entities):
+**If validation passes** (exit 0):
 - Continue to Step 6
 
-**If validation fails** (missing files, invalid JSON, or all empty):
+**If validation fails** (non-zero exit):
+
+**STOP. Do not run any command from Step 6.** `normalize`, `cap`, `reconcile`, and the
+integrity gate all read this output; running them on missing or empty extraction writes a
+half-empty campaign that looks imported. Wait for the user's answer below before continuing.
 
 Display:
 ```
@@ -266,9 +274,15 @@ What would you like to do?
 ```
 
 Use AskUserQuestion with these options:
-- **"Retry failed extractions"** - Re-launch agents only for missing/empty types
-- **"Continue with partial data"** - Proceed with whatever was extracted
+- **"Retry failed extractions"** - Re-launch agents only for the types the gate named, then validate again
 - **"Cancel import"** - Stop the import process
+
+There is deliberately **no "continue with partial data"** option. The gate only fails on
+output the rest of the pipeline cannot work from — a missing or unparseable file, a
+malformed entity, or a book that yielded no cast or no places — and every Step 6 pass reads
+that output. Continuing would write a half-empty campaign that looks imported. A thin but
+valid extraction (no items, no plot hooks) already passes with a warning and needs no
+override.
 
 **Do NOT proceed silently with missing data.** The whole point of import is to extract content from the source material. If extraction failed, the user must be informed and given options.
 
@@ -279,11 +293,17 @@ Use AskUserQuestion with these options:
 After all agents complete:
 
 ```bash
+set -e   # the gate below is mechanical: a failed pass stops the chain here
+
+# Re-assert the Step 5.5 gate. Under `set -e` a non-zero validate ends the block
+# before normalize touches the campaign root.
+bash tools/gm-extract.sh validate "<campaign-name>"
+
 # Normalize extracted/*.json into the campaign root in the flat {name: {...}}
-# shape the runtime managers require. Extractor agents inconsistently wrap their
-# output (e.g. {"npcs": {...}}, and items.json carries document/metadata keys);
-# a plain `cp` would leave those wrappers in place and the runtime would read one
-# giant entity named "npcs". `normalize` unwraps them. NEVER `cp` these files.
+# shape the runtime managers require. Extractor agents emit a bare list (what
+# extraction_schemas.py declares), a keyed dict, or either nested under a wrapper
+# key beside document/metadata scraps; a plain `cp` would leave a list the runtime
+# cannot key, or one giant entity named "npcs". NEVER `cp` these files.
 bash tools/gm-extract.sh normalize "<campaign-name>"
 
 # Cap each type to the top-30 most important entities (mention-frequency +

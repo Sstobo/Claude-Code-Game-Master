@@ -1,6 +1,8 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-13T19:23:30Z  done: extraction-output-verification — validate is a real gate  [fable-sott1]
+- 2026-08-13T19:20:46Z  triage: whole-branch review findings routed to 3 ready tickets; reset findings held for review-reset2  [fable-sott1]
 - 2026-08-13T19:18:13Z  note: bootstrap late review verdict folded into test-fixture-isolation  [fable-sott1]
 - 2026-08-13T19:11:21Z  in-review: extraction-output-verification — verified, review dispatched  [fable-sott1]
 - 2026-08-13T19:10:56Z  in-review: reset-scope-completeness — verified, review dispatched  [fable-sott1]

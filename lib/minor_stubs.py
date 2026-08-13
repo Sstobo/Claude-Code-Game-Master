@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stub plot-referenced NPCs that the cap dropped; validate plot taxonomy.
+"""Extraction shape normalization; stub plot-referenced NPCs that the cap dropped.
 
 The hard 30-cap can drop NPCs that plots still reference (when >30 are referenced),
 leaving plot.npcs links that don't resolve. This creates a minimal NPC stub for each
@@ -9,6 +9,14 @@ plot `type` against the canonical enum (`schemas.PLOT_TYPES`), mapping known
 synonyms and falling back to 'side' — with a warning — for anything unknown.
 
 Run after cap + integrity-canonicalize, alongside missing-location-reconcile.
+
+Also home to the ONE shape rule the import gate and `normalize` share
+(`normalize_entity_shape`): EXTRACTION_RESULT_SCHEMA declares keyed dicts, but
+extractor agents drift to list-shaped output in practice (the conan import's
+items.json was a 43-element list), and every runtime manager expects a keyed
+{name: {...}} dict — so lists, keyed dicts, and wrapper dicts all have to land
+as the same flat shape. Counting one shape only is how a correct 43-item
+extraction used to report "EMPTY (0 entities)".
 """
 
 import json
@@ -18,6 +26,75 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from entity_aliases import resolve_entity_name
 from schemas import PLOT_TYPES
+
+# The four extraction types, and the wrapper key an agent may nest its list/dict
+# under (plots.json wraps as "plot_hooks", per EXTRACTION_RESULT_SCHEMA).
+EXTRACTION_TYPES = ("npcs", "locations", "items", "plots")
+WRAPPER_KEYS = {"npcs": "npcs", "locations": "locations", "items": "items", "plots": "plot_hooks"}
+
+# A book with no treasure or no explicit quest hooks is still playable; a book
+# with no cast or nowhere to stand is a failed extraction. Empty items/plots warn.
+REQUIRED_NONEMPTY = ("npcs", "locations")
+
+
+def _unwrap(data, type_name: str):
+    """Return the entity container (list or keyed dict) inside an agent's file.
+
+    Unwraps the type's wrapper key only when it is a GENUINE wrapper: it holds a
+    list, or it stands alone beside non-entity scraps (`document`, `metadata`). A
+    file whose other values are entities is already flat — unwrapping it would
+    swallow the whole file for the sake of an entity named "items".
+    """
+    key = WRAPPER_KEYS.get(type_name, type_name)
+    if isinstance(data, dict):
+        inner = data.get(key)
+        if isinstance(inner, list):
+            return inner
+        siblings_are_entities = any(
+            k != key and isinstance(v, dict) and "name" in v for k, v in data.items()
+        )
+        if isinstance(inner, dict) and not siblings_are_entities:
+            return inner
+    if isinstance(data, (list, dict)):
+        return data
+    raise ValueError(f"{type_name}: file holds {type(data).__name__}, expected a list or an object")
+
+
+def _entity_pairs(data, type_name: str) -> list:
+    """(name, entity) pairs from any extractor shape. Raises ValueError, naming the
+    type and the offending entry, rather than letting a bad entity crash a caller."""
+    container = _unwrap(data, type_name)
+    if isinstance(container, dict):
+        # Drop the document/extraction_date scraps agents leave beside entities.
+        return [(k, v) for k, v in container.items() if isinstance(v, dict)]
+
+    pairs = []
+    for i, entity in enumerate(container):
+        if not isinstance(entity, dict):
+            raise ValueError(f"{type_name}: entry {i} is {type(entity).__name__}, expected an object")
+        name = entity.get("name")
+        if name is not None and not isinstance(name, str):
+            raise ValueError(f"{type_name}: name is not a string (entry {i} is {type(name).__name__})")
+        pairs.append((name or f"unnamed_{i}", entity))
+    return pairs
+
+
+def normalize_entity_shape(data, type_name: str) -> dict:
+    """Return extractor output for one type in the flat {name: {...}} runtime shape.
+
+    Accepts every shape an extractor agent produces: a bare list (real agent
+    drift, seen in the wild), a bare keyed dict (what EXTRACTION_RESULT_SCHEMA
+    declares), or either of those nested
+    under the type's wrapper key beside stray document/metadata keys. Entities
+    sharing a name collapse onto one key — `entry_count` reports the difference.
+    """
+    return dict(_entity_pairs(data, type_name))
+
+
+def entry_count(data, type_name: str) -> int:
+    """How many entities the agent WROTE, before same-name entries collapse."""
+    return len(_entity_pairs(data, type_name))
+
 
 # Extractor vocabulary (see .claude/agents/extractor-plots.md) that isn't itself a
 # canonical type but maps cleanly onto one. Anything outside both sets is unknown.
