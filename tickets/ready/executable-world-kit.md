@@ -80,3 +80,11 @@ None.
 ## History
 
 - 2026-08-13T15:47:00Z  created → ready  [team-lead]
+
+## Triage note (2026-08-13, fable-sott1, from whole-branch review)
+
+lib/player_manager.py:_kit_vitals reads ruleset.json directly (`or {}`),
+skipping WorldKit's DEFAULT_RULESET fallback (vitals: ["hp"]). On a
+ruleset-less campaign, WorldKit.vitals() says ['hp'] while _kit_vitals says []
+and `modify_vital(..., 'hp', ...)` refuses — contradicting player-character.md.
+Route _kit_vitals through WorldKit.vitals() when de-5e-ing this manager.

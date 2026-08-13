@@ -83,3 +83,13 @@ kit-block-in-context, executable-world-kit, identity-onboarding-wiring
   documented creation path never authors HP in non-5e worlds — add it.
 - Live gap: conan's ruleset.json has no `kit` field → WorldKit.kit() reads
   'custom'. Coordinate with import-bible-kit-wiring on legacy kit stamping.
+
+## Triage note 2 (2026-08-13, fable-sott1, from whole-branch review)
+
+SEVERITY RAISED on the silent 10/10 fallback: the LIVE conan campaign's
+ruleset.json has no `kit` field, so WorldKit.kit() == 'custom' — meaning the
+Death Protocol's replacement character on the flagship campaign would save as
+an unplayable 10/10 with no saves block and no warning. Until this ticket
+lands, consider the interim mitigations: derive HP when the sheet carries
+class+level, or at minimum warn in the save payload (first triage note).
+Also coordinate: create-character.md:153's save-json example must author hp.
