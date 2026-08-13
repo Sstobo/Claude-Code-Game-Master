@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-13T21:17:11Z  done: reset-scope-completeness — story cleared, world kept, archive fails safe  [fable-sott1]
 - 2026-08-13T21:12:35Z  done: persist-path-hotfixes — cwd-safe wrappers, corpse-HP guard, read-only XP  [fable-sott1]
 - 2026-08-13T20:38:49Z  in-review: persist-path-hotfixes — verified (direct), review dispatched  [fable-sott1]
 - 2026-08-13T20:38:00Z  in-review: gm-extract-silent-cat — verified, review dispatched  [fable-sott1]
