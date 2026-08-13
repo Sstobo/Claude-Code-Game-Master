@@ -7,7 +7,7 @@ sources:
   - { resource: /lib/visual_appearance.py }
   - { resource: /tools/gm-image.sh }
   - { resource: /.claude/agents/scene-illustrator.md }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-13T14:22:19Z }
 ---
 
 # Illustrating a scene
@@ -41,21 +41,17 @@ Both are belt-and-braces: they fire even on a direct fallback call where the cal
 The art style injection is guarded on the style string not already appearing in the prompt,
 which is the right check.
 
-## The appearance injection is guarded on the character's *name*
+## The appearance injection always fires (since 2026-08-13)
 
-```python
-if line and cname.strip().lower() not in prompt.lower():
-```
+`inject_appearances` appends the stored block for every `--character` name, skipping only
+an appearance line already present **verbatim** (idempotency). Until 2026-08-13 the guard
+tested whether the character's *name* appeared in the prompt — and since beat prompts
+naturally name their characters ("Carl swings the club..."), injection was silently
+suppressed in the common case and recurring characters drifted off-model. Regression test:
+`tests/test_image_prompt_injection.py`.
 
-The guard means: **if the character's name already appears anywhere in the prompt, the
-canonical appearance is not injected.** The intent is "the caller already spelled them
-out", but the natural way to write a beat prompt is to name people — *"Carl swings the
-club at the Terror Clown"* — and that phrasing silently suppresses Carl's stored
-appearance for that image. He renders as whatever the model imagines.
-
-Practical rule for prompt authors: either describe the character inline in full, or refer
-to them without the stored name and let `--character` do the work. If a recurring
-character drifts off-model between images, this guard is the first thing to check.
+Practical rule for prompt authors now: just name people and pass `--character` — the
+canonical look rides along regardless.
 
 ## The appearance block is a fixed, ordered field list
 

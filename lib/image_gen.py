@@ -26,6 +26,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+
 from campaign_manager import CampaignManager
 import visual_appearance as va_mod
 
@@ -198,6 +200,22 @@ class ImageGenError(Exception):
     """Raised for user-correctable failures (missing key, moderation, bad request)."""
 
 
+def inject_appearances(prompt: str, characters, campaign_dir=None) -> str:
+    """Append each named character's canonical look to the prompt. Idempotent.
+
+    Always injects when a stored appearance exists — a beat prompt naturally
+    names its characters ("Carl swings the club..."), and until 2026-08-13 that
+    name-mention suppressed the injection, letting recurring characters drift
+    off-model. Only an appearance line already present verbatim is skipped.
+    """
+    out = prompt
+    for cname in (characters or []):
+        line = appearance_line(cname, campaign_dir)
+        if line and line not in out:
+            out = f"{out.rstrip()}\n\nCharacter (render exactly): {line}"
+    return out
+
+
 def generate_image(prompt: str, *, title: str = "", quality: str = DEFAULT_QUALITY,
                    size: str = DEFAULT_SIZE, model: str = DEFAULT_MODEL,
                    characters=None) -> dict:
@@ -223,14 +241,7 @@ def generate_image(prompt: str, *, title: str = "", quality: str = DEFAULT_QUALI
     if not prompt or not prompt.strip():
         raise ImageGenError("Empty prompt — describe the scene to illustrate.")
 
-    final_prompt = prompt
-
-    # Auto-inject each named character's canonical look so the PC/NPCs render
-    # consistently every time. Skipped if the caller already spelled it out.
-    for cname in (characters or []):
-        line = appearance_line(cname, campaign_dir)
-        if line and cname.strip().lower() not in prompt.lower():
-            final_prompt = f"{final_prompt.rstrip()}\n\nCharacter (render exactly): {line}"
+    final_prompt = inject_appearances(prompt, characters, campaign_dir)
 
     # Lock the campaign's art-style signature into every prompt so the gallery
     # reads like one artbook even if the caller forgets to restate the style.
