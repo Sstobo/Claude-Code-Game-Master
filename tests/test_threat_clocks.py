@@ -1,10 +1,20 @@
 """Tests for threat-clocks-choice-beats: named segmented pressure clocks."""
 
 import json
+import os
+import subprocess
 from pathlib import Path
 
 from lib.threat_clocks import ThreatClockManager
 from lib.session_manager import SessionManager
+from lib.time_manager import ticks_for_elapsed, ticks_from_duration
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def _active(dcc_world):
+    p = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "consequences.json"
+    return json.loads(p.read_text(encoding="utf-8")).get("active", [])
 
 
 def _active(dcc_world):
@@ -76,6 +86,52 @@ def test_tick_time_advances_only_time_clocks(dcc_world):
     assert "Collapse" in advanced and "Ritual" not in advanced
     assert m.get_clocks()["Collapse"]["current"] == 1
     assert m.get_clocks()["Ritual"]["current"] == 0
+
+
+def test_tick_time_scales_with_ticks(dcc_world):
+    m = ThreatClockManager(dcc_world)
+    m.add_clock("Siege", segments=10, advance_on="time")
+    advanced = m.tick_time_clocks(3)
+    assert "Siege" in advanced
+    assert m.get_clocks()["Siege"]["current"] == 3
+
+
+def test_duration_days_and_weeks_scale():
+    assert ticks_from_duration("3 days") == 3
+    assert ticks_from_duration("1 week") == 7
+    assert ticks_from_duration("2 weeks") == 14
+    assert ticks_for_elapsed(duration="3 days") == 3
+    assert ticks_for_elapsed(ticks=3, duration="10 minutes") == 3  # explicit wins
+
+
+def test_duration_minutes_and_default_are_one_tick():
+    assert ticks_from_duration("10 minutes") == 1
+    assert ticks_from_duration("2 hours") == 1
+    assert ticks_from_duration("Dawn to Noon") == 1
+    assert ticks_for_elapsed() == 1
+    assert ticks_for_elapsed(ticks=1) == 1
+
+
+def _gm_time(dcc_world, *args):
+    return subprocess.run(
+        ["bash", str(ROOT / "tools" / "gm-time.sh"), *args],
+        capture_output=True, text=True,
+        env={**os.environ, "GM_WORLD_STATE_BASE": str(dcc_world)},
+    )
+
+
+def test_gm_time_duration_advances_clocks_proportionally(dcc_world):
+    ThreatClockManager(dcc_world).add_clock("Siege", segments=10, advance_on="time")
+    r = _gm_time(dcc_world, "Noon", "Day 4", "--duration", "3 days")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert ThreatClockManager(dcc_world).get_clocks()["Siege"]["current"] == 3
+
+
+def test_gm_time_default_still_ticks_one(dcc_world):
+    ThreatClockManager(dcc_world).add_clock("Siege", segments=10, advance_on="time")
+    r = _gm_time(dcc_world, "Noon", "Day 4")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert ThreatClockManager(dcc_world).get_clocks()["Siege"]["current"] == 1
 
 
 def test_tick_time_stops_at_full(dcc_world):

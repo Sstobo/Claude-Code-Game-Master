@@ -84,8 +84,9 @@ class ThreatClockManager(EntityManager):
         """Advance every advance_on=='time' clock that isn't already full.
 
         The automatic pressure wire: gm-time.sh calls this after each time
-        update, so declared time-clocks mount on their own. Event clocks
-        (advance_on != 'time') are untouched — the GM advances those by hand.
+        update, passing ticks scaled to elapsed magnitude (--ticks / --duration).
+        Default ticks=1 (Dawn→Noon stays +1). Event clocks (advance_on != 'time')
+        are untouched — the GM advances those by hand.
         Returns {name: clock} for the clocks that moved.
         """
         data = self._load()

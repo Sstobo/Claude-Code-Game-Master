@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T19:16:00Z  done: clock-tick-magnitude — time-clocks scale with --ticks/--duration; default remains +1  [gk-t8n2wp]
+- 2026-08-14T19:06:00Z  in-review: core-prompt-detox, opening-seed-no-fake-session, clock-tick-magnitude, recall-top-k — verified, reviews dispatched  [gk-t8n2wp]
+- 2026-08-14T18:54:05Z  claimed: core-prompt-detox, opening-seed-no-fake-session, clock-tick-magnitude, recall-top-k  [gk-t8n2wp]
 - 2026-08-14T18:52:00Z  prd: trust-the-agent v1 active; advisory-fences split into fence-disclosures / clock-tick-magnitude / recall-top-k; opening-seed-no-fake-session filed; unparked detox+kit-block+save-restore+presence; import-preflight stays blocked  [gk-t8n2wp]
 - 2026-08-14T18:30:00Z  done: opening-beat-after-character — opening re-seeds on first PC (onboard/unmatched set); --replace leaves a matched opening  [gk-a8r14q]
 - 2026-08-14T18:06:58Z  done: party-promote-real-stats — promote copies existing NPC HP/AC; defaults disclosed  [gk-a8r14q]

@@ -6,11 +6,12 @@ sources:
   - { resource: /lib/consequence_manager.py }
   - { resource: /lib/threat_clocks.py }
   - { resource: /lib/world_tick.py }
+  - { resource: /lib/time_manager.py }
   - { resource: /tools/gm-time.sh }
   - { resource: /tools/gm-session.sh }
   - { resource: /tools/gm-clock.sh }
-generated: { by: claude-fable-5, at: 2026-08-14T12:26:05Z }
-verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:00:04Z }
+verified: { by: cursor-grok-4.6, at: 2026-08-14T19:13:47Z }
 ---
 
 # The living world
@@ -22,13 +23,14 @@ developments. **They are wired to very different degrees.** Verified 2026-08-13:
 | System | Automatic trigger | How it actually runs |
 |---|---|---|
 | Consequences | **Yes** | `gm-session.sh move` and `gm-time.sh` both call `gm-consequence.sh tick` after they write |
-| Threat clocks | **Time-clocks: yes** (since 2026-08-13) | `gm-time.sh` runs `threat_clocks.py tick-time` — every `advance_on: "time"` clock gains a segment per time update. Event clocks stay manual: `gm-clock.sh advance "<name>"`. Filling one fires its consequence (below) |
+| Threat clocks | **Time-clocks: yes** (since 2026-08-13) | `gm-time.sh` runs `threat_clocks.py tick-time` — every `advance_on: "time"` clock gains ticks scaled to elapsed magnitude when `--ticks` / `--duration` is passed (default 1, so Dawn→Noon stays +1). Event clocks stay manual: `gm-clock.sh advance "<name>"`. Filling one fires its consequence (below) |
 | World tick | **No** — GM-invoked by design | the developments are a model call; `gm-session.sh world-tick '<json>'` persists them (capped, logged, rollback-able). Before 2026-08-13 `WorldTick` had no caller at all |
 
-So one clock segment ≈ one time update — the pacing lever is how often the GM advances
-time, and a full clock announces itself (`⚠ FULL — a dramatic beat is due`) in the tick
-output and the session brief. Clocks that must not move on the calendar are declared
-`advance_on: "event"` and only ever move by hand.
+So three weeks and ten minutes are not the same pressure: the GM passes how much time
+actually elapsed, a same-day hop still costs one segment, and a full clock announces
+itself (`⚠ FULL — a dramatic beat is due`) in the tick output and the session brief.
+Clocks that must not move on the calendar are declared `advance_on: "event"` and only
+ever move by hand.
 
 ## A clock that fills fires (since 2026-08-14)
 
