@@ -5,7 +5,7 @@ category: enhancement
 kind: afk
 priority: p1
 lane: agent
-parentPrd: state-of-the-table
+parentPrd: trust-the-agent
 blockedBy: [kit-block-in-context]
 claimedBy: null
 claimedAt: null
@@ -14,12 +14,12 @@ resolution: null
 reviewRounds: null
 implementer: null
 createdAt: 2026-08-13T15:47:00Z
-updatedAt: 2026-08-13T15:47:00Z
+updatedAt: 2026-08-14T18:52:00Z
 ---
 
 ## Parent
 
-State of the Table (prds/state-of-the-table.md)
+Trust the Agent (prds/trust-the-agent.md)
 
 ## Category
 
@@ -72,6 +72,7 @@ kit-block-in-context (executable-world-kit and identity-onboarding-wiring are do
 
 ## History
 
+- 2026-08-14T18:52:00Z  parent → trust-the-agent  [gk-t8n2wp]
 - 2026-08-13T15:47:00Z  created → ready  [team-lead]
 - 2026-08-14T17:27:15Z  blockedBy trimmed — executable-world-kit + identity-onboarding-wiring are done  [gk-a8r14q]
 

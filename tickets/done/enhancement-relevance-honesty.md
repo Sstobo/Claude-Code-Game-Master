@@ -12,6 +12,7 @@ claimedAt: 2026-08-14T17:27:15Z
 changedFiles: [lib/entity_enhancer.py, tests/test_enhancer_gate.py, docs/modules/rag-stack.md]
 reviewRounds: 1
 implementer: null
+resolution: 0-name-bearing attaches nothing; batch warns and exits at 25%
 createdAt: 2026-08-13T16:20:00Z
 updatedAt: 2026-08-14T18:06:58Z
 ---

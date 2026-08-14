@@ -5,8 +5,8 @@ category: bug
 kind: afk
 priority: p0
 lane: agent
-parentPrd: state-of-the-table
-blockedBy: []
+parentPrd: trust-the-agent
+blockedBy: [kit-block-in-context]
 claimedBy: null
 claimedAt: null
 changedFiles: []
@@ -14,12 +14,12 @@ resolution: null
 reviewRounds: null
 implementer: null
 createdAt: 2026-08-13T15:47:00Z
-updatedAt: 2026-08-14T17:56:17Z
+updatedAt: 2026-08-14T18:52:00Z
 ---
 
 ## Parent
 
-State of the Table (prds/state-of-the-table.md)
+Trust the Agent (prds/trust-the-agent.md)
 
 ## Category
 
@@ -62,7 +62,7 @@ Lane: agent
 
 ## Blocked by
 
-None.
+kit-block-in-context (session_manager.py one-writer chain)
 
 ---
 
@@ -73,5 +73,6 @@ blocked: file collision on CLAUDE.md / lib/session_manager.py — live-session u
 
 ## History
 
+- 2026-08-14T18:52:00Z  blocked → ready; parent trust-the-agent; blockedBy kit-block-in-context  [gk-t8n2wp]
 - 2026-08-13T15:47:00Z  created → ready  [team-lead]
 - 2026-08-14T17:56:17Z  ready → blocked  file collision on CLAUDE.md + lib/session_manager.py  [gk-a8r14q]

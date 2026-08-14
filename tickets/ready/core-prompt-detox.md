@@ -5,7 +5,7 @@ category: enhancement
 kind: afk
 priority: p1
 lane: agent
-parentPrd: state-of-the-table
+parentPrd: trust-the-agent
 blockedBy: []
 claimedBy: null
 claimedAt: null
@@ -14,12 +14,12 @@ resolution: null
 reviewRounds: null
 implementer: null
 createdAt: 2026-08-13T21:30:00Z
-updatedAt: 2026-08-14T17:56:17Z
+updatedAt: 2026-08-14T18:52:00Z
 ---
 
 ## Parent
 
-State of the Table (prds/state-of-the-table.md) · Trust the Agent review (artifact 1a6acb14)
+Trust the Agent (prds/trust-the-agent.md)
 
 ## Category
 
@@ -50,11 +50,13 @@ creative judgments on every beat:
    verbatim menu script ("offer these three routes in whatever framing the
    moment calls for"); gm.md points at CLAUDE.md instead of duplicating.
 
-COLLISION WARNING: lib/session_manager.py carries another session's
-uncommitted preference-feature hunks (player_rolls/beat_length/
-rag_inspiration). Claim this ticket ONLY when that file is clean or by
-explicit user instruction to work around them; the edits here touch the same
-region.
+LIVE TREE (user-confirmed 2026-08-14): keep the preference *keys*
+(`player_rolls`, `beat_length`, `rag_inspiration`) and their surfacing
+lines. Drop the doctrine those hunks added: the always-injected failure
+NEVER-list, the adaptive-branch "at most one development", and the
+CLAUDE.md beat-arithmetic / pre-send audit / "Failure must TAKE something"
+sermon. The opt-in `tight` branch keeps its prescription. "exactly 3" →
+"a few numbered options" on both the committed text and the dirty hunks.
 
 ## Acceptance criteria
 
@@ -67,8 +69,8 @@ region.
 
 ## Out of scope
 
-gm.md's templates/checklist (gm-md-slim); truncation disclosure (advisory-fences);
-skill files (skill-guidance-pass).
+gm.md's templates/checklist (gm-md-slim); truncation disclosure
+(fence-disclosures); skill files (skill-guidance-pass).
 
 ## Verification
 
@@ -87,5 +89,6 @@ blocked: file collision on CLAUDE.md / lib/session_manager.py — live-session u
 
 ## History
 
+- 2026-08-14T18:52:00Z  blocked → ready; parent trust-the-agent; user confirmed dirty-file prefs-keep/doctrine-drop  [gk-t8n2wp]
 - 2026-08-13T21:30:00Z  created → ready (Trust the Agent review)  [fable-sott1]
 - 2026-08-14T17:56:17Z  ready → blocked  file collision on CLAUDE.md + lib/session_manager.py  [gk-a8r14q]

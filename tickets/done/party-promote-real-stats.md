@@ -12,6 +12,7 @@ claimedAt: 2026-08-14T17:27:15Z
 changedFiles: [lib/npc_manager.py, tests/test_party_promote.py, docs/modules/npc-model.md]
 reviewRounds: 1
 implementer: null
+resolution: promote copies existing NPC HP/AC; defaults disclosed
 createdAt: 2026-08-13T16:20:00Z
 updatedAt: 2026-08-14T18:06:58Z
 ---

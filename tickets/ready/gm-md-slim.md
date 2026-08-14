@@ -5,7 +5,7 @@ category: enhancement
 kind: afk
 priority: p2
 lane: agent
-parentPrd: state-of-the-table
+parentPrd: trust-the-agent
 blockedBy: [core-prompt-detox]
 claimedBy: null
 claimedAt: null
@@ -14,12 +14,12 @@ resolution: null
 reviewRounds: null
 implementer: null
 createdAt: 2026-08-13T21:30:00Z
-updatedAt: 2026-08-13T21:30:00Z
+updatedAt: 2026-08-14T18:52:00Z
 ---
 
 ## Parent
 
-State of the Table (prds/state-of-the-table.md) · Trust the Agent review (artifact 1a6acb14)
+Trust the Agent (prds/trust-the-agent.md)
 
 ## Category
 
@@ -69,4 +69,5 @@ core-prompt-detox
 
 ## History
 
+- 2026-08-14T18:52:00Z  parent → trust-the-agent  [gk-t8n2wp]
 - 2026-08-13T21:30:00Z  created → ready (Trust the Agent review)  [fable-sott1]
