@@ -6,7 +6,7 @@ sources:
   - { resource: /lib/game_core.py }
   - { resource: /lib/world_kit.py }
   - { resource: /lib/overview_seed.py }
-generated: { by: claude-opus-5, at: 2026-08-14T02:30:38Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:25:02Z }
 ---
 
 # Game core and World Kit
@@ -18,22 +18,25 @@ modules state their own contracts. What follows is only what spans files.
 ## A world plays by TWO rule surfaces, not one
 
 This is the fact that most often surprises someone editing rules, because the two live
-in different files, are loaded by different code, and are surfaced to the GM differently.
+in different files, are loaded by different code, and used to be surfaced to the GM
+from the *wrong* one.
 
 | Surface | Lives in | Read by | Holds |
 |---|---|---|---|
-| **Mechanics** | `ruleset.json` | `WorldKit.__init__` | stat schema, progression model, resolution model, active agents |
-| **World flavor** | `campaign-overview.json` → `campaign_rules` | `WorldKit.campaign_rules()` | loot boxes, viewer counts, audience interviews — the signature systems |
+| **Mechanics** | `ruleset.json` | `WorldKit` | kit identity, stat schema, progression, resolution, vitals, skills, **signature_systems** |
+| **Legacy flavor** | `campaign-overview.json` → `campaign_rules` | `WorldKit.campaign_rules()` | loot boxes, viewer counts — used only when the kit has no signature_systems |
 | **Rules prose** | the file named by `ruleset.rules_doc` | `WorldKit.rules_doc_path()` | long-form rules text, loaded on demand |
 
-Only the **flavor** surface reaches the model verbatim: the context builder prints
-`campaign_rules` pretty-printed and explicitly **never truncated**, because those systems
-are what make a book feel like itself. See [scene-context](scene-context.md).
+**Signature systems on the kit ARE rendered in scene context.** YOUR WORLD'S RULES
+prints `WorldKit.signature_systems()` when the ruleset has any (list form, or the
+Conan dict-of-name→summary migration case — both normalize to `{name, summary}`),
+never truncated. `campaign_rules` is the **legacy fallback** for campaigns that
+never got systems onto the kit (DCC's fixture is this case). Adding a system to
+`ruleset.json` is no longer a silent no-op.
 
-Adding a signature system to `ruleset.json` instead of `campaign_rules` is therefore a
-silent no-op as far as the narration is concerned. `overview_seed.py` exists because
-imports used to leave `campaign_rules` empty while the book's systems lived in prose
-inside a plot description.
+`overview_seed.py` still exists because imports used to leave `campaign_rules` empty
+while the book's systems lived in prose inside a plot description — that path still
+feeds the fallback. See [scene-context](scene-context.md).
 
 ## The resolution model is executed, not just declared
 
@@ -113,8 +116,8 @@ a Dungeon Crawler Carl campaign than in a swords-and-sorcery one.
 
 `gm-combat`, `gm-levelup`, and `gm-spellcasting` encode D&D 5e — hit dice, spell slots, a
 level-20 XP table. None of that exists in `game_core`. Loading them for a non-5e kit
-imports rules the world never declared. The routing rule and its (absent) enforcement are
-in [lean core and skill routing](../conventions/lean-core-and-skill-routing.md).
+imports rules the world never declared. The routing rule — STEP-0 defers to the
+scene-context KIT block — is in [lean core and skill routing](../conventions/lean-core-and-skill-routing.md).
 
 ## Related
 

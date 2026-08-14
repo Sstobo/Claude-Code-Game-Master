@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from entity_manager import EntityManager
 from character_schema import to_flat
 from schemas import PLOT_TYPE_SORT
+from world_kit import WorldKit
 
 
 class SessionManager(EntityManager):
@@ -429,6 +430,26 @@ class SessionManager(EntityManager):
         lines.append(f"Campaign: {campaign_name} | Session #{session_num}")
         lines.append(f"Location: {location} | Time: {time_str}")
 
+        # --- KIT (ambient; skills defer here instead of calling world_kit.py info) ---
+        kit = None
+        try:
+            kit = WorldKit(self._wsd)
+            if kit.campaign_dir is None:
+                kit = None
+        except Exception:
+            kit = None
+        if kit is not None:
+            skills = kit.skills()
+            vitals = kit.vitals()
+            lines.append("")
+            lines.append("--- KIT ---")
+            lines.append(f"kit: {kit.kit()}")
+            lines.append(f"name: {kit.name()}")
+            lines.append(f"resolution: {kit.resolution_model()}")
+            lines.append(f"progression: {kit.progression_model()}")
+            lines.append(f"vitals: {', '.join(vitals) if vitals else '(none)'}")
+            lines.append(f"skills: {', '.join(skills) if skills else '(none)'}")
+
         # --- Play style (honor every beat; player toggles anytime) ---
         if self.get_preferences().get("beat_length", "adaptive") == "tight":
             lines.append("Pacing: TIGHT — a beat is the player's action, its immediate "
@@ -702,29 +723,44 @@ class SessionManager(EntityManager):
             lines.append("(none)")
 
         # --- Your World's Rules (bespoke per-campaign systems; NEVER truncated) ---
+        # Prefer kit signature_systems; campaign_rules is the legacy fallback.
         # These rules ARE the magic that makes each book feel distinct. The GM is
-        # told to follow them exactly, so it must see them in full. Nested systems
-        # (loot boxes, audience reactions, interviews) are pretty-printed whole.
-        rules = campaign.get('campaign_rules', {})
-        if rules:
-            import json
+        # told to follow them exactly, so it must see them in full.
+        systems = kit.signature_systems() if kit is not None else []
+        if systems:
             lines.append("")
             lines.append("--- YOUR WORLD'S RULES (follow exactly) ---")
-            if isinstance(rules, dict):
-                for key, val in rules.items():
-                    if isinstance(val, (dict, list)):
-                        lines.append(f"- {key}:")
-                        for vline in json.dumps(val, indent=2, ensure_ascii=False).splitlines():
-                            lines.append(f"    {vline}")
-                    else:
-                        lines.append(f"- {key}: {val}")
-            elif isinstance(rules, list):
-                for rule in rules:
-                    if isinstance(rule, (dict, list)):
-                        for vline in json.dumps(rule, indent=2, ensure_ascii=False).splitlines():
-                            lines.append(f"  {vline}")
-                    else:
-                        lines.append(f"- {rule}")
+            for system in systems:
+                name = system.get("name") or "unnamed"
+                summary = system.get("summary") or ""
+                extra = system.get("rules") or ""
+                if summary:
+                    lines.append(f"- {name}: {summary}")
+                else:
+                    lines.append(f"- {name}")
+                if extra and extra != summary:
+                    lines.append(f"    {extra}")
+        else:
+            rules = campaign.get('campaign_rules', {})
+            if rules:
+                import json
+                lines.append("")
+                lines.append("--- YOUR WORLD'S RULES (follow exactly) ---")
+                if isinstance(rules, dict):
+                    for key, val in rules.items():
+                        if isinstance(val, (dict, list)):
+                            lines.append(f"- {key}:")
+                            for vline in json.dumps(val, indent=2, ensure_ascii=False).splitlines():
+                                lines.append(f"    {vline}")
+                        else:
+                            lines.append(f"- {key}: {val}")
+                elif isinstance(rules, list):
+                    for rule in rules:
+                        if isinstance(rule, (dict, list)):
+                            for vline in json.dumps(rule, indent=2, ensure_ascii=False).splitlines():
+                                lines.append(f"  {vline}")
+                        else:
+                            lines.append(f"- {rule}")
 
         context = "\n".join(lines)
 

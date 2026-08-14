@@ -11,7 +11,8 @@ claimedBy: gk-t8n2wp
 claimedAt: 2026-08-14T19:17:09Z
 changedFiles: [lib/session_manager.py, lib/world_kit.py, tests/test_kit_block.py, tests/test_lean_core.py, .claude/skills/gm-combat/SKILL.md, .claude/skills/gm-levelup/SKILL.md, .claude/skills/gm-spellcasting/SKILL.md, .claude/skills/gm-skills/SKILL.md, .claude/skills/gm-social/SKILL.md, .claude/skills/gm-conditions/SKILL.md, docs/modules/scene-context.md, docs/modules/game-core-and-world-kit.md, docs/conventions/lean-core-and-skill-routing.md]
 reviewRounds: 1
-updatedAt: 2026-08-14T19:22:00Z
+resolution: KIT block in context; signature_systems render; skills defer to the block
+updatedAt: 2026-08-14T19:32:00Z
 ---
 
 ## Parent
@@ -68,6 +69,9 @@ core-prompt-detox (session_manager.py one-writer chain)
 
 ## QA Reports
 
+### 2026-08-14T19:32:00Z — pass [e7b048de]
+reviewed: perfect. KIT block in context; signature_systems preferred; skills defer; no world_kit.py info.
+
 ### 2026-08-14T19:22:00Z — verified [gk-t8n2wp]
 KIT block on DCC (custom/d20/resource-axis) and dnd5e tmp campaign; signature_systems list+dict in rules; campaign_rules fallback; skills defer to KIT block. 38 tests passed (kit_block+lean_core+get_full_context+gm_md_slim).
 
@@ -76,6 +80,7 @@ blocked: file collision on CLAUDE.md / lib/session_manager.py — live-session u
 
 ## History
 
+- 2026-08-14T19:32:00Z  done: KIT block in context; signature_systems render; skills defer to the block  [gk-t8n2wp]
 - 2026-08-14T19:22:00Z  verified → in-review, review dispatched  [gk-t8n2wp]
 - 2026-08-14T19:17:09Z  doc-grounding confirmed — user pre-confirmed "do ALL of this now"  [gk-t8n2wp]
 - 2026-08-14T19:17:09Z  claimed  [gk-t8n2wp]

@@ -5,6 +5,8 @@ description: Social / NPC interaction workflow — load NPC context, attitude ch
 
 # Social / NPC Interaction
 
+The DCs below are 5e — use them only when the scene-context KIT block says `dnd5e`.
+
 ## 1. Load NPC context
 `bash tools/gm-context.sh "[npc]"` + `bash tools/gm-npc.sh status "[name]"`. Surface the NPC's `goal`, `current_mood`, secret-EXISTENCE (never the text), `bonds`, and `voice` (`gm-npc.sh voice`). Check prior interactions + active quests.
 

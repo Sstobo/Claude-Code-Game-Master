@@ -5,6 +5,8 @@ description: Status conditions and exhaustion reference (blinded, charmed, frigh
 
 # Conditions
 
+The condition list below is 5e — apply it only when the scene-context KIT block says `dnd5e`.
+
 | Condition | Effect |
 |-----------|--------|
 | Blinded | Can't see; auto-fail sight checks; disadvantage on attacks |

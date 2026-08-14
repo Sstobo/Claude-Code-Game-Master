@@ -15,6 +15,10 @@ Swap `check` for `drift` / `noise` / `index` as needed; the flags never change.
 
 ---
 
+## 2026-08-14 — kit-block-in-context ingest
+
+- `docs/modules/scene-context.md`, `game-core-and-world-kit.md`, `lean-core-and-skill-routing.md` — KIT block in session context; signature_systems render in YOUR WORLD'S RULES (campaign_rules is the legacy fallback); STEP-0 defers to that block (`kit-block-in-context`).
+
 ## 2026-08-14 — recall top-k ingest
 
 - `docs/modules/campaign-memory.md` — recall default top-k is 5; `gm-recall.sh recall` takes `--top-k` (`recall-top-k`).

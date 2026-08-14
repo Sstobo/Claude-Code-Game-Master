@@ -4,10 +4,11 @@ title: Scene context — the two doors
 description: What the harness pushes to the model each beat, and why "context" means two different things depending on which tool you call.
 sources:
   - { resource: /lib/session_manager.py }
+  - { resource: /lib/world_kit.py }
   - { resource: /lib/scene_context.py }
   - { resource: /lib/search.py }
   - { resource: /tools/gm-context.sh }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T18:59:54Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:25:02Z }
 verified: { by: claude-fable-5, at: 2026-08-14T12:19:52Z }
 ---
 
@@ -20,7 +21,7 @@ most common way a beat comes out flat.
 
 | Command | Code | Returns |
 |---|---|---|
-| `gm-session.sh context` | `SessionManager.get_full_context` (`lib/session_manager.py:412`) | The **session brief** — everything below, as formatted prose for the model |
+| `gm-session.sh context` | `SessionManager.get_full_context` (`lib/session_manager.py:413`) | The **session brief** — everything below, as formatted prose for the model |
 | `gm-context.sh ["loc"]` | `SceneContext.build` (`lib/scene_context.py:37`) | The **place brief** — this location, NPCs present, named entities, plus grounded source passages |
 
 Neither contains the other. The session brief has no source passages; the place brief has
@@ -28,13 +29,20 @@ no history, threads, clocks, voice, or rules. Narrating a scene generally wants 
 
 ## What the session brief carries, and why each block exists
 
-`get_full_context` assembles, in order: header (campaign, session #, location, time) ·
-play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** ·
+`get_full_context` (`lib/session_manager.py:413`) assembles, in order: header (campaign, session #, location, time) ·
+**KIT** · play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** ·
 **previously on** + where-we-paused + open threads · **the world remembers** · story threads · key facts · threat
 clocks · character · party members · **NPC voices** · pending consequences · **your
 world's rules**.
 
-Six of those blocks carry design decisions that are not obvious from reading them:
+Seven of those blocks carry design decisions that are not obvious from reading them:
+
+- **KIT is ambient so skills do not re-derive it.** It sits right under the campaign
+  header and names kit identity, resolution, progression, vitals, and skills, loaded
+  via `WorldKit(world_state_dir)`. A missing `kit` field reads as `custom` — DCC's
+  fixture is that case. If `WorldKit` cannot load (no active campaign, a throw), the
+  block is skipped rather than crashing the brief. `gm-combat` / `gm-levelup` /
+  `gm-spellcasting` defer to this block instead of calling `world_kit.py info`.
 
 - **Play-style flags stay; failure is one informing sentence.** Pacing, dice, action
   menu and inspiration still read `preferences` and surface when set. Failure is
@@ -47,7 +55,7 @@ Six of those blocks carry design decisions that are not obvious from reading the
 - **Narrative voice is a prose target, not lore.** The block is labelled that way in the
   output for a reason — the sample passages are style exemplars to imitate, and a model
   that treats them as world facts will narrate someone else's scene.
-- **NPC secrets are surfaced by existence only.** `lib/session_manager.py:659` prints
+- **NPC secrets are surfaced by existence only.** `lib/session_manager.py:680` prints
   `"has a secret"` and never the secret text, so a secret can sit in `npcs.json` without
   leaking into narration the moment its owner walks on stage.
 - **Presence does not require a voice, and present NPCs carry their memory.** `_present_npcs`
@@ -66,9 +74,11 @@ Six of those blocks carry design decisions that are not obvious from reading the
   (no memory file, no embedding deps, a half-written index), so a broken memory costs the
   brief nothing mid-session. It also drops hits that repeat PREVIOUSLY ON, because
   `recall()` falls back to re-gathering the same session log.
-- **World rules are never truncated.** Every other block is bounded — by item count, not
-  by chopping an entry mid-sentence — but `campaign_rules` is pretty-printed whole
-  (`lib/session_manager.py:708`). The comment there is the rationale: those rules *are*
+- **World rules prefer kit `signature_systems`, then `campaign_rules`, and are never
+  truncated.** Every other block is bounded — by item count, not by chopping an entry
+  mid-sentence — but YOUR WORLD'S RULES is printed whole (`lib/session_manager.py:725`).
+  A kit that declares `signature_systems` (list or the Conan dict form) is the live
+  surface; a legacy campaign with none still gets `campaign_rules`. Those rules *are*
   the magic that makes each book distinct, and the GM is told to follow them exactly, so
   it must see all of them. See [game core and World Kit](game-core-and-world-kit.md).
 

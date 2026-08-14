@@ -5,6 +5,8 @@ description: Skill-check resolution — when to roll, the DC ladder, fail-forwar
 
 # Skill Checks
 
+The DC ladder below is 5e — use it only when the scene-context KIT block says `dnd5e`.
+
 ## When to roll (dice add fun)
 - Uncertain outcome — could go either way
 - Stakes matter — success/failure changes the story

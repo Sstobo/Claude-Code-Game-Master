@@ -5,12 +5,7 @@ description: D&D-kit combat mechanics — initiative, attack/damage resolution, 
 
 # Combat Mechanics (D&D kit)
 
-**STEP 0 — KIT GUARD (do this before anything below).** Run
-`uv run python lib/world_kit.py info --json` and check `kit`. Unless it is
-`"dnd5e"`, STOP: close this skill and resolve the fight through the generic core
-(`game_core` resolution + harm) and the active ruleset's own combat rules
-(`rules_doc` / `campaign_rules`). Everything below — the CR table, death saves,
-5e modifiers — is D&D and would silently overwrite a bespoke world's mechanics.
+**STEP 0 — KIT GUARD.** If the scene-context KIT block is not `dnd5e`, close this skill and resolve the fight through the generic core (`game_core`) and the active ruleset.
 
 Persist combat with `bash tools/gm-combat.sh` (start/add-enemy/hp/condition/next-turn/end) so HP and initiative survive resumes.
 

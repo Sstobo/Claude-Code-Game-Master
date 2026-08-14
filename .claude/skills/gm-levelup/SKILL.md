@@ -5,11 +5,7 @@ description: D&D-kit leveling — XP thresholds, the level-up ceremony, hit dice
 
 # Level Up (D&D kit)
 
-**STEP 0 — KIT GUARD (do this before anything below).** Run
-`uv run python lib/world_kit.py info --json` and check `kit`. Unless it is
-`"dnd5e"`, STOP: close this skill and advance the character through the active
-kit's progression model (milestone / resource-axis / its own thresholds). The
-hit dice, ASIs, and subclass steps below are 5e-only.
+**STEP 0 — KIT GUARD.** If the scene-context KIT block is not `dnd5e`, close this skill and advance through the kit's progression model.
 
 Trigger: when `gm-player.sh xp` outputs **LEVEL_UP**. Note: thresholds are kit-driven (`player_manager._xp_thresholds`); non-D&D kits do not use this 5e table.
 

@@ -5,11 +5,7 @@ description: D&D-kit spellcasting mechanics — spell slots by level, casting re
 
 # Spellcasting Mechanics (D&D kit)
 
-**STEP 0 — KIT GUARD (do this before anything below).** Run
-`uv run python lib/world_kit.py info --json` and check `kit`. Unless it is
-`"dnd5e"`, STOP: close this skill and resolve the magic through the world's own
-system (`campaign_rules` / `rules_doc` / the bible's signature systems). Spell
-slots and 5e save DCs do not exist in a bespoke world unless its kit declares them.
+**STEP 0 — KIT GUARD.** If the scene-context KIT block is not `dnd5e`, close this skill and resolve magic through the world's own system.
 
 When a player casts a spell: spawn the `spell-caster` agent for details, check slots, resolve.
 

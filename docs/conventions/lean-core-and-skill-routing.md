@@ -5,8 +5,10 @@ description: Why CLAUDE.md stays thin, what the router is allowed to keep inline
 sources:
   - { resource: /tests/test_lean_core.py }
   - { resource: /.claude/skills/gm-combat/SKILL.md }
+  - { resource: /.claude/skills/gm-skills/SKILL.md }
   - { resource: /.claude/skills/gm-craft/SKILL.md }
-generated: { by: claude-fable-5, at: 2026-08-13T14:41:47Z }
+  - { resource: /lib/session_manager.py }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:24:32Z }
 verified: { by: cursor-grok-4.6, at: 2026-08-14T18:59:59Z }
 ---
 
@@ -45,26 +47,30 @@ exactly that reason.
 Adding a skill without adding it to `ALL_SKILLS` and the router leaves it unroutable and
 untested.
 
-## Three of the eight skills are D&D-only, and now guard themselves
+## Three of the eight skills are D&D-only; STEP-0 defers to the KIT block
 
 `gm-combat`, `gm-levelup`, and `gm-spellcasting` encode 5e — hit dice, spell slots, an XP
-table, death saves. Since 2026-08-13 each opens with a **STEP 0 kit guard**: run
-`world_kit.py info --json`, and unless `kit == "dnd5e"`, close the skill and use the
-generic core + the active ruleset. Enforcement points:
-`test_dnd_only_skills_carry_the_kit_guard` asserts the guard text exists, and
-`WorldKit.kit()` supplies the identity — `ruleset.json`'s `kit` field, defaulting to
-`"custom"` when absent, so a legacy or bespoke world can never accidentally qualify as
-D&D. A campaign that *wants* the 5e machinery declares `"kit": "dnd5e"` in its ruleset.
+table, death saves. Each opens with a **one-line STEP 0**: read the scene-context KIT
+block, and unless it is `dnd5e`, close the skill and use the generic core + the active
+ruleset. That is context deference, not a tool call — no skill instructs
+`world_kit.py info` for what the brief now carries. Enforcement:
+`test_dnd_only_skills_carry_the_kit_guard` asserts KIT-block / `dnd5e` deference and
+forbids the old info-call. `WorldKit.kit()` still supplies the identity —
+`ruleset.json`'s `kit` field, defaulting to `"custom"` when absent, so a legacy or
+bespoke world can never accidentally qualify as D&D. A campaign that *wants* the 5e
+machinery declares `"kit": "dnd5e"` in its ruleset.
 
 (Until 2026-08-13 nothing enforced the split, and loading `gm-combat` in a Dune campaign
 silently imported 5e rules — the failure read as "the world isn't distinctive", not as an
-error.)
+error. Until the KIT block landed, the guard paid a STEP-0 tool call to re-derive what
+context now prints.)
 
 The guard is still an instruction a model follows, not a hard interlock — the honest
 enforcement tier is "tested prompt", one step below "lint rule".
 
-The other five — `gm-skills`, `gm-social`, `gm-conditions`, `gm-dungeon`, `gm-craft` — are
-kit-agnostic judgment frameworks and load freely.
+`gm-skills`, `gm-social`, and `gm-conditions` load freely as judgment frameworks, but
+their DC ladders and 5e condition lists apply only when the KIT block says `dnd5e`.
+`gm-dungeon` and `gm-craft` stay kit-agnostic.
 
 ## Related
 

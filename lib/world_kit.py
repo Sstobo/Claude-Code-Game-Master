@@ -6,17 +6,21 @@ A campaign's `ruleset.json` declares HOW that world plays — its stat schema, i
 progression model, its resolution model, and which specialist agents are active —
 without baking D&D 5e into the engine. The WorldKit loads it and drives play
 through `game_core`, so a Dune kit and a Dungeon Crawler Carl kit run the same
-core with entirely different rules. World-flavor systems (loot boxes, viewers,
-etc.) stay in campaign-overview's `campaign_rules` and are surfaced alongside.
+core with entirely different rules. Signature systems on the kit are the
+play-time rules surface (rendered in scene context). campaign-overview's
+`campaign_rules` is the legacy fallback when the kit has none.
 
 ruleset.json shape:
 {
   "name": "Dungeon Crawler Carl",
+  "kit": "custom",
   "stat_schema": { "attributes": ["str","con","dex","int"], "vitals": ["hp"] },
   "progression": { "model": "resource-axis", "resource": "viewers",
                    "tiers": [1000000, 1000000000] },
   "resolution": { "model": "d20-vs-dc" },
   "active_agents": ["monster-manual", "loot-dropper"],
+  "skills": ["might", "guile"],  # optional; absent → []
+  "signature_systems": [ { "name": "...", "summary": "...", "rules": "..." } ],
   "rules_doc": "rules.md"        # optional: campaign-scoped rules prose, loaded on demand
 }
 """
@@ -121,9 +125,37 @@ class WorldKit:
         return p if p.exists() else None
 
     def campaign_rules(self) -> Dict[str, Any]:
-        """World-flavor systems (loot boxes, viewers, ...) from campaign-overview."""
+        """World-flavor systems (loot boxes, viewers, ...) from campaign-overview.
+
+        Legacy fallback for scene context when `signature_systems()` is empty.
+        """
         overview = self.json_ops.load_json("campaign-overview.json") or {}
         return overview.get("campaign_rules", {})
+
+    def skills(self) -> List[str]:
+        """Skill names this kit declares, or [] when the ruleset has none."""
+        raw = self.ruleset.get("skills") or []
+        if isinstance(raw, dict):
+            return [str(k) for k in raw]
+        if not isinstance(raw, list):
+            return []
+        names: List[str] = []
+        for item in raw:
+            if isinstance(item, str):
+                names.append(item)
+            elif isinstance(item, dict) and item.get("name"):
+                names.append(str(item["name"]))
+        return names
+
+    def signature_systems(self) -> List[Dict[str, str]]:
+        """Normalize ruleset.signature_systems to a list of {name, summary}.
+
+        Canonical form is a list of `{name, summary, rules?}`. The Conan
+        migration case is a dict of name → summary string (or name →
+        `{summary, rules}`). Bare strings in a list become name=summary.
+        Missing or empty → [].
+        """
+        return _normalize_signature_systems(self.ruleset.get("signature_systems"))
 
     # --- play, driven through the generic core ---
     def resolve(self, modifier: int = 0, dc: int = 10, advantage: str = None) -> Dict[str, Any]:
@@ -141,6 +173,41 @@ class WorldKit:
 
     def level(self, state: Dict[str, Any]) -> int:
         return self.progression.level(state)
+
+
+def _normalize_signature_systems(raw: Any) -> List[Dict[str, str]]:
+    if not raw:
+        return []
+    items: List[Dict[str, str]] = []
+    if isinstance(raw, dict):
+        for name, val in raw.items():
+            items.append(_one_signature_system(str(name), val))
+    elif isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, str):
+                items.append({"name": item, "summary": item})
+            elif isinstance(item, dict):
+                name = item.get("name") or item.get("title") or ""
+                items.append(_one_signature_system(str(name), item))
+    return [s for s in items if s.get("name") or s.get("summary")]
+
+
+def _one_signature_system(name: str, val: Any) -> Dict[str, str]:
+    if isinstance(val, str):
+        return {"name": name, "summary": val}
+    if not isinstance(val, dict):
+        return {"name": name, "summary": str(val) if val else ""}
+    sys_name = str(val.get("name") or name)
+    summary = val.get("summary")
+    rules = val.get("rules")
+    if not isinstance(summary, str):
+        summary = "" if summary is None else str(summary)
+    entry: Dict[str, str] = {"name": sys_name, "summary": summary}
+    if not entry["summary"] and rules:
+        entry["summary"] = rules if isinstance(rules, str) else str(rules)
+    elif rules and rules != entry["summary"]:
+        entry["rules"] = rules if isinstance(rules, str) else str(rules)
+    return entry
 
 
 def main():
