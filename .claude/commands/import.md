@@ -374,7 +374,55 @@ the campaign root; archive `extracted/` afterward to keep the folder clean.
 
 ---
 
-## Step 6.5: Establish the World Kit (ruleset.json) — REQUIRED
+## Step 6.4: Draft the World Bible (world-bible.json) — REQUIRED, DO THIS FIRST
+
+`world-bible.json` is the world's identity spine, and **everything below is derived
+from it**: the World Kit (6.5), the campaign rules (6.6), the narrative voice (6.7).
+Draft it before any of them.
+
+The split is deliberate: the tool writes only what the SOURCE can prove (the chapter
+map, the verbatim-filtered voice block, the skeleton keys `validate_bible` requires),
+and YOU author the creative fields from large-span reads.
+
+**A. Scaffold from the source text** (idempotent; refuses a confirmed bible):
+
+```bash
+bash tools/gm-extract.sh draft-bible --name "<World/Book Name>"
+```
+
+**B. Read the book in LARGE spans** — whole chapters via long context, not 3000-char
+chunks. The `chapters` list the scaffold just wrote is your map; read the spans that
+carry the world's identity (`current-document.txt` is retained for exactly this).
+
+**C. Merge your authorship in** with the same verb — it preserves everything already
+in the draft:
+
+```bash
+bash tools/gm-extract.sh draft-bible --fields-json '{
+  "tone": "<the book'"'"'s emotional register>",
+  "themes": ["<recurring concern>", "..."],
+  "factions": {"nodes": [{"name": "<faction>", "agenda": "..."}], "edges": [{"from": "...", "to": "...", "relation": "..."}]},
+  "geography": {"nodes": [{"name": "<place>", "role": "..."}], "edges": [{"from": "...", "to": "...", "route": "..."}]},
+  "signature_systems": ["<the mechanic this book runs on, in one line>", "..."]
+}'
+```
+
+The draft stays `confirmed: false` — it is not the player's world until they say so
+(Step 6.7 asks). Verify before moving on:
+
+```bash
+uv run python lib/world_bible.py validate
+```
+
+**If drafting failed, STOP.** Do not run 6.5, 6.6 or 6.7 — each of them reads this
+file, and a missing bible fails them all. The two real failures: no
+`current-document.txt` (Step 2's `prepare` did not finish — re-run it) and "bible is
+confirmed" (a bible already exists and was approved; import it as-is or clear it
+deliberately).
+
+---
+
+## Step 6.5: Draft the World Kit (ruleset.json) from the bible — REQUIRED
 
 Every campaign's rules come from its **World Kit** (`ruleset.json`). If you skip
 this, `WorldKit` silently falls back to `DEFAULT_RULESET` ("Generic Adventure"
@@ -389,34 +437,47 @@ CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 [ -f "$CAMPAIGN_DIR/ruleset.json" ] && echo "World Kit already present" || echo "NO World Kit — must create one"
 ```
 
-If no `ruleset.json` exists, author one **inferred from the source book**:
+If no `ruleset.json` exists, derive one **from the bible you just drafted**:
 
 - **Same universe as an existing campaign?** (e.g. another Dungeon Crawler Carl
   book) Copy that campaign's `ruleset.json` — the kit is universe-level, not
   campaign state: `cp "$(bash tools/gm-campaign.sh path "<sibling>")/ruleset.json" "$CAMPAIGN_DIR/ruleset.json"`
-- **Otherwise**, write a kit that fits the book. Baseline template (adjust to the
-  source — sci-fi/horror/non-D&D books often need different attributes or a
-  `resource-axis` / `milestone` progression rather than levels):
+- **Otherwise**, draft it. The kit's `name` comes from the bible; you choose the
+  three things the source decides — the attributes the book's characters actually
+  have, the progression model, and the kit router:
 
 ```bash
-cat > "$CAMPAIGN_DIR/ruleset.json" <<'JSON'
-{
-  "name": "<World/Book Name>",
-  "stat_schema": { "attributes": ["str","con","dex","int","wis","cha"], "vitals": ["hp"] },
-  "progression": { "model": "milestone" },
-  "resolution": { "model": "d20-vs-dc" },
-  "active_agents": ["monster-manual","rules-master","spell-caster","gear-master","loot-dropper","npc-builder"],
-  "rules_doc": null
-}
-JSON
+bash tools/gm-extract.sh draft-ruleset \
+  --attributes "<comma-separated attributes the book uses, e.g. str,dex,con,int,wis,cha>" \
+  --progression-model "milestone|xp-levels|resource-axis" \
+  --kit "custom"
+# resource-axis needs its axis, passed through as progression config:
+#   --progression-model resource-axis --progression-json '{"resource":"viewers","tiers":[1000,10000]}'
 ```
+
+- `--kit` is the **machine-readable router**, not flavor. Use `dnd5e` ONLY when the
+  book genuinely is a D&D module — that is what unlocks the D&D mechanics skills
+  (`gm-combat`, `gm-levelup`, `gm-spellcasting`) and puts `spell-caster` in
+  `active_agents`. Every other book — sci-fi, horror, LitRPG, sword-and-sorcery —
+  is `custom`, and its magic (if any) is a signature system, not 5e spell slots.
+- `--progression-model`: `milestone` is the safest book-native default;
+  `xp-levels` only if the book really counts XP; `resource-axis` for books whose
+  advancement rides one axis (viewers, notoriety, corruption).
+- The verb refuses to overwrite an existing `ruleset.json` (so the sibling copy
+  above is safe); pass `--force` only if you mean to replace it.
 
 Verify the kit (read the file directly, so the check is pinned to the campaign
 being imported rather than to whatever `world_kit.py info` finds active):
 ```bash
-uv run python -c "import json; k=json.load(open('$CAMPAIGN_DIR/ruleset.json')); print('Kit:', k['name'], '| attrs:', k['stat_schema']['attributes'])"
+uv run python -c "import json; k=json.load(open('$CAMPAIGN_DIR/ruleset.json')); print('Kit:', k['name'], '| kit:', k.get('kit'), '| attrs:', k['stat_schema']['attributes'])"
 ```
-Confirm `name` is the book's world (not "Generic Adventure") and the attribute list is non-empty.
+Confirm `name` is the book's world (not "Generic Adventure"), `kit` is set, and the
+attribute list is non-empty.
+
+**Legacy campaigns**: a `ruleset.json` written before this step existed has no `kit`
+field (conan's live state is one). Everything reads a missing `kit` as `custom`, which
+is correct for every non-D&D import — stamp one only if you want it explicit, by
+editing that campaign's `ruleset.json` and adding `"kit": "custom"` (or `"dnd5e"`).
 
 ---
 
@@ -428,20 +489,29 @@ them into scene context. A fresh import leaves the overview as the default scaff
 (genre "Fantasy", date "Year 1", no campaign_rules), so without this step the book's
 flavor is captured nowhere the GM tooling reads.
 
-Author real overview content from the source and write a `campaign_rules` block
-describing the book's signature systems, then resolve any dangling `rules_doc`:
+The rules themselves are NOT re-authored here — they are the `signature_systems` you
+already wrote into the bible in Step 6.4, mapped across:
+
+```bash
+bash tools/gm-extract.sh campaign-rules
+```
+
+Then author the overview fields the bible does not carry, and resolve any dangling
+`rules_doc`:
 
 ```bash
 CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)   # re-derive; never hand-build it
 uv run python lib/overview_seed.py "$CAMPAIGN_DIR" \
   --fields-json '{"campaign_name":"<World/Book Name>","genre":"<e.g. LitRPG / Comedy-Horror>","tone":{"horror":30,"comedy":35,"drama":35}}' \
-  --rules-json '{"<system_key>":"<one-line rule the GM enforces>", "...":"..."}' \
   --fix-rules-doc
 ```
 
-For a DCC import, `campaign_rules` should cover: viewer-based progression, loot boxes,
-saferooms/shops, the moving Iron Tangle trains, prime-station stairwells, and the
-collapse clock. `--fix-rules-doc` nulls a `rules.md` pointer with no file on disk.
+If the mapped `signature_systems` read thin, the fix is upstream — re-run
+`draft-bible --fields-json` with better systems and `campaign-rules` again, so the
+bible stays the single source. For a DCC import they should cover: viewer-based
+progression, loot boxes, saferooms/shops, the moving Iron Tangle trains,
+prime-station stairwells, and the collapse clock. `--fix-rules-doc` nulls a
+`rules.md` pointer with no file on disk.
 
 Then author substantive GM-facing rules prose grounded in the source and point the
 kit at it (this is the per-book rules meat the thin ruleset.json routes to):
@@ -474,32 +544,39 @@ not like the book. Populate it from the SOURCE:
   be the real text, not paraphrase.
 - `vocab` — a few signature in-world terms.
 
-Use the grounding helper so only verbatim excerpts survive (it drops anything not
-found in the source), then merge into the bible and validate:
+The bible exists since Step 6.4, so this is a merge into it — the same `draft-bible`
+verb, which routes your excerpts through the verbatim filter and keeps only the ones
+that really appear in `current-document.txt`:
 
 ```bash
-CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
-CAMPAIGN_DIR="$CAMPAIGN_DIR" uv run python - <<'PY'
-import os, sys, json; sys.path.insert(0, "lib")
-from book_bible import draft_voice
-CAMP = os.environ["CAMPAIGN_DIR"]   # resolved by the tool, never hand-built
-src = open(f"{CAMP}/current-document.txt", encoding="utf-8").read()
-voice = draft_voice(
-    style="<author's prose fingerprint>",
-    sample_passages=["<verbatim excerpt 1>", "<verbatim excerpt 2>"],
-    source_text=src,
-    vocab=["<signature term>"],
-)
-bible = json.load(open(f"{CAMP}/world-bible.json"))
-bible["voice"] = voice
-json.dump(bible, open(f"{CAMP}/world-bible.json", "w"), indent=2, ensure_ascii=False)
-print("voice passages kept:", len(voice["sample_passages"]))
-PY
+bash tools/gm-extract.sh draft-bible --voice-json '{
+  "style": "<author'"'"'s prose fingerprint>",
+  "sample_passages": ["<verbatim excerpt 1>", "<verbatim excerpt 2>"],
+  "vocab": ["<signature term>"]
+}'
 uv run python lib/world_bible.py validate
 ```
 
-Confirm `voice.style` is set and ≥1 `sample_passages` survived (if zero survived,
-your excerpts were not verbatim — re-copy them exactly from the source).
+The verb prints how many passages survived. Confirm `voice.style` is set and ≥1
+passage survived — if zero did, your excerpts were not verbatim (reflowed whitespace
+and smart quotes both break the match); re-copy them exactly from the source.
+
+### Then hand the world to the player for approval
+
+The bible is still `confirmed: false`. Show them what was drafted and ask — this is
+their world, not yours:
+
+```bash
+uv run python lib/world_bible.py review
+```
+
+Present the name, tone, voice style, themes, factions and signature systems in
+plain language and use AskUserQuestion:
+- **"Looks right — play it"** → `uv run python lib/world_bible.py confirm`
+- **"Change something"** → take their notes, re-run `draft-bible --fields-json` /
+  `--voice-json` with the fixes, review again, then confirm.
+
+Do NOT confirm on their behalf.
 
 ---
 
@@ -632,6 +709,8 @@ world-state/campaigns/<campaign-slug>/    # resolve with: bash tools/gm-campaign
 ├── locations.json       # Final location data
 ├── items.json           # Final item data
 ├── plots.json           # Final quest/plot data
+├── world-bible.json     # The world's identity spine (drafted in Step 6.4)
+├── ruleset.json         # The World Kit, drafted from the bible (Step 6.5)
 ├── campaign-overview.json
 ├── session-log.md
 └── current-document.txt # Full extracted text

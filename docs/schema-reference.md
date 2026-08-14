@@ -534,9 +534,13 @@ import; captures what makes a book feel like itself.
   "factions":  { "nodes": [{"id","name"}], "edges": [{"from","to","relation"}] },
   "geography": { "nodes": [{"id","name"}], "edges": [{"from","to","adjacency"}] },
   "timeline": ["..."],
-  "signature_systems": ["..."]
+  "signature_systems": ["..."],
+  "chapters": [{"title": "string", "start": 0, "end": 0}]
 }
 ```
+
+`chapters` is the persisted chapter map `draft-bible` writes from
+`segment_into_chapters` (character offsets into `current-document.txt`).
 
 Required: name, voice, tone, themes, factions (graph), geography (graph),
 signature_systems. The bible auto-generates the World Kit ruleset + campaign_rules.

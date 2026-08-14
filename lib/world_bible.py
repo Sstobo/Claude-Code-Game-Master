@@ -102,7 +102,11 @@ class WorldBible:
             'tone': self.bible.get('tone'),
             'voice_style': self.voice().get('style'),
             'themes': self.bible.get('themes', []),
-            'factions': [n.get('name') for n in self.factions().get('nodes', [])],
+            # Faction nodes are authored by the model (or by hand): conan's live
+            # bible lists them as bare strings, not {name: ...} objects. This is a
+            # review screen — show what is there rather than crash on the shape.
+            'factions': [n.get('name') if isinstance(n, dict) else n
+                         for n in self.factions().get('nodes', [])],
             'signature_systems': self.signature_systems(),
             'confirmed': self.is_confirmed(),
         }
@@ -114,7 +118,8 @@ def main():
     from cli_output import wants_json, strip_json_flag, emit, emit_error
 
     parser = argparse.ArgumentParser(description="World Bible")
-    parser.add_argument('action', nargs='?', default='validate', choices=['validate', 'show'])
+    parser.add_argument('action', nargs='?', default='validate',
+                        choices=['validate', 'show', 'review', 'confirm'])
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
 
@@ -127,6 +132,20 @@ def main():
         else:
             print(json.dumps(result, indent=2))
         sys.exit(0 if ok else 1)
+    elif args.action == 'review':
+        # The human-facing draft. A drafted world is `confirmed: false` until the
+        # PLAYER approves what this prints — never confirm on their behalf.
+        summary = wb.review_summary()
+        if json_mode:
+            emit(summary, json_mode=True)
+        else:
+            print(json.dumps(summary, indent=2))
+    elif args.action == 'confirm':
+        if not wb.exists():
+            sys.exit(emit_error('no world-bible.json to confirm', json_mode))
+        wb.confirm()
+        emit({'confirmed': True, 'name': wb.bible.get('name')},
+             message=f"World bible confirmed: {wb.bible.get('name')}", json_mode=json_mode)
     else:
         if json_mode:
             emit(wb.bible, json_mode=True)

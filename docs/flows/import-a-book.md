@@ -8,13 +8,15 @@ sources:
   - { resource: /tools/gm-extract.sh }
   - { resource: /lib/agent_extractor.py }
   - { resource: /lib/campaign_manager.py }
+  - { resource: /lib/book_bible.py }
+  - { resource: /lib/world_bible.py }
   - { resource: /lib/extraction_cap.py }
   - { resource: /lib/minor_stubs.py }
   - { resource: /lib/location_reconcile.py }
   - { resource: /lib/plot_spine.py }
   - { resource: /lib/clock_seed.py }
   - { resource: /lib/opening_seed.py }
-generated: { by: claude-opus-5, at: 2026-08-13T22:05:54Z }
+generated: { by: claude-opus-5, at: 2026-08-14T12:21:54Z }
 ---
 
 # Importing a book
@@ -43,7 +45,8 @@ their output into runtime state. That split is what keeps the fan-out race-free.
    frontmatter never reaches the agent.
 4. **`validate`** then the repair-and-seed chain (below).
 5. **Bible → kit → overview → voice → chronicler** — the world's identity, drafted from
-   large-span reads rather than chunks. See [the World Bible](../modules/world-bible.md).
+   large-span reads rather than chunks, and strictly in that order because each step
+   reads the one before it (below). See [the World Bible](../modules/world-bible.md).
 6. **`gm-enhance.sh batch`** — RAG enrichment of every **active** entity. Marked "critical
    for quality" in the command, and it is: this is what fills NPC `context` with real
    dialogue. `EntityEnhancer.list_unenhanced` skips `background: true` entities, which is
@@ -97,6 +100,38 @@ The passes most likely to surprise:
   tag is stubbed, not dropped — "The Upper Level of the Tower of the Elephant" and
   "Kandahar via the Zhaibar Pass" are places, and a phrase test run over them deletes real
   geography.
+
+## The identity chain hangs off one file
+
+`world-bible.json` is written first and everything downstream derives from it, through
+three `gm-extract.sh` verbs that wrap `lib/book_bible.py`:
+
+| Step | Verb | Reads | Writes |
+|---|---|---|---|
+| bible | `draft-bible` | `current-document.txt` | `world-bible.json` (`confirmed: false`) |
+| kit | `draft-ruleset` | the bible | `ruleset.json` |
+| overview | `campaign-rules` | the bible's `signature_systems` | `campaign-overview.json` → `campaign_rules` |
+| voice | `draft-bible --voice-json` | the bible + source | the bible's `voice` block |
+
+Three things about that chain:
+
+- **The bible is drafted, not generated.** `draft-bible` writes only what the source
+  proves — the chapter map, the verbatim-filtered voice, the skeleton keys — and the
+  model authors tone/themes/factions/geography/signature systems into it by re-running
+  the same verb with `--fields-json`. It is idempotent and refuses a confirmed bible, so
+  a re-run never flattens authorship.
+- **The kit is derived, not pasted.** `draft-ruleset` takes the attribute list,
+  progression model and `kit` router from the importer and everything else from the
+  bible. `kit: dnd5e` is reserved for books that genuinely are D&D modules; it is what
+  puts `spell-caster` in `active_agents`. It refuses to overwrite an existing
+  `ruleset.json`, which is what makes the "copy a sibling book's kit" path safe.
+- **The world is not the player's until they say so.** The draft carries
+  `confirmed: false`; `world_bible.py review` prints it and `world_bible.py confirm`
+  stamps it, after the user approves. `/import` never confirms on their behalf.
+
+If `draft-bible` fails, the whole tail fails — the kit, the campaign rules and the voice
+pass all read the bible. The two real failures are a missing `current-document.txt` (a
+`prepare` that did not finish) and an already-confirmed bible.
 
 ## Ordering is deterministic, not model judgment
 

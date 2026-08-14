@@ -98,6 +98,16 @@ Commands:
   spine [campaign]          Derive plot arc (sequence + depends_on + through-line)
   seed-clocks [campaign]    Seed threat clocks from headline time-pressure in plots
   seed-opening [campaign]   Set starting position + opening beat from the spine
+  draft-bible [campaign] [--name N] [--voice-json J] [--fields-json J]
+                            Draft/refresh the campaign's world-bible.json from
+                            current-document.txt (chapter map + verbatim-filtered
+                            voice + skeleton keys). Idempotent; refuses a
+                            confirmed bible. Run BEFORE draft-ruleset.
+  draft-ruleset [campaign] [--kit K] [--progression-model M] [--progression-json J]
+                            [--attributes a,b] [--force]
+                            Draft the World Kit (ruleset.json) from the bible
+  campaign-rules [campaign] Write the bible's signature systems into
+                            campaign-overview.json as campaign_rules
   integrity [campaign] [--no-strict]  Canonicalize cross-refs to real keys;
                             fail on unresolved (strict by default)
   merge [campaign] [--cleanup]  Combine results from all extraction agents
@@ -570,6 +580,24 @@ case "$1" in
         echo "Seeding opening beat: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/opening_seed.py" "$CAMPAIGN_DIR"
+        ;;
+
+    draft-bible|draft-ruleset|campaign-rules)
+        # The bible -> kit -> campaign_rules chain (lib/book_bible.py). The
+        # campaign argument is optional here because every flag these verbs take
+        # is a --long option: anything starting with -- is passed through, so
+        # `draft-bible --name "X"` still means the ACTIVE campaign.
+        verb="$1"; shift
+        campaign_arg=""
+        case "$1" in
+            ""|--*) ;;
+            *) campaign_arg="$1"; shift ;;
+        esac
+        campaign_name=$(require_campaign "$campaign_arg" "$verb") || exit 1
+        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
+        echo "Running $verb: $campaign_name"
+        echo "================================="
+        $PYTHON_CMD "$LIB_DIR/book_bible.py" "$verb" "$CAMPAIGN_DIR" "$@"
         ;;
 
     spine)
