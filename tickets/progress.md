@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T14:48:48Z  triage: prepare-anchor-fallback filed from post-commit review findings  [fable-sott1]
 - 2026-08-14T14:47:08Z  done: wrapper-cwd-anchoring — every wrapper cwd-safe via one cd  [fable-sott1]
 - 2026-08-14T14:42:18Z  in-review: wrapper-cwd-anchoring — verified, review dispatched  [fable-sott1]
 - 2026-08-14T14:40:49Z  in-review: story-escape-hatches — verified, review dispatched  [fable-sott1]

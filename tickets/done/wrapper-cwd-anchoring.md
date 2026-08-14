@@ -91,3 +91,10 @@ gm-image needs nothing. Implementer full suite 543 passed.
 - 2026-08-14T14:34:23Z  doc-grounding confirmed  [fable-sott1]
 - 2026-08-14T14:42:18Z  verified → in-review  [fable-sott1]
 - 2026-08-14T14:47:08Z  review perfect → done, committed  [fable-sott1]
+
+### 2026-08-14T14:48:48Z — post-commit findings [stray fork of review-cwd]
+A second reviewer output arrived after commit 17e6f6b: (1) MEDIUM
+producer/consumer anchor mismatch — compile-canon emits project-root-relative
+paths, prepare resolves caller-relative; the /new-game pipe breaks off-root.
+(2-4) LOW test-hardening gaps (unguarded live-tree access in the decoy test;
+missing returncode assertions). Filed as prepare-anchor-fallback (p1).
