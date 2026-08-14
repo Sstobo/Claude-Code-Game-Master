@@ -1,6 +1,11 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T12:30:00Z  done: full-clock-fires — a filled clock writes its consequence into the world  [fable-remember]
+- 2026-08-14T12:30:00Z  done: key-facts-reads-choices — player_choices and npc_relations are no longer write-only  [fable-remember]
+- 2026-08-14T12:30:00Z  done: recall-pushed-into-context — the world volunteers its memory each beat  [fable-remember]
+- 2026-08-14T12:30:00Z  done: npc-memory-in-scene — present NPCs carry what they remember  [fable-remember]
+- 2026-08-14T12:30:00Z  prd: make-the-world-remember v1 active; 4 tickets created and shipped  [fable-remember]
 - 2026-08-14T12:25:26Z  done: test-fixture-isolation — campaign tests fully hermetic  [fable-sott1]
 - 2026-08-14T12:24:23Z  in-review: import-bible-kit-wiring — verified, review dispatched  [fable-sott1]
 - 2026-08-14T12:18:01Z  in-review: test-fixture-isolation — verified; straggler ticket filed  [fable-sott1]

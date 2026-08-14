@@ -10,9 +10,9 @@ blockedBy: []
 claimedBy: null
 claimedAt: null
 changedFiles: []
-resolution: null
+resolution: KEY_FACT_CATEGORIES adds player_choices, npc_relations and lore; per-category depth 4 -> 3. session_events and rules stay out by design and remain reachable through recall, so no advertised category is a write-only hole.
 reviewRounds: null
-implementer: null
+implementer: claude-fable-5
 createdAt: 2026-08-14T02:25:26Z
 updatedAt: 2026-08-14T02:25:26Z
 ---

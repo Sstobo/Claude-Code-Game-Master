@@ -10,9 +10,9 @@ blockedBy: []
 claimedBy: null
 claimedAt: null
 changedFiles: []
-resolution: null
+resolution: _world_remembers queries recall with the scene (location + present NPCs), renders THE WORLD REMEMBERS plus open_debts from the latest arc, degrades to empty on any failure, and drops hits echoing PREVIOUSLY ON. ~165 tokens on the DCC fixture.
 reviewRounds: null
-implementer: null
+implementer: claude-fable-5
 createdAt: 2026-08-14T02:25:26Z
 updatedAt: 2026-08-14T02:25:26Z
 ---

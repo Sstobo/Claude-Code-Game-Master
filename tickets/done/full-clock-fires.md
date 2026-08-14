@@ -10,9 +10,9 @@ blockedBy: []
 claimedBy: null
 claimedAt: null
 changedFiles: []
-resolution: null
+resolution: _fire_if_filled writes the clock's consequence as [Clock - name] on the transition into full; stdout redirected so --json stays parseable; gm-clock.sh add gained --consequence/--linked-plot.
 reviewRounds: null
-implementer: null
+implementer: claude-fable-5
 createdAt: 2026-08-14T02:25:26Z
 updatedAt: 2026-08-14T02:25:26Z
 ---

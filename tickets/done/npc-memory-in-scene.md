@@ -10,9 +10,9 @@ blockedBy: []
 claimedBy: null
 claimedAt: null
 changedFiles: []
-resolution: null
+resolution: Presence no longer requires canonical dialogue; present NPCs render their recent events via a renderer shared with the party block. CLAUDE.md gained the missing persistence row. Landed inside commit 2f36249 (a concurrent session committed the working tree).
 reviewRounds: null
-implementer: null
+implementer: claude-fable-5
 createdAt: 2026-08-14T02:25:26Z
 updatedAt: 2026-08-14T02:25:26Z
 ---
