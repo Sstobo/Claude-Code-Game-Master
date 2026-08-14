@@ -16,10 +16,6 @@ fi
 
 require_active_campaign
 
-# The managers resolve world-state relative to the working directory, so run from
-# the project root no matter where the caller invoked this wrapper.
-cd "$PROJECT_ROOT" || exit 1
-
 if [ "$1" = "categories" ]; then
     echo "Fact Categories:"
     $PYTHON_CMD "$LIB_DIR/note_manager.py" categories

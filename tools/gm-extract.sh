@@ -151,6 +151,13 @@ prepare_document() {
         exit 1
     fi
 
+    # common.sh moved us to the project root; the document path is whatever the
+    # user typed, so a relative one still means relative to where they typed it.
+    case "$document" in
+        /*) ;;
+        *) document="$CALLER_PWD/$document" ;;
+    esac
+
     if [ ! -f "$document" ]; then
         echo "Error: File not found: $document"
         exit 1

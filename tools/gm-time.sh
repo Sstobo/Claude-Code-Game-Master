@@ -11,10 +11,6 @@ fi
 
 require_active_campaign
 
-# The managers resolve world-state relative to the working directory, so run from
-# the project root no matter where the caller invoked this wrapper.
-cd "$PROJECT_ROOT" || exit 1
-
 $PYTHON_CMD "$LIB_DIR/time_manager.py" update "$1" "$2"
 RESULT=$?
 if [ $RESULT -ne 0 ]; then exit $RESULT; fi

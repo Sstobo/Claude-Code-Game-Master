@@ -23,6 +23,15 @@ PYTHON_CMD=$(find_python)
 # Get project root directory (parent of tools/)
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# The managers default to the RELATIVE path "world-state", so they resolve it
+# against the working directory. Run every wrapper from the project root, or a
+# call made from anywhere else reads the wrong tree (and silently creates a
+# stray world-state/ next to the caller). CALLER_PWD keeps the directory the
+# user actually typed the command in, for the few verbs that take a path
+# argument relative to it (gm-extract.sh prepare).
+CALLER_PWD="$PWD"
+cd "$PROJECT_ROOT" || exit 1
+
 # Tool directories
 TOOLS_DIR="$PROJECT_ROOT/tools"
 LIB_DIR="$PROJECT_ROOT/lib"

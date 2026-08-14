@@ -6,9 +6,10 @@ sources:
   - { resource: /tools/common.sh }
   - { resource: /lib/cli_output.py }
   - { resource: /lib/campaign_manager.py }
+  - { resource: /tools/gm-extract.sh }
   - { resource: /lib/json_ops.py }
   - { resource: /tests/test_json_wrappers_player.py }
-generated: { by: claude-opus-5, at: 2026-08-14T12:16:50Z }
+generated: { by: claude-opus-5, at: 2026-08-14T14:40:27Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:46Z }
 ---
 
@@ -28,8 +29,16 @@ Every wrapper sources it, and inherits:
 - **`PYTHON_CMD`** — `uv run python` if `uv` is on PATH, else `python3`, else `python`.
   This is why project instructions say never to call bare `python`: the wrapper already
   chose, and choosing differently skips the venv.
-- **Path anchoring** — `PROJECT_ROOT` is derived from the script's own location, so tools
-  work from any working directory.
+- **Path anchoring** — `PROJECT_ROOT` is derived from the script's own location, and
+  `common.sh` then **`cd`s there**, so tools work from any working directory. Deriving the
+  root is not enough on its own: with no `GM_WORLD_STATE_BASE` in the environment the
+  Python side falls back to the *relative* path `world-state`, which resolves against
+  whatever directory the caller was in — `cd /tmp && bash <repo>/tools/gm-note.sh
+  categories` reported no active campaign and left a stray `/tmp/world-state/` behind. The
+  `cd` is what closes that, for every wrapper at once. Because it moves the process,
+  `common.sh` first saves the caller's directory as **`CALLER_PWD`**: any verb taking a
+  path argument the user typed relative to *their* directory must resolve it against
+  `CALLER_PWD` (today only `gm-extract.sh prepare <document>`).
 - **`WORLD_STATE_BASE`** — `$PROJECT_ROOT/world-state`, unless `GM_WORLD_STATE_BASE` is
   set in the environment, which wins. That env var is the isolation seam: the Python side
   honours it too (`resolve_world_state_base`, `lib/campaign_manager.py`) whenever a manager
