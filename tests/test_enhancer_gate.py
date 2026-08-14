@@ -1,4 +1,4 @@
-"""Tests for enhancer-relevance-gate: _gate_passages relevance filtering."""
+"""Tests for enhancer-relevance-gate: _gate_passages, query shape, batch honesty."""
 
 from lib.entity_enhancer import EntityEnhancer
 
@@ -30,10 +30,11 @@ def test_below_floor_non_name_passages_dropped_not_padded():
     assert frac == 1.0
 
 
-def test_zero_name_bearing_yields_zero_fraction():
+def test_zero_name_bearing_attaches_nothing():
     passages = [_p("a passage about someone else", 0.5), _p("another", 0.6)]
     kept, frac = EntityEnhancer._gate_passages("Tserendolgor", [], passages, floor=1.0)
-    assert frac == 0.0, "no passage names the entity -> fraction 0 (flagged for curation)"
+    assert kept == [], "0 name-bearing → nothing attached"
+    assert frac == 0.0
 
 
 def test_aliases_count_as_name_bearing():
@@ -53,3 +54,82 @@ def test_fill_respects_floor_and_target():
     # 1 name-bearing + fill to target 3 => 3 total, lowest-distance others first
     assert len(kept) == 3
     assert kept[0]["distance"] == 0.2
+
+
+def test_enhancement_queries_include_type_not_name_alone():
+    # Criterion 3: no live corpus in this suite; assert the query is richer than name-only.
+    queries = EntityEnhancer._enhancement_queries("Hekla", "npc")
+    assert queries[0] != "Hekla"
+    assert "Hekla" in queries[0]
+    assert "npc" in queries[0]
+    assert any("Hekla" in q and "npc" in q for q in queries)
+
+
+def _stub_enhancer(unenhanced, passages_by_name):
+    enhancer = EntityEnhancer.__new__(EntityEnhancer)
+    enhancer.list_unenhanced = lambda entity_type=None: list(unenhanced)
+    enhancer.query_passages = lambda name, entity_type, n_results=8: list(
+        passages_by_name.get(name, [])
+    )
+    enhancer.find_entity = lambda name: {"type": "npc", "name": name, "data": {}}
+    applied = []
+
+    def apply(etype, name, context, new_description=None, additional_fields=None):
+        applied.append({"name": name, "context": context, "fields": additional_fields})
+        return True
+
+    enhancer.apply_enhancements = apply
+    return enhancer, applied
+
+
+def test_zero_name_bearing_batch_reports_not_enhanced():
+    enhancer, applied = _stub_enhancer(
+        [{"type": "npc", "name": "Ghost"}],
+        {"Ghost": [_p("a passage about someone else", 0.4)]},
+    )
+    result = enhancer.batch_enhance()
+    assert applied == []
+    assert result["enhanced"] == 0
+    assert result["low_relevance"] == 1
+    assert result["skipped"] == 0
+    assert result["low_relevance_names"] == ["Ghost"]
+
+
+def test_name_bearing_batch_still_enhances():
+    enhancer, applied = _stub_enhancer(
+        [{"type": "npc", "name": "Hekla"}],
+        {"Hekla": [_p("Hekla raised her crossbow.", 0.3)]},
+    )
+    result = enhancer.batch_enhance()
+    assert len(applied) == 1
+    assert applied[0]["name"] == "Hekla"
+    assert result["enhanced"] == 1
+    assert result["low_relevance"] == 0
+
+
+def test_batch_summary_warns_and_nonzero_above_threshold():
+    result = {
+        "enhanced": 1,
+        "skipped": 0,
+        "low_relevance": 2,
+        "low_relevance_names": ["A", "B"],
+        "total": 3,
+    }
+    text, code = EntityEnhancer.format_batch_summary(result)
+    assert code != 0
+    assert "WARNING" in text
+    assert "A" in text and "B" in text
+    assert "not attached" in text
+
+
+def test_batch_summary_quiet_under_threshold():
+    result = {
+        "enhanced": 4,
+        "skipped": 0,
+        "low_relevance": 0,
+        "low_relevance_names": [],
+        "total": 4,
+    }
+    text, code = EntityEnhancer.format_batch_summary(result)
+    assert code == 0
+    assert "WARNING" not in text

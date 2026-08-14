@@ -9,7 +9,7 @@ sources:
   - { resource: /lib/rag/embedder.py }
   - { resource: /lib/rag/coarse_index.py }
   - { resource: /lib/entity_enhancer.py }
-generated: { by: claude-fable-5, at: 2026-08-13T14:27:00Z }
+generated: { by: gk-a8r14q, at: 2026-08-14T18:01:43Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:46Z }
 ---
 
@@ -64,13 +64,11 @@ literary templating unless the caller says otherwise.
 
 ## Enhancement drops rather than pads
 
-`_gate_passages` (`lib/entity_enhancer.py:642`) force-includes every passage that names the
-entity or one of its aliases, then fills remaining slots only from passages at or under
-`RELEVANCE_FLOOR`. Below-floor neighbours are **dropped, not used as padding** — a thin
-entity comes back with two good passages instead of ten mediocre ones. It persists a
-`context_name_match_fraction` alongside, which is the number to look at when enhancement
-output reads generic: a low fraction means the entity's name barely appears in what was
-retrieved.
+Wrong neighbours are worse than a thin sheet. An entity whose retrieved passages never
+name it gets **nothing attached** — reported as low-relevance, not written as enhanced.
+When that share of a batch is at or above `LOW_RELEVANCE_WARN_FRACTION` (0.25 of total),
+the summary prints a WARNING banner, lists the 0-name-bearing names, and the process
+exits non-zero. Retrieval queries with the entity's type, not the name alone.
 
 ## Related
 
