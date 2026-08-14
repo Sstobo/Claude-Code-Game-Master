@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).parent))
 
 from search import WorldSearcher
+from entity_manager import npcs_present
 from cli_output import emit, emit_error
 
 
@@ -36,11 +37,12 @@ class SceneContext:
 
     def build(self, location: str = None, entities: Optional[List[str]] = None) -> Dict[str, Any]:
         location = location or self.current_location()
+        npcs = self.searcher.json_ops.load_json("npcs.json") or {}
         result: Dict[str, Any] = {
             "location": location,
             "world": {
                 "location": self.searcher.get_location(location),
-                "npcs_present": self.searcher.search_npcs_by_tag("locations", location),
+                "npcs_present": npcs_present(npcs, location),
             },
             "entities": {},
             "passages": [],

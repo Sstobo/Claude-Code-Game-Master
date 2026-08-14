@@ -15,6 +15,10 @@ Swap `check` for `drift` / `noise` / `index` as needed; the flags never change.
 
 ---
 
+## 2026-08-14 — presence-resolver-unification ingest
+
+- `docs/modules/scene-context.md`, `entity-graph.md`, `living-world.md`, `gotchas/npc-location-tag-split.md` — presence is one helper (party OR exact location tag); CLI tag search stays substring (`presence-resolver-unification`).
+
 ## 2026-08-14 — save-restore-completeness ingest
 
 - `docs/schema-reference.md` — whole-campaign saves, `save_version: 1`; legacy restores warn partial; autosaves rotate to 3 (`save-restore-completeness`).

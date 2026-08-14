@@ -13,7 +13,7 @@ sources:
   - { resource: /lib/minor_stubs.py }
   - { resource: /lib/plot_manager.py }
   - { resource: /lib/search.py }
-generated: { by: gk-a8r14q, at: 2026-08-14T18:04:32Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:59:23Z }
 ---
 
 # The entity graph and name resolution
@@ -43,8 +43,11 @@ Two consequences worth knowing before you rely on it:
   guard, not an accident — otherwise every empty-ish reference would match the first
   entity whose name also normalized to empty.
 
-`EntityManager._get_entity` routes all runtime lookups through it, so every manager
-inherits alias tolerance for free. Nothing needs to call the resolver directly.
+`EntityManager._get_entity` routes manager lookups through it, so NPC/location/plot
+managers inherit alias tolerance for free. `WorldSearcher.get_npc` / `get_location`
+call the same resolver — named lookups used to be exact-key only, so an alias that
+`gm-npc.sh status` could see was invisible to `gm-context.sh`. One resolution path;
+do not add a second.
 
 ## Import repairs run in a fixed order, and the order is the design
 
@@ -97,12 +100,15 @@ right call when diagnosing an import, never the right call inside one.
 
 ## Background entities do not leak into scenes
 
-For **NPCs, presence is decided by tags, not by tiering**. `search_npcs_by_tag('locations',
-…)` (`lib/search.py`) and `SessionManager._present_npcs` both answer "who is here"
-with *party member, or tagged to this location* — an unchanged rule that a `background`
-flag neither widens nor narrows. A background NPC surfaces exactly when the book put them
-in the room the party is standing in, which is the correct answer, and never as an
-undifferentiated dump of the cast.
+For **NPCs, presence is decided by tags, not by tiering**. `npcs_present`
+(`lib/entity_manager.py`) is the one who-is-here test: party member, or
+case-insensitive exact equality of the current location against a `tags.locations`
+entry. Session context, the place brief, and consequence tick all call it — they
+used to disagree (substring search dropped untagged party members from the place
+brief). A `background` flag neither widens nor narrows. A background NPC surfaces
+exactly when the book put them in the room the party is standing in, which is the
+correct answer, and never as an undifferentiated dump of the cast. CLI tag search
+(`search_npcs_by_tag`) is discovery, not this test.
 
 **Plots are filtered, because nothing else bounds them.** A thread has no location tag to
 gate it, so `SessionManager._active_plot_threads` skips `background: true` plots and the

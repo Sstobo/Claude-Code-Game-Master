@@ -12,7 +12,7 @@ from pathlib import Path
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from entity_manager import EntityManager
+from entity_manager import EntityManager, npcs_present
 
 
 class ConsequenceManager(EntityManager):
@@ -259,18 +259,7 @@ class ConsequenceManager(EntityManager):
         pos = overview.get("player_position", {})
         location = pos.get("current_location", "") if isinstance(pos, dict) else ""
         npcs = self.json_ops.load_json("npcs.json") or {}
-        present = []
-        loc_l = location.lower()
-        for name, d in npcs.items():
-            if not isinstance(d, dict):
-                continue
-            if d.get('is_party_member'):
-                present.append(name)
-                continue
-            tags = d.get('tags', {})
-            locs = [str(x).lower() for x in tags.get('locations', [])] if isinstance(tags, dict) else []
-            if loc_l and loc_l in locs:
-                present.append(name)
+        present = list(npcs_present(npcs, location).keys())
         world_state = {
             "location": location,
             "time": overview.get("time_of_day", ""),

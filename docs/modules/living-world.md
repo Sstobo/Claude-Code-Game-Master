@@ -4,13 +4,14 @@ title: The living world — consequences, clocks, world tick
 description: The three systems that make the world move on its own, and which of them are actually wired to fire.
 sources:
   - { resource: /lib/consequence_manager.py }
+  - { resource: /lib/entity_manager.py }
   - { resource: /lib/threat_clocks.py }
   - { resource: /lib/world_tick.py }
   - { resource: /lib/time_manager.py }
   - { resource: /tools/gm-time.sh }
   - { resource: /tools/gm-session.sh }
   - { resource: /tools/gm-clock.sh }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:00:04Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:59:23Z }
 verified: { by: cursor-grok-4.6, at: 2026-08-14T19:13:47Z }
 ---
 
@@ -93,13 +94,12 @@ the consequence IDs it added. Both rollbacks are ordered write-then-verify: if t
 write fails, `WorldTick.apply` deletes the consequences it just created rather than leaving
 un-rollbackable state (`lib/world_tick.py:49-56`).
 
-## Presence is computed twice, from one drifting field
+## Presence is shared; old campaigns still hide untagged NPCs
 
-`tick_from_session` builds its own "who is present" list (`lib/consequence_manager.py:260-269`):
-party members are always present, everyone else must have the current location in
-`tags['locations']` — the canonical (and, since 2026-08-13, only) location field. In a
-pre-unification campaign an NPC tagged only via the legacy `location_tags` is invisible to
-`on_npc` triggers until `gm-npc.sh unify-tags` runs — see
+`tick_from_session` calls `npcs_present` — the same party-or-exact-tag test as the
+session brief and the place brief. In a pre-unification campaign an NPC tagged only
+via the legacy `location_tags` is invisible to `on_npc` triggers until
+`gm-npc.sh unify-tags` runs — see
 [the tag-split gotcha](../gotchas/npc-location-tag-split.md).
 
 ## Choices are consequences

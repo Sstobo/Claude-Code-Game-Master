@@ -6,7 +6,8 @@ sources:
   - { resource: /lib/tag_unify.py }
   - { resource: /lib/npc_manager.py }
   - { resource: /lib/search.py }
-generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
+  - { resource: /lib/entity_manager.py }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:59:23Z }
 ---
 
 # An NPC's location lived in two fields (unified 2026-08-13)
@@ -36,12 +37,17 @@ Idempotent; prints what it merged. If an NPC in an old campaign never shows up i
 run this before debugging anything else. (`integrity_gate` and `location_reconcile` still
 handle the legacy field defensively for exactly these campaigns.)
 
-## Matching is substring, case-insensitive
+## Matching: presence is exact; search-by-tag is substring
 
-`search_npcs_by_tag` lowercases both sides and tests containment (`lib/search.py:90`) —
-forgiving of case and of a location name that prefixes another. Tag lists can still hold
-near-duplicate spellings (`Tutorial Guild Hall` / `tutorial-guild-hall`); harmless for
-presence, misleading if you count tags.
+Presence (`npcs_present` in `lib/entity_manager.py`) is case-insensitive **equality**
+of the current location against a `tags.locations` entry (or `is_party_member`).
+"The Inn" does not match "The Inner Sanctum". That used to be substring, which is
+why the place brief and the session brief could disagree on who was in the room.
+
+CLI `gm-search.sh --tag-location` / `--tag-quest` still uses substring containment
+(`search_npcs_by_tag`) as a discovery search. That is not the scene-presence path.
+Tag lists can still hold near-duplicate spellings (`Tutorial Guild Hall` /
+`tutorial-guild-hall`); harmless for exact presence, noisy if you count search hits.
 
 ## Related
 

@@ -7,8 +7,9 @@ sources:
   - { resource: /lib/world_kit.py }
   - { resource: /lib/scene_context.py }
   - { resource: /lib/search.py }
+  - { resource: /lib/entity_manager.py }
   - { resource: /tools/gm-context.sh }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:25:02Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:59:23Z }
 verified: { by: claude-fable-5, at: 2026-08-14T12:19:52Z }
 ---
 
@@ -58,14 +59,15 @@ Seven of those blocks carry design decisions that are not obvious from reading t
 - **NPC secrets are surfaced by existence only.** `lib/session_manager.py:680` prints
   `"has a secret"` and never the secret text, so a secret can sit in `npcs.json` without
   leaking into narration the moment its owner walks on stage.
-- **Presence does not require a voice, and present NPCs carry their memory.** `_present_npcs`
-  returns an NPC tagged to this location even when `context` holds no extracted dialogue —
-  it used to `continue` past them, which made every stubbed and original-world NPC invisible
-  while standing in the room. Each present NPC's recent `events` render under their entry
-  (`_recent_events`, shared with the party block so history looks the same wherever a
-  character appears; party members render theirs once, in the party block). This is the
-  wire that lets an NPC act like they remember what the player did to them — the write side
-  is `gm-npc.sh update "<name>" "<event>"`.
+- **Presence does not require a voice, and present NPCs carry their memory.** Who is here
+  is `npcs_present` (party always, plus exact location tag — see below). `_present_npcs`
+  only slices voice lines onto that set, and still returns an NPC with no extracted
+  dialogue — it used to `continue` past them, which made every stubbed and original-world
+  NPC invisible while standing in the room. Each present NPC's recent `events` render
+  under their entry (`_recent_events`, shared with the party block so history looks the
+  same wherever a character appears; party members render theirs once, in the party block).
+  This is the wire that lets an NPC act like they remember what the player did to them —
+  the write side is `gm-npc.sh update "<name>" "<event>"`.
 - **THE WORLD REMEMBERS is the harness asking recall on the GM's behalf.** `CampaignMemory`
   was a complete long-term memory with no automated reader — recall only ever fired if the
   GM thought to ask, which needs the GM to already suspect there is something to remember.
@@ -104,8 +106,13 @@ rather than assuming the import worked. See [RAG stack](rag-stack.md).
 or neither for both. `gm-enhance.sh query` is **not** a search — it takes an entity *name*.
 Reaching for it with a free-text phrase returns nothing and looks like an empty world.
 
-`search_npcs_by_tag("locations", …)` is what decides "who is present" for both context
-doors, and it reads a field whose two spellings drift apart — see
+Who is here is one helper, `npcs_present` (`lib/entity_manager.py`): party members
+always, everyone else by case-insensitive **exact** equality of the current location
+against a `tags.locations` entry. Both context doors and consequence tick call it.
+Substring was the place-brief bug — "The Inn" must not count as "The Inner Sanctum",
+and an untagged party member must still stand in the room. CLI `gm-search.sh
+--tag-location` / `--tag-quest` may still substring-search for discovery; that is not
+presence. The field those tags live in used to have two spellings — see
 [the NPC location tag split](../gotchas/npc-location-tag-split.md).
 
 ## Related

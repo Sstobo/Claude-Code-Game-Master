@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from json_ops import JsonOperations
 from campaign_manager import CampaignManager
 from cli_output import emit, emit_error
+from entity_aliases import resolve_entity_name
 
 
 class WorldSearcher:
@@ -67,7 +68,11 @@ class WorldSearcher:
         return results
 
     def search_npcs_by_tag(self, tag_type: str, tag_value: str) -> Dict[str, Dict]:
-        """Search NPCs by location or quest tag"""
+        """Substring search of NPC tags (CLI `--tag-location` / `--tag-quest`).
+
+        This is discovery, not scene presence. Who-is-here is `npcs_present`
+        (party OR exact `tags.locations` equality) in entity_manager.py.
+        """
         npcs = self.json_ops.load_json('npcs.json')
         results = {}
         tag_lower = tag_value.lower()
@@ -226,14 +231,16 @@ class WorldSearcher:
         return results
 
     def get_npc(self, name: str) -> Optional[Dict]:
-        """Get specific NPC by exact name"""
-        npcs = self.json_ops.load_json('npcs.json')
-        return npcs.get(name)
+        """Get an NPC by name (alias-aware via resolve_entity_name)."""
+        npcs = self.json_ops.load_json('npcs.json') or {}
+        key = resolve_entity_name(name, npcs)
+        return npcs.get(key) if key else None
 
     def get_location(self, name: str) -> Optional[Dict]:
-        """Get specific location by exact name"""
-        locations = self.json_ops.load_json('locations.json')
-        return locations.get(name)
+        """Get a location by name (alias-aware via resolve_entity_name)."""
+        locations = self.json_ops.load_json('locations.json') or {}
+        key = resolve_entity_name(name, locations)
+        return locations.get(key) if key else None
 
     def get_pending_consequences(self, trigger: Optional[str] = None) -> List[Dict]:
         """Get pending consequences, optionally filtered by trigger"""
@@ -413,8 +420,8 @@ def main():
 
     parser = argparse.ArgumentParser(description='Search world state')
     parser.add_argument('query', nargs='*', help='Search query')
-    parser.add_argument('--tag-location', help='Search NPCs by location tag')
-    parser.add_argument('--tag-quest', help='Search NPCs by quest tag')
+    parser.add_argument('--tag-location', help='Search NPCs by location tag (substring discovery, not scene presence)')
+    parser.add_argument('--tag-quest', help='Search NPCs by quest tag (substring discovery, not scene presence)')
     parser.add_argument('--full', action='store_true', help='Show full descriptions')
     parser.add_argument('--json', action='store_true', help='Emit a structured JSON envelope')
 

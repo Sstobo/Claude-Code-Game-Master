@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from entity_manager import EntityManager
+from entity_manager import EntityManager, npcs_present
 from character_schema import to_flat
 from schemas import PLOT_TYPE_SORT
 from world_kit import WorldKit
@@ -1043,25 +1043,16 @@ class SessionManager(EntityManager):
     def _present_npcs(self, npcs, location, full=False):
         """NPCs present in the scene, with any canonical voice lines they have.
 
-        Present = party members OR NPCs tagged to the current location. Returns
+        Presence is `npcs_present` (party OR exact location tag). This method
+        slices voice lines; it does not decide who is here. Returns
         [(name, [lines])]; up to 2 lines each unless full, and an empty list when
         the NPC has no extracted dialogue — presence does NOT require a voice, or
         stubbed and original-world NPCs would stand in the room invisibly.
         Read-only — never touches the stored `context` field (PROTECT
         canonical-voice extraction).
         """
-        if not isinstance(npcs, dict):
-            return []
-        loc_l = (location or '').lower()
         out = []
-        for name, d in npcs.items():
-            if not isinstance(d, dict):
-                continue
-            tags = d.get('tags', {})
-            locs = [str(x).lower() for x in tags.get('locations', [])] if isinstance(tags, dict) else []
-            present = bool(d.get('is_party_member')) or (bool(loc_l) and loc_l in locs)
-            if not present:
-                continue
+        for name, d in npcs_present(npcs, location).items():
             ctx = d.get('context', [])
             vlines = ctx if isinstance(ctx, list) else ([ctx] if ctx else [])
             vlines = [str(x) for x in vlines if x]

@@ -17,6 +17,34 @@ from campaign_manager import CampaignManager
 from entity_aliases import resolve_entity_name
 
 
+def npcs_present(npcs, location):
+    """Who is in this scene.
+
+    Present = `is_party_member` OR case-insensitive exact equality of
+    `location` against a `tags.locations` entry. Substring matching is
+    search (CLI `--tag-location`), not presence — "The Inn" must not
+    match "The Inner Sanctum".
+    """
+    if not isinstance(npcs, dict):
+        return {}
+    loc_l = (location or "").lower()
+    out = {}
+    for name, data in npcs.items():
+        if not isinstance(data, dict):
+            continue
+        if data.get("is_party_member"):
+            out[name] = data
+            continue
+        tags = data.get("tags", {})
+        locs = (
+            [str(x).lower() for x in tags.get("locations", [])]
+            if isinstance(tags, dict) else []
+        )
+        if loc_l and loc_l in locs:
+            out[name] = data
+    return out
+
+
 class EntityManager:
     """Base class providing common initialization and CRUD patterns.
 
