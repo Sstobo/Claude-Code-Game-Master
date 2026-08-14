@@ -7,7 +7,7 @@ sources:
   - { resource: /lib/loremaster.py }
   - { resource: /tools/gm-recall.sh }
   - { resource: /tools/gm-lore.sh }
-generated: { by: claude-fable-5, at: 2026-08-13T14:55:53Z }
+generated: { by: claude-fable-5, at: 2026-08-14T12:15:23Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -40,6 +40,26 @@ every autosave and loading the model each turn would be felt.
 `session-log.md` remains the canonical ledger; this module only reads it. It parses on the
 `## Session Started:` / `### Session Ended:` markers and skips `**`-prefixed footer lines,
 so a hand-edited log that loses those markers loses its history silently.
+
+## Recall is pushed, not waited for (since 2026-08-14)
+
+`recall()` had **no automated caller** until now: it fired only when the GM model chose to
+ask, which requires already suspecting there is something to remember — the exact failure
+this module exists to fix. `SessionManager._world_remembers` now calls it on every context
+build, using the scene as the query (current location + present NPC names), and renders a
+THE WORLD REMEMBERS block alongside `open_debts` from the latest arc entry. See
+[scene context](scene-context.md).
+
+Two consequences worth knowing:
+
+- **The block degrades to nothing, loudly nowhere.** Any failure — absent `campaign-memory.json`,
+  missing embedding deps, a half-written index — returns empty and the brief builds without
+  it. Same trade as the RAG path: play never stops, and a broken memory looks like a quiet one.
+- **Recall's fallback re-gathers the session log**, so its top hits are frequently the very
+  summaries PREVIOUSLY ON just printed. `_world_remembers` drops those by normalized
+  containment; without that the brief pays twice for the same text.
+
+`memoir()` still has no caller.
 
 ## Arc entries are the consolidation tier (since 2026-08-13)
 
@@ -102,5 +122,5 @@ returns immediately with no read. Two tiers of output (since 2026-08-13):
 
 ## Related
 
-- [Scene context](scene-context.md) — "previously on" is built from `session-log.md` directly, not from this index
+- [Scene context](scene-context.md) — "previously on" is built from `session-log.md` directly; THE WORLD REMEMBERS is what reads this index
 - [RAG stack](rag-stack.md) — the third memory, over embedded source chunks

@@ -30,6 +30,7 @@ class SessionManager(EntityManager):
         super().__init__(world_state_dir)
 
         # Additional paths specific to session management
+        self._wsd = world_state_dir  # passed through to sibling managers (CampaignMemory)
         self.world_state_dir = self.campaign_dir  # Alias for compatibility
         self.saves_dir = self.campaign_dir / "saves"
         self.saves_dir.mkdir(parents=True, exist_ok=True)
@@ -498,6 +499,21 @@ class SessionManager(EntityManager):
             if meta.get('open_threads'):
                 lines.append(f"OPEN THREADS: {meta['open_threads']}")
 
+        # --- The World Remembers (memory volunteered for THIS scene, never waited for) ---
+        remembered, open_debts, held_back = self._world_remembers(
+            location, full=full, already_shown=summaries)
+        if remembered or open_debts:
+            lines.append("")
+            lines.append("--- THE WORLD REMEMBERS (older history this scene touches — "
+                         "use it or let it lie, but don't contradict it) ---")
+            for r in remembered:
+                lines.append(f"- {self._truncate(r, 240, full)}")
+            for d in open_debts:
+                lines.append(f"OPEN DEBT: {d}")
+            if held_back:
+                lines.append(f"... closest {len(remembered)} of {held_back} remembered "
+                             f"entries (use --full or gm-recall.sh for the rest)")
+
         # --- Story Threads (active plots, main first, each with its latest beat) ---
         threads = self._active_plot_threads(limit=None if full else 6)
         if threads:
@@ -774,6 +790,54 @@ class SessionManager(EntityManager):
                 if txt:
                     out.append(txt)
         return out
+
+    def _world_remembers(self, location, full=False, already_shown=()):
+        """What the campaign's long-term memory volunteers for THIS scene.
+
+        CampaignMemory (arcs, session history, facts — embedded and searchable)
+        had no automated reader: recall fired only when the GM thought to ask,
+        which requires already suspecting there is something to remember. That is
+        the exact failure memory exists to fix. The scene itself is the query —
+        where we are, and who is standing here.
+
+        Returns (entries, open_debts, held_back_total). Degrades to empty on any
+        failure — no memory file, no embedding deps, a half-written index — so a
+        broken memory costs the brief nothing mid-session.
+        """
+        try:
+            from campaign_memory import CampaignMemory
+            mem = CampaignMemory(self._wsd)
+            npcs = self.json_ops.load_json("npcs.json") or {}
+            present = [name for name, _ in self._present_npcs(npcs, location)]
+            query = " ".join([location or ""] + present).strip()
+            if not query:
+                return [], [], 0
+            top_k = None if full else 3
+            hits = mem.recall(query, top_k=top_k)
+            arcs = mem.arcs()
+            debts = [str(d) for d in (arcs[-1].get("open_debts") or [])] if arcs else []
+            total = len((self.json_ops.load_json(mem.memory_file) or {}).get("entries") or [])
+        except Exception:
+            return [], [], 0
+
+        # Don't echo PREVIOUSLY ON. recall() falls back to re-gathering the session
+        # log, so its top hits are frequently the very summaries printed above —
+        # compare on collapsed whitespace, and either way round, since a gathered
+        # entry may span several logged sessions.
+        def _norm(s):
+            return " ".join(str(s).split())
+
+        shown = [_norm(s) for s in already_shown if _norm(s)]
+        entries = []
+        for h in hits:
+            text = str(h.get("text", "")).strip()
+            norm = _norm(text)
+            if not norm or any(norm in s or s in norm for s in shown):
+                continue
+            shown.append(norm)
+            entries.append(text)
+        held_back = total - len(entries) if (entries and not full and total > len(entries)) else 0
+        return entries, debts, held_back
 
     def _recent_events(self, entity, full=False):
         """The 'they remember you' line for an NPC, or None.

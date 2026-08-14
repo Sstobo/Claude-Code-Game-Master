@@ -7,7 +7,7 @@ sources:
   - { resource: /lib/scene_context.py }
   - { resource: /lib/search.py }
   - { resource: /tools/gm-context.sh }
-generated: { by: claude-fable-5, at: 2026-08-14T02:28:57Z }
+generated: { by: claude-fable-5, at: 2026-08-14T12:15:23Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -30,11 +30,11 @@ no history, threads, clocks, voice, or rules. Narrating a scene generally wants 
 
 `get_full_context` assembles, in order: header (campaign, session #, location, time) ·
 pacing + action-menu style · scene-image gate + chronicler · **narrative voice** ·
-**previously on** + where-we-paused + open threads · story threads · key facts · threat
+**previously on** + where-we-paused + open threads · **the world remembers** · story threads · key facts · threat
 clocks · character · party members · **NPC voices** · pending consequences · **your
 world's rules**.
 
-Four of those blocks carry design decisions that are not obvious from reading them:
+Five of those blocks carry design decisions that are not obvious from reading them:
 
 - **Narrative voice is a prose target, not lore.** The block is labelled that way in the
   output for a reason — the sample passages are style exemplars to imitate, and a model
@@ -50,6 +50,14 @@ Four of those blocks carry design decisions that are not obvious from reading th
   character appears; party members render theirs once, in the party block). This is the
   wire that lets an NPC act like they remember what the player did to them — the write side
   is `gm-npc.sh update "<name>" "<event>"`.
+- **THE WORLD REMEMBERS is the harness asking recall on the GM's behalf.** `CampaignMemory`
+  was a complete long-term memory with no automated reader — recall only ever fired if the
+  GM thought to ask, which needs the GM to already suspect there is something to remember.
+  `_world_remembers` builds the query from the scene itself (current location + present NPC
+  names), and adds `open_debts` from the latest arc entry. It returns empty on *any* failure
+  (no memory file, no embedding deps, a half-written index), so a broken memory costs the
+  brief nothing mid-session. It also drops hits that repeat PREVIOUSLY ON, because
+  `recall()` falls back to re-gathering the same session log.
 - **World rules are never truncated.** Every other block is bounded — by item count, not
   by chopping an entry mid-sentence — but `campaign_rules` is pretty-printed whole
   (`lib/session_manager.py:657`). The comment there is the rationale: those rules *are*
