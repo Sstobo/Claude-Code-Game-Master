@@ -18,6 +18,7 @@ Two commands:
   {
     "locations": {Name: {position, connections:[{to,path}], description}},
     "npcs":      {Name: {description, attitude, tags:{locations:[],quests:[]}}},
+    "plots":     {Name: {type, description, npcs:[], locations:[], status}},
     "facts":     {<category>: [ "fact" | {"fact": "..."} ]},
     "bible":     {factions:{nodes,edges}, geography:{nodes,edges}, timeline:[...],
                   signature_systems:[...], voice:{...}, themes:[...]}
@@ -107,6 +108,33 @@ class WorldAuthor:
             added += 1
         return added
 
+    # ---- merge: plots ----
+    def _merge_plots(self, root: Dict, incoming: Dict) -> int:
+        """Fold an axis's authored plots into plots.json.
+
+        This is what makes an authored world open alive: `spine`, `seed-clocks`
+        and `seed-opening` all read plots.json, so an axis that names its
+        conflicts here gets a story arc, live pressure, and an opening location.
+        """
+        added = 0
+        for name, plot in (incoming or {}).items():
+            if name in root:
+                continue  # existing entry wins (idempotent, preserves events/status)
+            entry = {
+                "name": plot.get("name") or name,
+                "description": plot.get("description", ""),
+                "type": plot.get("type", "side"),
+                "npcs": plot.get("npcs", []),
+                "locations": plot.get("locations", []),
+                "status": plot.get("status", "active"),
+            }
+            for optional in ("objectives", "consequences"):
+                if plot.get(optional):
+                    entry[optional] = plot[optional]
+            root[name] = entry
+            added += 1
+        return added
+
     # ---- merge: facts ----
     def _merge_facts(self, root: Dict, incoming: Dict) -> int:
         added = 0
@@ -168,10 +196,11 @@ class WorldAuthor:
     def consolidate(self) -> Dict[str, Any]:
         locations = self.json_ops.load_json("locations.json") or {}
         npcs = self.json_ops.load_json("npcs.json") or {}
+        plots = self.json_ops.load_json("plots.json") or {}
         facts = self.json_ops.load_json("facts.json") or {}
         bible = self.json_ops.load_json("world-bible.json") or {}
 
-        report = {"files": 0, "locations": 0, "npcs": 0, "facts": 0, "bible_merged": False}
+        report = {"files": 0, "locations": 0, "npcs": 0, "plots": 0, "facts": 0, "bible_merged": False}
         for path in self._authored_files():
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
@@ -181,6 +210,7 @@ class WorldAuthor:
             report["files"] += 1
             report["locations"] += self._merge_locations(locations, data.get("locations", {}))
             report["npcs"] += self._merge_npcs(npcs, data.get("npcs", {}))
+            report["plots"] += self._merge_plots(plots, data.get("plots", {}))
             report["facts"] += self._merge_facts(facts, data.get("facts", {}))
             if data.get("bible"):
                 self._merge_bible(bible, data["bible"])
@@ -191,6 +221,8 @@ class WorldAuthor:
             self.json_ops.save_json("locations.json", locations)
         if npcs:
             self.json_ops.save_json("npcs.json", npcs)
+        if plots:
+            self.json_ops.save_json("plots.json", plots)
         if facts:
             self.json_ops.save_json("facts.json", facts)
         if bible:

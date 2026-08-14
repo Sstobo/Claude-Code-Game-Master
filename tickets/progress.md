@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T13:38:59Z  done: new-game-parity — authored worlds open alive; reconciler advisories ticketed  [fable-sott1]
+- 2026-08-14T13:32:47Z  in-review: new-game-parity — verified, review dispatched  [fable-sott1]
+- 2026-08-14T13:27:00Z  in-review: live-state-test-stragglers — verified, review dispatched  [fable-sott1]
 - 2026-08-14T13:12:35Z  done: import-bible-kit-wiring — imported books get their own kit  [fable-sott1]
 - 2026-08-14T12:30:00Z  done: full-clock-fires — a filled clock writes its consequence into the world  [fable-remember]
 - 2026-08-14T12:30:00Z  done: key-facts-reads-choices — player_choices and npc_relations are no longer write-only  [fable-remember]

@@ -146,10 +146,12 @@ the user if judgment is needed.
 
 ---
 
-## PHASE E — GROUND (consolidate → embed → confirm → validate)
+## PHASE E — GROUND (consolidate → embed → confirm → open it alive → validate)
 
 ```bash
 # 1. Fold authored contributions into runtime state + the bible (serial, race-free)
+#    — locations, npcs, PLOTS, facts. Check the report's plot count is non-zero:
+#      everything in step 5 reads plots.json.
 bash tools/gm-worldgen.sh consolidate
 
 # 2. Compile authored canon into one document
@@ -161,6 +163,37 @@ bash tools/gm-extract.sh prepare "$CANON" "<CAMPAIGN_NAME>"
 # 4. Confirm the bible (the human approved it in Phase B; world is now grounded)
 uv run python -c "import sys; sys.path.insert(0,'lib'); from world_bible import WorldBible; WorldBible().confirm()"
 ```
+
+**5. Open the world ALIVE** — the same four passes an import runs, so the first
+`/gm` beat has story threads, a spine, live pressure and a place to stand instead of
+an empty context and a null location:
+
+```bash
+set -e   # each pass feeds the next; a failure must stop the chain here
+
+# Derive campaign_rules from the bible's signature_systems (the kit itself was
+# authored by world-kit-author in Phase C — this is the systems block
+# WorldKit.campaign_rules() reads into every scene context).
+bash tools/gm-extract.sh campaign-rules
+
+# Order matters: spine FIRST. seed-clocks and seed-opening both read the arc it
+# writes (overview.story_spine + the plots it sequenced).
+bash tools/gm-extract.sh spine "<CAMPAIGN_NAME>"          # arc order + through-line
+bash tools/gm-extract.sh seed-clocks "<CAMPAIGN_NAME>"    # threat clocks from countdown plots
+bash tools/gm-extract.sh seed-opening "<CAMPAIGN_NAME>"   # starting location + opening beat + log hook
+```
+
+**If a pass fails, STOP** and fix it before play — do not carry on to Phase F.
+The two real failures, both upstream in the authored world:
+- `spine` prints an empty arc, or `seed-opening` reports "no main/spine plot to
+  open on" → no axis authored a `main` plot. Add one to the relevant
+  `authored/<axis>.json` and re-run `consolidate` + this whole block.
+- `campaign-rules` writes a thin block → the bible's `signature_systems` are thin.
+  Fix them in `world-bible.json` (the bible stays the single source) and re-run.
+
+`seed-clocks` seeding zero clocks is NOT a failure — it means no plot named an
+explicit countdown. Add one to a `threat` plot's description if the world should
+have a ticking clock.
 
 Then run **`/world-check`** (or `uv run python lib/schemas.py`) to validate the
 generated world. Fix anything it flags before play.
@@ -198,10 +231,11 @@ bash tools/gm-npc.sh set-appearance "<NPC name>" \
 ```
 (Extracted/imported NPCs already carry the empty block from `NPC_SCHEMA` — fill it.)
 
-Update `campaign-overview.json` (starting location from the bible's geography,
-date/time, `session_count: 0`) and initialize `session-log.md` with the world
-summary (starting location, key NPCs, the three plot tiers). Then display a
-summary box and hand off:
+Update `campaign-overview.json` (date/time, `session_count: 0` — Phase E's
+`seed-opening` already set `player_position.current_location`; only override it if
+the arc's opening location is wrong) and append the world summary to
+`session-log.md` (starting location, key NPCs, the three plot tiers) alongside the
+opening hook `seed-opening` wrote. Then display a summary box and hand off:
 
 ```
 Your world awaits its hero! Now let's create your character...
@@ -217,8 +251,10 @@ Run **`/create-character`**.
 - [ ] `ruleset.json` World Kit (non-5e-default, derived from the world)
 - [ ] every axis produced `canon/<axis>.md` + `authored/<axis>.json`
 - [ ] `reconcile-report.json` verdict handled
-- [ ] consolidated `locations/npcs/facts.json` + merged bible graphs
+- [ ] consolidated `locations/npcs/plots/facts.json` + merged bible graphs
 - [ ] `current-document.txt` embedded (RAG returns hits)
+- [ ] world opens alive: `campaign_rules` on the overview, a non-empty `story_spine`,
+      threat clocks seeded (or knowingly none), `player_position.current_location` set
 - [ ] `/world-check` passes
 - [ ] chronicler locked (`gm-image.sh chronicler`) — both the art **style** (starts "In the style of ...", a creative mashup) AND the art **narrator** (name + persona)
 - [ ] every notable NPC has a `visual_appearance` block (11 keys); PC gets one at `/create-character`

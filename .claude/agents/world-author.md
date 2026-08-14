@@ -54,6 +54,15 @@ contract — wrong shape = silently dropped):
       "tags": { "locations": ["<Name>"], "quests": [] }
     }
   },
+  "plots": {
+    "<Plot Name>": {
+      "type": "main | threat | mystery | side | ...",
+      "description": "<the conflict, who drives it, what happens if nobody stops it>",
+      "npcs": ["<Name>"],
+      "locations": ["<Name>"],
+      "status": "active"
+    }
+  },
   "facts": {
     "plot_local":    ["<seed-able conflict>"],
     "plot_regional": ["..."],
@@ -80,6 +89,22 @@ Include only the keys relevant to your axis:
   don't stat.)
 - `culture`/language → `bible.voice` (vocab/idiom/oaths/sample lines) + `facts`.
 - `bestiary` → `npcs`/`facts` for threats + prose.
+
+### Plots — what makes the world open ALIVE
+`facts.plot_*` are prose seeds; the `plots` object is the machine-readable version,
+and it is the one the pipeline can act on. After consolidation, `plots.json` is what
+derives the story arc, seeds the threat clocks, and picks the player's opening
+location — an axis that authors no plots contributes nothing the world can *start*
+from. Any axis with a live conflict should emit one or more:
+
+- **Type it** (`schemas.PLOT_TYPES`): `main` (the spine), `threat` (pressure on it),
+  `mystery`, `side`, `personal`, `world`, `lore`. At least one `main` should exist
+  across the fan-out, and a `threat` is what gives the world a ticking clock.
+- **A `threat` whose description names an explicit countdown** ("the reef drowns the
+  city in nine days") seeds a real threat clock. Say the number in the prose.
+- Reference `npcs` and `locations` **by the names you authored** (or that another
+  axis plausibly will) — the reconciler cross-links them.
+- `status` is `active` for anything live at world open.
 
 ## Rules
 - Write ONLY `canon/<AXIS>.md` and `authored/<AXIS>.json`. NEVER edit
