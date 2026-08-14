@@ -14,7 +14,7 @@ sources:
   - { resource: /lib/opening_seed.py }
   - { resource: /lib/player_manager.py }
   - { resource: /lib/identity_onboarding.py }
-generated: { by: gk-a8r14q, at: 2026-08-14T18:26:30Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:15:42Z }
 ---
 
 # Authoring an original world
@@ -73,12 +73,15 @@ the first `main` plot). A world whose axes authored no `main` plot has no arc to
 on, and `seed-opening` says so rather than guessing.
 
 That Phase E seed is **provisional** — the world has to stand somewhere before a
-hero exists. Phase F still hands off to the three-door question; the opening play
-uses is the one rewritten when the PC first exists (`gm-player.sh onboard`, or the
-first `gm-player.sh set` if they rolled a sheet via `/create-character`
-`save-json`), so a pirate-era sheet does not inherit a king-era beat. Location,
-active plot, and the session-log hook move together. A later `set` after a
-PC-matched opening (`opening_matched_to_pc`) leaves it.
+hero exists, but standing is not having already played. `seed-opening` writes a
+location, `overview.opening_hook`, and a `plot_local` KEY FACT the first brief
+already prints; it does not fabricate a session-log beat or stamp a plot `active`.
+Phase F still hands off to the three-door question; location + hook are rewritten
+when the PC first exists (`gm-player.sh onboard`, or the first `gm-player.sh set`
+if they rolled a sheet via `/create-character` `save-json`), so a pirate-era sheet
+does not inherit a king-era hook. Reseed picks the matching plot; it does not
+start it. A later `set` after a PC-matched opening (`opening_matched_to_pc`)
+leaves it.
 
 `campaign-rules` is the odd one out: it derives the overview's `campaign_rules` from
 the bible's `signature_systems`, not from plots, so it can run anywhere after the

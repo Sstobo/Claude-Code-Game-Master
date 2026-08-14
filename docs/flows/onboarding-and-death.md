@@ -8,7 +8,7 @@ sources:
   - { resource: /lib/player_manager.py }
   - { resource: /lib/opening_seed.py }
   - { resource: /CLAUDE.md }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T18:35:04Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:15:42Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
@@ -44,13 +44,16 @@ half-swapped PC:
   archives the outgoing sheet to `fallen/` before writing
 - it sets `current_character` on `campaign-overview.json`, which is what session start,
   status, and world stats read
-- it **re-seeds the opening beat** (`reseed_opening`) so location, the active plot, and
-  the session-log hook match this PC — only while `opening_matched_to_pc` is absent/false
-  (the real first-PC path; import / `/new-game` never call `set`). `--replace` after that
-  flag is true is a death hand-off into a world already in play, and must leave the
-  opening; same gate as `set`. Provisional `seed-opening` left the flag unset; re-seed
-  sets it. `/create-character` persists via `save-json` and does not re-seed; the first
-  `set` covers that path while the flag is still unset
+- it **re-seeds the opening** (`reseed_opening`) so *where you stand* and *which hook is
+  offered* match this PC — provisional location, `overview.opening_hook`, and a
+  `plot_local` KEY FACT (`Opening (not yet played): …`) that the first `/gm` brief
+  already prints. Not a fabricated session and not an `active` plot stamp. Only while
+  `opening_matched_to_pc` is absent/false (the real first-PC path; import / `/new-game`
+  never call `set`). `--replace` after that flag is true is a death hand-off into a
+  world already in play, and must leave the opening; same gate as `set`. Provisional
+  `seed-opening` left the flag unset; re-seed sets it. `/create-character` persists via
+  `save-json` and does not re-seed; the first `set` covers that path while the flag is
+  still unset
 - `canon` marks the source NPC `is_player_character` (plus `is_party_member: false` /
   `became_pc: true`) so scene context stops voicing the PC as an NPC standing nearby, and
   the lifted sheet is `status: alive` with no death stamp — the allow-list lift can't carry

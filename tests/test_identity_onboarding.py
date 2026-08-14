@@ -64,7 +64,7 @@ def test_build_dispatches_and_saves(dcc_world):
 
 def test_onboard_reseeds_opening_without_a_separate_set(isolated_world_state):
     """import / /new-game persist via onboard; the opening must match that PC."""
-    from tests.test_opening_seed import KING_PLOT, PIRATE_PLOT, _setup_two_arcs
+    from tests.test_opening_seed import PIRATE_PLOT, _setup_two_arcs
 
     cm = CampaignManager()
     cdir = cm.create("Hyboria", "Hyboria")
@@ -78,12 +78,13 @@ def test_onboard_reseeds_opening_without_a_separate_set(isolated_world_state):
     assert result["success"]
 
     ov = json.loads((cdir / "campaign-overview.json").read_text())
-    plots = json.loads((cdir / "plots.json").read_text())
     assert ov["current_character"] == "Conan"
     assert ov.get("opening_matched_to_pc") is True
     assert ov["player_position"]["current_location"] == "The Tigress"
-    assert plots[PIRATE_PLOT]["status"] == "active"
-    assert plots[KING_PLOT]["status"] == "available"
+    hook = ov.get("opening_hook") or {}
+    assert hook.get("location") == "The Tigress"
+    assert hook.get("plot") == PIRATE_PLOT
+    assert "Black Coast" in (hook.get("hook") or "")
 
     # A later set must not rewrite a PC-matched opening.
     ov["player_position"]["current_location"] = "WRONG"

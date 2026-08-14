@@ -172,10 +172,13 @@ def test_an_authored_world_opens_alive(isolated_world_state, authored_campaign):
     clock = seeded[clocks["clocks"][0]["name"]]
     assert clock["max"] == 9 and clock["linked_plot"] == "The Ninth Tide"
 
-    # A place to stand.
+    # A place to stand, and a hook to offer — not a started plot.
     assert opening["seeded"] is True
     overview = _read(authored_campaign, "campaign-overview.json")
     assert overview["player_position"]["current_location"] == "Kelp Harbour"
+    hook = overview.get("opening_hook") or {}
+    assert hook.get("location") == "Kelp Harbour"
+    assert hook.get("plot") == "The Tide-Oath Comes Due"
 
     # The rules block the GM reads every beat, derived from the bible.
     assert overview["campaign_rules"]["signature_systems"] == BIBLE["signature_systems"]
@@ -209,14 +212,13 @@ def test_first_set_current_player_reseeds_opening(isolated_world_state, authored
     assert PlayerManager().set_current_player("Belit")
 
     ov = _read(authored_campaign, "campaign-overview.json")
-    plots = _read(authored_campaign, "plots.json")
     assert ov["current_character"] == "Belit"
     assert ov.get("opening_matched_to_pc") is True
     assert ov["player_position"]["current_location"] == "The Weeping Stair"
-    assert plots["The Salt-Road Bargain"]["status"] == "active"
-    assert plots["The Tide-Oath Comes Due"]["status"] == "available"
-    log = (authored_campaign / "session-log.md").read_text(encoding="utf-8")
-    assert "salt-road" in log.lower() or "Salt-Road" in log
+    hook = ov.get("opening_hook") or {}
+    assert hook.get("location") == "The Weeping Stair"
+    assert hook.get("plot") == "The Salt-Road Bargain"
+    assert "salt-road" in (hook.get("hook") or "").lower()
 
 
 def test_onboard_reseeds_authored_world_opening(isolated_world_state, authored_campaign):
@@ -242,9 +244,10 @@ def test_onboard_reseeds_authored_world_opening(isolated_world_state, authored_c
     assert result["success"]
 
     ov = _read(authored_campaign, "campaign-overview.json")
-    plots = _read(authored_campaign, "plots.json")
     assert ov["current_character"] == "Belit"
     assert ov.get("opening_matched_to_pc") is True
     assert ov["player_position"]["current_location"] == "The Weeping Stair"
-    assert plots["The Salt-Road Bargain"]["status"] == "active"
-    assert plots["The Tide-Oath Comes Due"]["status"] == "available"
+    hook = ov.get("opening_hook") or {}
+    assert hook.get("location") == "The Weeping Stair"
+    assert hook.get("plot") == "The Salt-Road Bargain"
+    assert "salt-road" in (hook.get("hook") or "").lower()

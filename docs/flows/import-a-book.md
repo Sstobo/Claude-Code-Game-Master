@@ -18,7 +18,7 @@ sources:
   - { resource: /lib/opening_seed.py }
   - { resource: /lib/player_manager.py }
   - { resource: /lib/identity_onboarding.py }
-generated: { by: gk-a8r14q, at: 2026-08-14T18:26:30Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:15:42Z }
 ---
 
 # Importing a book
@@ -72,7 +72,7 @@ have repaired:
 | `integrity` | canonicalize every cross-reference; **strict-fail on unresolved** | all repairs done |
 | `spine` | order main plots into an arc by source position | plots final |
 | `seed-clocks` | seed threat clocks from time pressure in plot text | spine |
-| `seed-opening` | **provisional** starting position + opening beat + session-log hook. Play's opening is re-seeded when the PC first exists (`gm-player.sh onboard`, or the first `gm-player.sh set` after `/create-character` `save-json`) | spine |
+| `seed-opening` | **provisional** location + `opening_hook` + a `plot_local` KEY FACT (`Opening (not yet played): …`) so the first brief sees the hook without a fake session. Plots stay as they were (typically `available`). Re-seeded when the PC first exists (`gm-player.sh onboard`, or the first `gm-player.sh set` after `/create-character` `save-json`) — same fields, still not an active stamp | spine |
 | `archive` | move `extracted/` aside | everything |
 
 The passes most likely to surprise:
@@ -139,16 +139,23 @@ pass all read the bible. The two real failures are a missing `current-document.t
 
 `plot_spine` orders the arc by **earliest chunk position in the source**, not by asking a
 model which plot comes first. Same book in, same arc out. `seed-opening` then reads that
-arc's first location so the campaign is not a void — but that seed is **provisional**.
-There is no protagonist yet, so spine position 1 is a placeholder, not a commitment. A
-book with two viable entry arcs (king-era vs pirate-era) will otherwise open on the
-wrong life. The opening play uses is rewritten when the PC first exists: `onboard`
-(the three-door handoff) always re-seeds; `set_current_player` re-seeds only while
-`opening_matched_to_pc` is unset (the `/create-character` `save-json` path). Location,
-the active plot (the previous spine opening returns to `available`), and the
-session-log hook move together. A partial rewrite is how those three used to disagree.
-The PC's own name on `plot.npcs` does not pick the arc — the protagonist is listed on
-many plots — era and concept overlap do.
+arc so the campaign is not a void — a location to stand in, a hook on
+`overview.opening_hook`, and the same hook as a `plot_local` KEY FACT so
+`get_full_context` already prints it (KEY FACTS is the existing channel;
+`opening_hook` alone is invisible to the first `/gm` brief). That seed is
+**provisional**, and it is not play: it does not write a `### Session Ended` into
+`session-log.md` (PREVIOUSLY ON is earned), and it does not stamp a spine plot
+`active` with an "Opening beat:" the player never took. There is no protagonist yet,
+so spine position 1 is a placeholder, not a commitment. A book with two viable
+entry arcs (king-era vs pirate-era) will otherwise open on the wrong life. Location
++ hook are rewritten when the PC first exists: `onboard` (the three-door handoff)
+always re-seeds; `set_current_player` re-seeds only while `opening_matched_to_pc` is
+unset (the `/create-character` `save-json` path). Reseed still picks the PC-matched
+plot for where you stand and which hook is offered; it does not start that plot. A
+previously seeded fake session-log block is stripped so import repair does not leave
+the lie, and the KEY FACT is replaced (not stacked). The PC's own name on
+`plot.npcs` does not pick the arc — the protagonist is listed on many plots — era
+and concept overlap do.
 
 ## Where an import goes wrong
 

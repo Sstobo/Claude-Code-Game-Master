@@ -7,14 +7,12 @@ priority: p1
 lane: agent
 parentPrd: trust-the-agent
 blockedBy: []
-claimedBy: null
-claimedAt: null
-changedFiles: []
-resolution: null
-reviewRounds: null
-implementer: null
-createdAt: 2026-08-14T18:52:00Z
-updatedAt: 2026-08-14T18:52:00Z
+claimedBy: gk-t8n2wp
+claimedAt: 2026-08-14T18:54:05Z
+changedFiles: [lib/opening_seed.py, tests/test_opening_seed.py, tests/test_identity_onboarding.py, tests/test_new_game_parity.py, docs/flows/onboarding-and-death.md, docs/flows/import-a-book.md, docs/flows/author-a-world.md]
+reviewRounds: 2
+resolution: opening seed sets location + KEY FACT hook; no fabricated session
+updatedAt: 2026-08-14T19:26:00Z
 ---
 
 ## Parent
@@ -57,18 +55,19 @@ orchestrator owns that file until presence lands.
 
 ## Acceptance criteria
 
-- [ ] After `seed_opening` / `reseed_opening`, `session-log.md` contains no
+- [x] After `seed_opening` / `reseed_opening`, `session-log.md` contains no
       opening-seed `### Session Ended` block (and any previously marked block
       is gone).
-- [ ] `player_position.current_location` is set to the opening location.
-- [ ] No spine plot is stamped `active` with an "Opening beat:" event by the
+- [x] `player_position.current_location` is set to the opening location.
+- [x] No spine plot is stamped `active` with an "Opening beat:" event by the
       seed; the hook is available as overview (or fact) data.
-- [ ] `reseed_opening` still picks the PC-matched plot for location + hook
+- [x] `reseed_opening` still picks the PC-matched plot for location + hook
       (existing scoring rules stand).
-- [ ] tests/test_opening_seed.py rewritten for the new contract and passing;
+- [x] tests/test_opening_seed.py rewritten for the new contract and passing;
       full suite passes.
-- [ ] Claiming docs restamped (import / new-game / scene-context if they
+- [x] Claiming docs restamped (import / new-game / scene-context if they
       describe PREVIOUSLY ON as the opening).
+- [x] (review) After `seed_opening` / `reseed_opening`, `get_full_context` includes the chosen hook text (KEY FACTS or a single "Opening (not yet played):" line) and still contains no seed-fabricated `### Session Ended` / PREVIOUSLY ON block.
 
 ## Out of scope
 
@@ -87,6 +86,24 @@ None.
 
 ## QA Reports
 
+### 2026-08-14T19:26:00Z — pass [11709d26]
+reviewed: perfect (followup). Hook is a plot_local KEY FACT; get_full_context already prints it; no fake Session Ended.
+
+### 2026-08-14T19:16:00Z — fail [6378bb63]
+reviewed: needs-changes
+- lib/opening_seed.py:214 — `opening_hook` is on campaign-overview only; get_full_context never reads it. Write a KEY FACT so an existing context channel surfaces the hook (do not edit session_manager.py).
+Notes (style, non-blocking): unused timestamp arg; _commit_opening still rewrites plots.json.
+
+### 2026-08-14T19:06:00Z — verified [gk-t8n2wp]
+Seed sets location + overview.opening_hook; strips fake session-log; does not stamp plots active. Leftover identity/new-game tests updated. `uv run pytest tests/` exit 0.
+
 ## History
 
+- 2026-08-14T19:26:00Z  done: opening seed sets location + KEY FACT hook; no fabricated session  [gk-t8n2wp]
+- 2026-08-14T19:18:00Z  followup review dispatched — KEY FACT surfaces hook  [gk-t8n2wp]
+- 2026-08-14T19:16:00Z  review needs-changes — hook must reach KEY FACTS; fix delegated  [gk-t8n2wp]
+- 2026-08-14T19:06:00Z  verified → in-review, review dispatched  [gk-t8n2wp]
+
+- 2026-08-14T18:55:00Z  doc-grounding confirmed — user pre-confirmed "do ALL of this now"  [gk-t8n2wp]
+- 2026-08-14T18:54:05Z  claimed  [gk-t8n2wp]
 - 2026-08-14T18:52:00Z  created → ready  [gk-t8n2wp]

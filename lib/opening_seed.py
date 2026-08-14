@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Seed the opening beat so a fresh import starts at the book's opening, not a void.
+"""Seed a provisional opening so a fresh import is not a void.
 
-After cap/integrity/spine, this sets the campaign's starting player_position to the
-arc's opening location, marks the first spine plot active with an opening beat, and
-writes a session-log "Previously On / Where We Paused" block (the channel
-get_full_context reads) so the first /gm session opens on the book's actual opening.
-
-That pipeline call is *provisional*: there is no PC yet, so the campaign still has
-to open somewhere. `reseed_opening` rewrites the same three artifacts together once
-the PC first exists (`IdentityOnboarding.onboard`, or the first `set_current_player`
-while `opening_matched_to_pc` is unset), so play's opening matches the protagonist.
-Provisional `seed_opening` does not set that flag; `reseed_opening` does.
+After cap/integrity/spine, this sets `player_position.current_location` and records
+the chosen hook on `overview.opening_hook` and as a `plot_local` KEY FACT
+(`Opening (not yet played): …`) so `get_full_context` already surfaces it. It
+does not fabricate a session-log `### Session Ended` block (PREVIOUSLY ON is
+earned play) and does not stamp a plot `active` or append an "Opening beat:"
+event — plots stay as they were, typically `available`. `reseed_opening`
+rewrites location + hook once the PC first exists (`IdentityOnboarding.onboard`,
+or the first `set_current_player` while `opening_matched_to_pc` is unset) so
+WHERE YOU STAND and WHICH HOOK is offered match the protagonist. It still does
+not start that plot. Provisional `seed_opening` does not set the flag;
+`reseed_opening` does.
 """
 
 import json
@@ -29,6 +30,8 @@ _LEGACY_OPENING = re.compile(
     r"## Session Started: [^\n]+\n\n### Session Ended: [^\n]+\nOpening scene\..*?\n---\n*",
     re.DOTALL,
 )
+_OPENING_FACT_PREFIX = "Opening (not yet played):"
+_OPENING_FACT_CATEGORY = "plot_local"
 _WORD_RE = re.compile(r"[a-z0-9]+")
 _STOP = frozenset({
     "that", "this", "with", "from", "into", "your", "their", "have", "been",
@@ -164,66 +167,55 @@ def _pick_opening_plot(plots: dict, spine: list, character=None) -> str:
     return best_name
 
 
-def _opening_block(ts: str, hook: str, opening_loc: str, plot_name: str) -> str:
-    return (
-        f"{_OPENING_MARK_START}\n"
-        f"## Session Started: {ts}\n\n"
-        f"### Session Ended: {ts}\n"
-        f"Opening scene. {hook}\n\n"
-        f"**Session:** 0\n"
-        f"**Location:** {opening_loc}\n"
-        f"**Cliffhanger:** {hook}\n"
-        f"**Open threads:** {plot_name}\n\n"
-        f"---\n\n"
-        f"{_OPENING_MARK_END}\n"
-    )
-
-
-def _swap_opening_log(existing: str, block: str) -> str:
-    """Replace the marked (or legacy unmarked) opening-seed block; else append."""
+def _strip_opening_log(existing: str) -> str:
+    """Remove a marked (or legacy unmarked) opening-seed block. Leave real sessions."""
     start = existing.find(_OPENING_MARK_START)
     end = existing.find(_OPENING_MARK_END)
     if start != -1 and end != -1 and end > start:
         end += len(_OPENING_MARK_END)
         while end < len(existing) and existing[end] == "\n":
             end += 1
-        return existing[:start] + block + existing[end:]
+        existing = existing[:start] + existing[end:]
     match = _LEGACY_OPENING.search(existing)
     if match:
-        return existing[:match.start()] + block + existing[match.end():]
-    if existing and not existing.endswith("\n"):
-        existing += "\n"
-    return existing + block
+        existing = existing[:match.start()] + existing[match.end():]
+    return existing
 
 
-def _commit_opening(cdir: Path, overview: dict, plots: dict, log_text: str) -> None:
-    """Write position + plots + session-log together. Partial write is the bug."""
+def _upsert_opening_fact(facts: dict, hook: str, ts: str) -> dict:
+    """One plot_local KEY FACT for the offered hook; replace on re-run, never stack."""
+    if not isinstance(facts, dict):
+        facts = {}
+    bucket = facts.get(_OPENING_FACT_CATEGORY)
+    if not isinstance(bucket, list):
+        bucket = []
+    kept = []
+    for item in bucket:
+        txt = item.get("fact", "") if isinstance(item, dict) else str(item)
+        if str(txt).startswith(_OPENING_FACT_PREFIX):
+            continue
+        kept.append(item)
+    kept.append({"fact": f"{_OPENING_FACT_PREFIX} {hook}", "timestamp": ts})
+    facts[_OPENING_FACT_CATEGORY] = kept
+    return facts
+
+
+def _commit_opening(cdir: Path, overview: dict, facts: dict, log_text: str) -> None:
+    """Write overview + facts + session-log together. Partial write is the bug.
+
+    plots.json is not rewritten — the seed no longer mutates plots. session-log
+    is rewritten only so a fabricated opening-seed block is stripped; real
+    sessions stay. An empty log after removal is fine.
+    """
     ov_tmp = cdir / "campaign-overview.json.tmp"
-    plots_tmp = cdir / "plots.json.tmp"
+    facts_tmp = cdir / "facts.json.tmp"
     log_tmp = cdir / "session-log.md.tmp"
     ov_tmp.write_text(json.dumps(overview, indent=2), encoding="utf-8")
-    plots_tmp.write_text(json.dumps(plots, indent=2), encoding="utf-8")
+    facts_tmp.write_text(json.dumps(facts, indent=2), encoding="utf-8")
     log_tmp.write_text(log_text, encoding="utf-8")
     ov_tmp.replace(cdir / "campaign-overview.json")
-    plots_tmp.replace(cdir / "plots.json")
+    facts_tmp.replace(cdir / "facts.json")
     log_tmp.replace(cdir / "session-log.md")
-
-
-def _activate_opening_plot(plots: dict, chosen: str, spine: list, ts: str, hook: str, demote_others: bool) -> None:
-    """Mark ``chosen`` active with an opening beat. On re-seed, other spine plots
-    that were the previous opening return to ``available`` — exactly one spine
-    plot stays ``active``."""
-    beat = f"Opening beat: {hook}"
-    for name, plot in plots.items():
-        if not isinstance(plot, dict):
-            continue
-        if name == chosen:
-            plot["status"] = "active"
-            events = plot.setdefault("events", [])
-            if not any(isinstance(e, dict) and e.get("event") == beat for e in events):
-                events.append({"event": beat, "timestamp": ts})
-        elif demote_others and name in spine and str(plot.get("status", "")).lower() == "active":
-            plot["status"] = "available"
 
 
 def _apply_opening(campaign_dir, character=None, timestamp=None, *, reseed=False) -> dict:
@@ -233,6 +225,7 @@ def _apply_opening(campaign_dir, character=None, timestamp=None, *, reseed=False
     overview = _load(cdir, "campaign-overview.json")
     plots = _load(cdir, "plots.json")
     locations = _load(cdir, "locations.json")
+    facts = _load(cdir, "facts.json")
 
     spine = _spine_names(overview, plots)
     chosen = _pick_opening_plot(plots, spine, character if reseed else None)
@@ -248,16 +241,21 @@ def _apply_opening(campaign_dir, character=None, timestamp=None, *, reseed=False
         pos = {}
     pos["current_location"] = opening_loc
     overview["player_position"] = pos
+    overview["opening_hook"] = {
+        "location": opening_loc,
+        "plot": chosen,
+        "hook": hook,
+    }
     if reseed:
         overview["opening_matched_to_pc"] = True
 
-    _activate_opening_plot(plots, chosen, set(spine), ts, hook, demote_others=reseed)
+    facts = _upsert_opening_fact(facts, hook, ts)
 
     log_path = cdir / "session-log.md"
     existing = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
-    log_text = _swap_opening_log(existing, _opening_block(ts, hook, opening_loc, chosen))
+    log_text = _strip_opening_log(existing)
 
-    _commit_opening(cdir, overview, plots, log_text)
+    _commit_opening(cdir, overview, facts, log_text)
     return {"seeded": True, "opening_location": opening_loc, "first_plot": chosen, "hook": hook}
 
 
@@ -267,12 +265,13 @@ def seed_opening(campaign_dir, timestamp=None) -> dict:
 
 
 def reseed_opening(campaign_dir, character, timestamp=None) -> dict:
-    """Rewrite the opening once the PC exists.
+    """Rewrite location + opening_hook (and the KEY FACT) once the PC exists.
 
-    Atomic: starting location, active plot, and the session-log "Previously On"
-    hook are computed then written together. The previously seeded spine plot
-    returns to ``available`` so exactly one spine plot is ``active``. Plot
-    selection uses `_pick_opening_plot` (PC-aware when the arc has 2+ plots).
+    Atomic: starting location, offered hook, and the plot_local KEY FACT are
+    computed then written together; a previously fabricated opening-seed
+    session-log block is stripped. Plot statuses are left as they were — this
+    does not start the chosen plot. Plot selection uses `_pick_opening_plot`
+    (PC-aware when the arc has 2+ plots).
     """
     return _apply_opening(campaign_dir, character=character, timestamp=timestamp, reseed=True)
 
