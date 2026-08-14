@@ -22,6 +22,12 @@ if [ "$#" -lt 1 ]; then
     echo "      --quality low|medium|high  Default: medium (~\$0.04 landscape)"
     echo "      --size 1536x1024           Default: 1536x1024 (cinematic landscape)"
     echo "      --character <name>         Auto-inject that character's visual_appearance (repeatable)"
+    echo "      --no-style-lock            Skip the campaign art-style injection — for a dream"
+    echo "                                 sequence or flashback rendered in another register."
+    echo "                                 Then don't restate the locked style in --prompt either."
+    echo "      --no-appearance-lock       Skip the visual_appearance injection for the WHOLE frame."
+    echo "                                 For ONE transformed/disguised character, just omit their"
+    echo "                                 --character and describe the altered look in the prompt."
     echo "  appearance <name>          - Print a character's visual_appearance bible line (PC or NPC)"
     echo "  chronicler                 - Show this campaign's in-world chronicler"
     echo "      --name <text>            Set the chronicler's name"
@@ -43,7 +49,7 @@ case "$ACTION" in
     generate)
         require_active_campaign
 
-        PROMPT="" ; TITLE="" ; QUALITY="medium" ; SIZE="1536x1024" ; CHARS=()
+        PROMPT="" ; TITLE="" ; QUALITY="medium" ; SIZE="1536x1024" ; CHARS=() ; LOCKS=()
         while [ "$#" -gt 0 ]; do
             case "$1" in
                 --prompt)    PROMPT="$2" ; shift 2 ;;
@@ -51,6 +57,8 @@ case "$ACTION" in
                 --quality)   QUALITY="$2"; shift 2 ;;
                 --size)      SIZE="$2"   ; shift 2 ;;
                 --character) CHARS+=(--character "$2") ; shift 2 ;;
+                --no-style-lock)      LOCKS+=(--no-style-lock)      ; shift ;;
+                --no-appearance-lock) LOCKS+=(--no-appearance-lock) ; shift ;;
                 *) error "Unknown flag: $1" ; exit 1 ;;
             esac
         done
@@ -68,7 +76,7 @@ case "$ACTION" in
         # image_gen.py emits a JSON result on success; capture it.
         RESULT=$($PYTHON_CMD "$LIB_DIR/image_gen.py" \
             --prompt "$PROMPT" --title "$TITLE" --quality "$QUALITY" --size "$SIZE" \
-            "${CHARS[@]}" --json)
+            "${CHARS[@]}" "${LOCKS[@]}" --json)
         STATUS=$?
         if [ "$STATUS" -ne 0 ]; then
             exit "$STATUS"  # image_gen.py already printed the actionable error

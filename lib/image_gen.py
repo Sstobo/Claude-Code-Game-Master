@@ -216,14 +216,42 @@ def inject_appearances(prompt: str, characters, campaign_dir=None) -> str:
     return out
 
 
+def build_prompt(prompt: str, characters=None, campaign_dir=None, *,
+                 style_lock: bool = True, appearance_lock: bool = True,
+                 chronicler=None) -> str:
+    """The prompt actually sent to the model: the caller's text plus the two locks.
+
+    Both locks default ON and stay belt-and-braces — they fire even on a direct
+    fallback call where the caller forgot. Turning one off is a story call, not a
+    tidiness one: a dream sequence or flashback rendered in another register
+    (``style_lock=False``), or a transformation, disguise, or vision where the
+    stored look is deliberately wrong (``appearance_lock=False``).
+    """
+    final = inject_appearances(prompt, characters, campaign_dir) if appearance_lock else prompt
+
+    # Lock the campaign's art-style signature into every prompt so the gallery
+    # reads like one artbook even if the caller forgets to restate the style.
+    if style_lock:
+        if chronicler is None:
+            chronicler = load_chronicler(campaign_dir)
+        style = (chronicler or {}).get("style", "").strip()
+        if style and style.lower() not in final.lower():
+            final = f"{final.rstrip()}\n\nConsistent art style (campaign signature): {style}."
+
+    return final
+
+
 def generate_image(prompt: str, *, title: str = "", quality: str = DEFAULT_QUALITY,
                    size: str = DEFAULT_SIZE, model: str = DEFAULT_MODEL,
-                   characters=None) -> dict:
+                   characters=None, style_lock: bool = True,
+                   appearance_lock: bool = True) -> dict:
     """Generate one image and save it under the active campaign's images/ dir.
 
     ``characters`` is an optional list of character names in frame; each one's
     canonical visual_appearance block is auto-injected into the prompt so the PC
     and NPCs render CONSISTENTLY image-to-image, even on direct/fallback calls.
+    ``style_lock`` / ``appearance_lock`` opt a single beat out of those
+    injections (see ``build_prompt``).
 
     Returns {path, rel_path, cost, model, quality, size, title}. Raises
     ImageGenError for actionable problems (no campaign, no key, moderation).
@@ -241,14 +269,10 @@ def generate_image(prompt: str, *, title: str = "", quality: str = DEFAULT_QUALI
     if not prompt or not prompt.strip():
         raise ImageGenError("Empty prompt — describe the scene to illustrate.")
 
-    final_prompt = inject_appearances(prompt, characters, campaign_dir)
-
-    # Lock the campaign's art-style signature into every prompt so the gallery
-    # reads like one artbook even if the caller forgets to restate the style.
     chronicler = load_chronicler(campaign_dir)
-    style = (chronicler or {}).get("style", "").strip()
-    if style and style.lower() not in final_prompt.lower():
-        final_prompt = f"{final_prompt.rstrip()}\n\nConsistent art style (campaign signature): {style}."
+    final_prompt = build_prompt(prompt, characters, campaign_dir,
+                                style_lock=style_lock, appearance_lock=appearance_lock,
+                                chronicler=chronicler)
 
     payload = json.dumps({
         "model": model,
@@ -339,6 +363,10 @@ def main() -> None:
     parser.add_argument("--title", default="", help="Scene title (used in filename + canvas)")
     parser.add_argument("--character", action="append", default=[], metavar="NAME",
                         help="Character in frame; auto-injects their visual_appearance. Repeatable.")
+    parser.add_argument("--no-style-lock", dest="style_lock", action="store_false",
+                        help="Skip the campaign art-style injection (dream sequence, flashback)")
+    parser.add_argument("--no-appearance-lock", dest="appearance_lock", action="store_false",
+                        help="Skip the visual_appearance injection (transformation, disguise, vision)")
     parser.add_argument("--appearance", metavar="NAME",
                         help="Print one character's visual_appearance bible line and exit")
     parser.add_argument("--quality", default=DEFAULT_QUALITY, choices=["low", "medium", "high", "auto"])
@@ -395,7 +423,9 @@ def main() -> None:
 
     try:
         result = generate_image(prompt, title=args.title, quality=args.quality,
-                                size=args.size, characters=args.character)
+                                size=args.size, characters=args.character,
+                                style_lock=args.style_lock,
+                                appearance_lock=args.appearance_lock)
     except ImageGenError as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)

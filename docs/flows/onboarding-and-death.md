@@ -7,7 +7,7 @@ sources:
   - { resource: /tools/gm-player.sh }
   - { resource: /lib/player_manager.py }
   - { resource: /CLAUDE.md }
-generated: { by: claude-opus-5, at: 2026-08-14T13:57:39Z }
+generated: { by: claude-opus-5, at: 2026-08-14T14:46:17Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
@@ -77,6 +77,13 @@ ordering exists to prevent.
    step in as a **canon figure**. (Solo with no party and no fitting canon figure: options
    2 and 3 only.)
 4. Swap, bridge the fiction, resume.
+
+That hand-off stays the narrative default — death is meant to move the story to someone
+else, not to be undone. The deliberate exit from the dead state is
+`gm-player.sh revive "<name>"` (`--hp`, `--reason`), for the stories that earn it: a
+resurrection, a miracle, a death the fiction walks back. It works only on the sitting PC,
+never on a hero already archived to `fallen/`. See
+[the player character sheet](../modules/player-character.md).
 
 ## `become()` is the only path that moves a sheet
 

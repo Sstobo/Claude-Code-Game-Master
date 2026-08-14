@@ -6,7 +6,7 @@ sources:
   - { resource: /lib/character_schema.py }
   - { resource: /lib/player_manager.py }
   - { resource: /features/character-creation/save_character.py }
-generated: { by: claude-opus-5, at: 2026-08-14T02:30:47Z }
+generated: { by: claude-opus-5, at: 2026-08-14T14:46:17Z }
 ---
 
 # The player character sheet
@@ -113,6 +113,24 @@ corpse neither takes damage nor heals; the call returns `success: False` and the
 untouched. `kill_character` writes HP itself and never routes through `modify_hp`, so the
 guard cannot block a death. Below that gate, `modify_hp` still runs the *dying* gate: 0 HP
 sets `status: 'dying'`, healing off 0 sets it back to `alive`.
+
+The guard is sticky on purpose, so there is a door beside it: `revive(name, hp, reason)`
+is the only thing that clears a `dead` status. It restores HP (the given value, else 1,
+clamped to 1..max, so a revive never lands anyone alive at 0), drops `died_at` and `cause`,
+and records `revived_at` + `revived_reason` where the death's cause was — so a resurrection,
+a healer's miracle, or a death the fiction walks back is a persisted event rather than a
+hand-edited file. The two stamp pairs are mutually exclusive and the last event wins:
+`kill_character` clears `revived_at`/`revived_reason` exactly as `revive` clears
+`died_at`/`cause`. After a revive, `modify_hp` works again and a second death lands
+normally.
+
+Two refusals guard it, both explicit rather than silent. Reviving a character who is not
+dead returns `error: 'character is not dead'` and touches nothing, so a misfired revive can
+never top a living PC up. And **only the sitting PC can be revived**: in single-character
+mode `_load_character` ignores the name it is given and returns `character.json`, so a
+name that doesn't match the loaded sheet is refused by name rather than quietly reviving
+whoever currently holds the file. A hero already archived to `fallen/` is therefore out of
+reach of this verb — bringing them back means `become()` or a fresh sheet.
 
 ## Related
 

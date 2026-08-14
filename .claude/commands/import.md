@@ -589,11 +589,12 @@ improvised per-image at play. Derive it from the book's tone and lock it so the
 ```bash
 bash tools/gm-image.sh chronicler \
   --name "<in-world artist who 'makes' every image; fits the book>" \
-  --style "<MUST start with 'In the style of ...'; a CREATIVE, MULTIFACETED mashup — combine two unexpected references, e.g. 'In the style of Frank Miller's Batman but in smudged charcoal', 'In the style of a Bayeux-tapestry embroidery but depicting a neon megacity'. Aim for the OHHHHH.>" \
+  --style "<MUST start with 'In the style of ...'; a distinctive, fully-specified look. A mashup of two unexpected references often lands — 'In the style of Frank Miller's Batman but in smudged charcoal', 'In the style of a Bayeux-tapestry embroidery but depicting a neon megacity' — but one strong, committed style the book already implies works just as well.>" \
   --persona "<their voice/bias — grim, sarcastic, reverent, unreliable>"
 ```
 
-The agent never picks its own style; it reads this locked one. Make the mashup surprising.
+The agent never picks its own style; it reads this locked one. Whichever shape you
+choose, make it specific enough that two different images read as one artist's hand.
 
 ---
 

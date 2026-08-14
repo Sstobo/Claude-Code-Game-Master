@@ -58,7 +58,7 @@ Write `world-seed.json` to the campaign dir:
   "premise": "...", "tone": "...", "magic": "...", "setting": "...",
   "genre_bend": "<the distinct commitments, in a sentence or two>",
   "voice_exemplar": "<author/work to channel, e.g. 'Robert E. Howard'>",
-  "art_style": "In the style of <a CREATIVE, MULTIFACETED mashup> — e.g. 'In the style of Frank Miller's Batman but rendered in smudged charcoal', 'In the style of a gilded medieval illuminated manuscript but depicting cyberpunk megacities', 'In the style of Studio Ghibli but H.R. Giger biomech'. Combine two unexpected references; aim for the surprise that makes a viewer go OHHHHH. This is the campaign's locked gallery signature, set ONCE here.",
+  "art_style": "In the style of <a distinctive, fully-specified look> — a mashup of two unexpected references often lands ('In the style of Frank Miller's Batman but rendered in smudged charcoal', 'In the style of a gilded medieval illuminated manuscript but depicting cyberpunk megacities'), or commit hard to one strong style the world already implies. Either way it must be specific enough that two images read as one artist's hand. This is the campaign's locked gallery signature, set ONCE here.",
   "chronicler_name": "<the in-world artist who 'makes' every image, fits the tone>",
   "chronicler_persona": "<their voice/bias — grim, sarcastic, reverent, unreliable>",
   "axes": [ { "axis": "geography", "depth": "deep", "bend": "..." },
@@ -209,12 +209,13 @@ decision, not an in-play improvisation) from the seed's `art_style` /
 ```bash
 bash tools/gm-image.sh chronicler \
   --name "<chronicler_name>" \
-  --style "<art_style — MUST start with 'In the style of ...'; a creative, multifaceted mashup>" \
+  --style "<art_style — MUST start with 'In the style of ...'; a distinctive, fully-specified look>" \
   --persona "<chronicler_persona>"
 ```
 
 The `scene-illustrator` agent READS this locked style and opens every prompt with
-it — it never picks its own. Make the mashup genuinely surprising. This single
+it — it never picks its own. Make it specific enough that two images read as one
+artist's hand (a surprising mashup is one way there, not the only one). This single
 chronicler record carries BOTH halves of the image identity — the **art style**
 (`--style`) and the **art narrator** (`--name` / `--persona`, the in-world entity
 who "makes" every picture). Lock both now; they never change in play.
@@ -265,7 +266,7 @@ builder for a player who wants to roll a sheet properly — offer it, don't impo
 - [ ] world opens alive: `campaign_rules` on the overview, a non-empty `story_spine`,
       threat clocks seeded (or knowingly none), `player_position.current_location` set
 - [ ] `/world-check` passes
-- [ ] chronicler locked (`gm-image.sh chronicler`) — both the art **style** (starts "In the style of ...", a creative mashup) AND the art **narrator** (name + persona)
+- [ ] chronicler locked (`gm-image.sh chronicler`) — both the art **style** (starts "In the style of ...", distinctive and fully specified) AND the art **narrator** (name + persona)
 - [ ] every notable NPC has a `visual_appearance` block (11 keys); PC gets one at `/create-character`
 - [ ] overview + session log set; handed off to the one question (`gm-player.sh onboard ...`)
 

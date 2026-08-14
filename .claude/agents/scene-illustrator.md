@@ -21,7 +21,8 @@ bash tools/gm-image.sh appearance "<name>" # one per character in frame
 ```
 
 - The `style` is locked at campaign creation — never invent, change, or drift it.
-  Open the prompt with it verbatim ("In the style of ...:"). If none is set, stop
+  Open the prompt with it verbatim ("In the style of ...:"), unless the brief
+  calls for a deliberate break (see Generate). If none is set, stop
   and tell the GM to lock one (`gm-image.sh chronicler --style`); don't improvise.
 - For each character in frame, read their appearance line and reproduce it (sex,
   race, build, hair, signature gear are binding). If one has no `visual_appearance`
@@ -39,6 +40,18 @@ bash tools/gm-image.sh generate --title "<title>" \
 `--character` auto-injects that character's appearance and the locked style is
 auto-appended — but still open with the style and describe each character so
 recurring faces stay on-model.
+
+**Deliberate breaks** (only when the beat brief asks for one — a transformation,
+disguise, dream, or flashback): the flags suppress the auto-append, so YOU must
+also leave the suppressed element out of your prompt text, or you restate the
+very thing you turned off.
+
+- One character is transformed / disguised / not themselves: omit `--character`
+  for THAT character (keep it for everyone else) and describe their altered look
+  in prose. This is the normal move.
+- The whole frame breaks: `--no-appearance-lock` (nobody's stored look applies —
+  for single-character frames) or `--no-style-lock` (render in another register;
+  then do NOT open with the locked style, open with the beat's own style line).
 
 ## Return
 

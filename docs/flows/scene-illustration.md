@@ -7,7 +7,7 @@ sources:
   - { resource: /lib/visual_appearance.py }
   - { resource: /tools/gm-image.sh }
   - { resource: /.claude/agents/scene-illustrator.md }
-generated: { by: claude-fable-5, at: 2026-08-13T14:22:19Z }
+generated: { by: claude-opus-5, at: 2026-08-14T14:46:17Z }
 ---
 
 # Illustrating a scene
@@ -28,9 +28,10 @@ look like one artist drew one cast is state on disk, injected into every prompt.
 4. **Deliver diegetically** — the picture is an artifact made by the in-world chronicler,
    not "here's an image".
 
-## Two injections happen inside `generate_image`, not in the prompt you write
+## Two injections happen inside `build_prompt`, not in the prompt you write
 
-`lib/image_gen.py:226-240` appends to the caller's prompt:
+`build_prompt` (`lib/image_gen.py`) assembles what actually goes to the model, and
+`generate_image` calls it. It appends to the caller's prompt:
 
 - **each named character's canonical appearance**, from the 11-field `visual_appearance`
   block, as `Character (render exactly): …`
@@ -41,7 +42,34 @@ Both are belt-and-braces: they fire even on a direct fallback call where the cal
 The art style injection is guarded on the style string not already appearing in the prompt,
 which is the right check.
 
-## The appearance injection always fires (since 2026-08-13)
+**Both stay on by default, and the default is the right one** — the drift they prevent is
+silent and cumulative, so the cost of a redundant injection is nothing and the cost of a
+missing one is a gallery that stops looking like one artbook. Two flags open the door for
+the beat where the lock is *wrong*, not merely redundant:
+
+- `--no-style-lock` (`gm-image.sh generate`, `image_gen.py`) skips the art-style
+  injection — a dream sequence, flashback, or in-world artifact rendered in another
+  register.
+- `--no-appearance-lock` skips the appearance injection for the **whole frame** — a
+  transformation, disguise, or vision where the stored look is deliberately not what's
+  in frame.
+
+Use them per-image; neither changes anything on disk, so the next call locks again.
+
+**A flag only governs the auto-append — the prompt author has to cooperate.**
+`scene-illustrator` is instructed to open every prompt with the locked style verbatim and
+to restate each character's appearance, precisely because the model has no memory. So
+suppressing an injection while still writing the suppressed element into the prompt text
+changes nothing. `.claude/agents/scene-illustrator.md` carries the matching rule: on a
+deliberate break, pass the flag *and* leave that element out of the prompt.
+
+For the common case — **one** character transformed or disguised while the rest of the
+frame is normal — the per-character escape is better than the flag: omit `--character` for
+that character only, keep it for everyone else, and describe the altered look in prose. The
+frame-wide flag is for single-character frames or a whole scene that has left the world's
+visual reality.
+
+## The appearance injection fires whenever a character is passed and the lock is on (since 2026-08-13)
 
 `inject_appearances` appends the stored block for every `--character` name, skipping only
 an appearance line already present **verbatim** (idempotency). Until 2026-08-13 the guard
@@ -51,7 +79,9 @@ suppressed in the common case and recurring characters drifted off-model. Regres
 `tests/test_image_prompt_injection.py`.
 
 Practical rule for prompt authors now: just name people and pass `--character` — the
-canonical look rides along regardless.
+canonical look rides along regardless of how the prompt is worded. The only two ways it
+does not ride along are deliberate: not passing `--character` for that person, or
+`--no-appearance-lock`.
 
 ## The appearance block is a fixed, ordered field list
 

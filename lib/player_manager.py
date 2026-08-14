@@ -493,7 +493,8 @@ class PlayerManager(EntityManager):
             char_name = char.get('name', name)
             print(f"[ERROR] {char_name} is dead — HP is frozen at "
                   f"{current_hp}/{max_hp}. Run the Death Protocol (become a "
-                  f"party member / new character) to continue play.")
+                  f"party member / new character) to continue play, or "
+                  f"`gm-player.sh revive` if the story brings them back.")
             return {
                 'success': False,
                 'name': char_name,
@@ -666,6 +667,10 @@ class PlayerManager(EntityManager):
         char['died_at'] = self.get_timestamp()
         if cause:
             char['cause'] = cause
+        # A death and a revival are mutually exclusive states, so the last one
+        # wins: dying again clears the stamps a previous revive left behind.
+        char.pop('revived_at', None)
+        char.pop('revived_reason', None)
 
         if not self._save_character(name, char):
             return {'success': False}
@@ -682,6 +687,83 @@ class PlayerManager(EntityManager):
             'status': 'dead',
             'died_at': char['died_at'],
             'cause': cause,
+        }
+
+    def revive(self, name: Optional[str] = None, hp: Optional[int] = None,
+               reason: Optional[str] = None) -> Dict[str, Any]:
+        """Bring a dead character back: status 'alive', HP restored, death stamps cleared.
+
+        The escape hatch for the stories that end a death differently — a
+        resurrection, a healer's miracle, a death the fiction walks back. The
+        corpse guard in modify_hp is what makes this an explicit verb rather than
+        a heal: only this clears a 'dead' status.
+
+        ``hp`` defaults to 1 (back on their feet, barely) and clamps to 1..max —
+        a revive never lands a character alive at 0. ``reason`` is recorded on the
+        sheet where the death's cause was, so the world remembers how they came
+        back.
+        """
+        char = self._load_character(name)
+        if not char:
+            print(f"[ERROR] Character '{name}' not found")
+            return {'success': False}
+
+        char_name = char.get('name', name)
+        # In single-character mode _load_character ignores the name and hands back
+        # the sitting PC, so a revive aimed at a hero already archived to fallen/
+        # would silently hit whoever holds character.json. Refuse instead.
+        if name and str(char_name).strip().lower() != str(name).strip().lower():
+            print(f"[ERROR] The active character is {char_name}, not '{name}'. "
+                  f"Only the sitting PC can be revived — a hero archived to "
+                  f"fallen/ has to be brought back with `gm-player.sh become` or "
+                  f"a fresh sheet.")
+            return {
+                'success': False,
+                'name': char_name,
+                'error': f"active character is {char_name}, not '{name}'",
+            }
+
+        if char.get('status') != 'dead':
+            print(f"[ERROR] {char_name} is not dead (status: "
+                  f"{char.get('status', 'alive')}) — nothing to revive. Use "
+                  f"`gm-player.sh hp` to heal them.")
+            return {
+                'success': False,
+                'name': char_name,
+                'status': char.get('status', 'alive'),
+                'error': 'character is not dead',
+            }
+
+        max_hp = char.get('hp', {}).get('max', 0)
+        new_hp = max(1, 1 if hp is None else hp)   # never alive at 0
+        if max_hp:
+            new_hp = min(new_hp, max_hp)
+        char.setdefault('hp', {})
+        char['hp']['current'] = new_hp
+        char['status'] = 'alive'
+        char.pop('died_at', None)
+        char.pop('cause', None)
+        char['revived_at'] = self.get_timestamp()
+        if reason:
+            char['revived_reason'] = reason
+
+        if not self._save_character(name, char):
+            return {'success': False}
+
+        print(f"REVIVED {char_name} lives again.")
+        if reason:
+            print(f"How: {reason}")
+        print(f"HP: {new_hp}/{max_hp}")
+        print("STATUS: ALIVE")
+
+        return {
+            'success': True,
+            'name': char_name,
+            'status': 'alive',
+            'current_hp': new_hp,
+            'max_hp': max_hp,
+            'revived_at': char['revived_at'],
+            'reason': reason,
         }
 
     def become(self, npc_name: str) -> Dict[str, Any]:
@@ -1065,6 +1147,12 @@ def main():
     kill_parser.add_argument('name', help='Character name')
     kill_parser.add_argument('--cause', help='How they died')
 
+    # Revive a dead character (the story brought them back)
+    revive_parser = subparsers.add_parser('revive', help='Bring a dead character back (status alive + HP)')
+    revive_parser.add_argument('name', help='Character name')
+    revive_parser.add_argument('--hp', type=int, help='HP to restore to (default 1, clamped to max)')
+    revive_parser.add_argument('--reason', help='How they came back (recorded on the sheet)')
+
     # Become a party member (Death Protocol hand-off)
     become_parser = subparsers.add_parser('become', help='Take over a party member as the active PC')
     become_parser.add_argument('name', help='Party member NPC name')
@@ -1152,12 +1240,15 @@ def main():
         else:
             sys.exit(emit_error(result.get('error', 'vital update failed'), json_mode=True))
         return
-    if json_mode and args.action in ('kill', 'become'):
+    if json_mode and args.action in ('kill', 'become', 'revive'):
         import contextlib
         import io
         with contextlib.redirect_stdout(io.StringIO()):
             if args.action == 'kill':
                 result = manager.kill_character(args.name, getattr(args, 'cause', None))
+            elif args.action == 'revive':
+                result = manager.revive(args.name, getattr(args, 'hp', None),
+                                        getattr(args, 'reason', None))
             else:
                 result = manager.become(args.name)
         if result.get('success'):
@@ -1248,6 +1339,12 @@ def main():
 
     elif args.action == 'kill':
         result = manager.kill_character(args.name, getattr(args, 'cause', None))
+        if not result.get('success'):
+            sys.exit(1)
+
+    elif args.action == 'revive':
+        result = manager.revive(args.name, getattr(args, 'hp', None),
+                                getattr(args, 'reason', None))
         if not result.get('success'):
             sys.exit(1)
 
