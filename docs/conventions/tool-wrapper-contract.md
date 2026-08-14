@@ -5,9 +5,10 @@ description: Every capability is a bash wrapper over a Python manager over per-c
 sources:
   - { resource: /tools/common.sh }
   - { resource: /lib/cli_output.py }
+  - { resource: /lib/campaign_manager.py }
   - { resource: /lib/json_ops.py }
   - { resource: /tests/test_json_wrappers_player.py }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-opus-5, at: 2026-08-14T12:16:50Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:46Z }
 ---
 
@@ -29,6 +30,12 @@ Every wrapper sources it, and inherits:
   chose, and choosing differently skips the venv.
 - **Path anchoring** — `PROJECT_ROOT` is derived from the script's own location, so tools
   work from any working directory.
+- **`WORLD_STATE_BASE`** — `$PROJECT_ROOT/world-state`, unless `GM_WORLD_STATE_BASE` is
+  set in the environment, which wins. That env var is the isolation seam: the Python side
+  honours it too (`resolve_world_state_base`, `lib/campaign_manager.py`) whenever a manager
+  is constructed without an explicit directory, so exporting it moves a whole wrapper +
+  manager run onto another world-state tree. Tests that drive the real wrappers point it at
+  a tmp tree instead of mutating the player's live campaign.
 - **`require_active_campaign`** — multi-campaign support is a single file,
   `world-state/active-campaign.txt`. Every tool reads it; nothing takes a campaign
   argument by default.

@@ -4,8 +4,11 @@
 is gitignored, so the branch was empty and the reset was a real data loss. It now
 copies the campaign directory to world-state/archive/<campaign>-<timestamp>/.
 
-These tests run against a throwaway fixture campaign under world-state/campaigns/;
-the live campaigns (and active-campaign.txt) are saved and restored.
+These tests run against a throwaway world-state under tmp_path: the fixture builds
+a whole base dir (campaigns/ + active-campaign.txt) and points
+GM_WORLD_STATE_BASE at it, so the wrappers, the managers and the archive all
+operate there. The live world-state is never read or written — an interrupted or
+parallel run cannot de-select the player's campaign.
 """
 
 import os
@@ -20,10 +23,6 @@ from lib.player_manager import PlayerManager
 
 ROOT = Path(__file__).resolve().parent.parent
 RESET_COMMAND_DOC = ROOT / ".claude" / "commands" / "reset.md"
-WORLD_STATE = str(ROOT / "world-state")
-CAMPAIGNS = ROOT / "world-state" / "campaigns"
-ARCHIVE = ROOT / "world-state" / "archive"
-ACTIVE_FILE = ROOT / "world-state" / "active-campaign.txt"
 FIXTURE_NAME = "pytest-reset-fixture"
 
 FIXTURE_FILES = {
@@ -84,12 +83,13 @@ def snapshot(directory: Path, skip: str = None) -> dict:
     }
 
 
-def set_active_campaign(text: str) -> None:
+def set_active_campaign(world: Path, text: str) -> None:
     """Point active-campaign.txt at a campaign atomically (sidecar + os.replace),
     so an interrupted test can never leave a half-written pointer behind."""
-    sidecar = ACTIVE_FILE.with_name(ACTIVE_FILE.name + ".pytest-tmp")
+    active_file = world / "active-campaign.txt"
+    sidecar = active_file.with_name(active_file.name + ".pytest-tmp")
     sidecar.write_text(text, encoding="utf-8")
-    os.replace(sidecar, ACTIVE_FILE)
+    os.replace(sidecar, active_file)
 
 
 def run_reset(*args, stdin=subprocess.DEVNULL):
@@ -112,39 +112,37 @@ def git_head() -> str:
 
 
 @pytest.fixture
-def fixture_campaign():
-    """A disposable campaign made active for the duration of the test."""
-    campaign_dir = CAMPAIGNS / FIXTURE_NAME
-    assert not campaign_dir.exists(), f"stale fixture campaign at {campaign_dir}"
+def world(isolated_world_state):
+    """The throwaway world-state base every tool in this module resolves to."""
+    return isolated_world_state
+
+
+@pytest.fixture
+def archive(world):
+    return world / "archive"
+
+
+@pytest.fixture
+def fixture_campaign(world):
+    """A disposable campaign, active for the duration of the test."""
+    campaign_dir = world / "campaigns" / FIXTURE_NAME
     for rel, body in FIXTURE_FILES.items():
         path = campaign_dir / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(body, encoding="utf-8")
 
-    previous_active = ACTIVE_FILE.read_text(encoding="utf-8") if ACTIVE_FILE.exists() else None
-    set_active_campaign(FIXTURE_NAME + "\n")
-
-    yield campaign_dir
-
-    shutil.rmtree(campaign_dir, ignore_errors=True)
-    for stale in ARCHIVE.glob(f"{FIXTURE_NAME}-*"):
-        shutil.rmtree(stale, ignore_errors=True)
-    if ARCHIVE.exists() and not any(ARCHIVE.iterdir()):
-        ARCHIVE.rmdir()
-    if previous_active is None:
-        ACTIVE_FILE.unlink(missing_ok=True)
-    else:
-        set_active_campaign(previous_active)
+    set_active_campaign(world, FIXTURE_NAME + "\n")
+    return campaign_dir
 
 
-def test_archive_copies_campaign_and_restores_byte_identical(fixture_campaign):
+def test_archive_copies_campaign_and_restores_byte_identical(fixture_campaign, archive):
     original = snapshot(fixture_campaign)
     snapshot_without_vectors = snapshot(fixture_campaign, skip="vectors/")
 
     result = run_reset("archive", "--yes")
     assert result.returncode == 0, result.stderr
 
-    archives = list(ARCHIVE.glob(f"{FIXTURE_NAME}-*"))
+    archives = list(archive.glob(f"{FIXTURE_NAME}-*"))
     assert len(archives) == 1, f"expected one archive dir, got {archives}"
     archive_dir = archives[0]
 
@@ -175,7 +173,7 @@ def test_archive_touches_no_git_state(fixture_campaign):
     assert "archive/" not in git_branches()
 
 
-def test_reset_without_tty_and_without_yes_aborts(fixture_campaign):
+def test_reset_without_tty_and_without_yes_aborts(fixture_campaign, archive):
     before = snapshot(fixture_campaign)
 
     for action in ("archive", "hard"):
@@ -184,16 +182,16 @@ def test_reset_without_tty_and_without_yes_aborts(fixture_campaign):
         assert "--yes" in (result.stderr + result.stdout)
 
     assert snapshot(fixture_campaign) == before
-    assert not list(ARCHIVE.glob(f"{FIXTURE_NAME}-*"))
+    assert not list(archive.glob(f"{FIXTURE_NAME}-*"))
 
 
-def test_hard_reset_with_yes_clears_without_archiving(fixture_campaign):
+def test_hard_reset_with_yes_clears_without_archiving(fixture_campaign, archive):
     result = run_reset("hard", "--yes")
     assert result.returncode == 0, result.stderr
 
     assert (fixture_campaign / "facts.json").read_text(encoding="utf-8").strip() == "{}"
     assert not (fixture_campaign / "character.json").exists()
-    assert not list(ARCHIVE.glob(f"{FIXTURE_NAME}-*")), "hard reset must not archive"
+    assert not list(archive.glob(f"{FIXTURE_NAME}-*")), "hard reset must not archive"
 
 
 @pytest.mark.parametrize("action", ["archive", "hard"])
@@ -220,18 +218,18 @@ def test_reset_keeps_the_source_and_the_kit(fixture_campaign, action):
 
 
 @pytest.mark.parametrize("action", ["archive", "hard"])
-def test_reset_ends_any_active_combat(fixture_campaign, action):
+def test_reset_ends_any_active_combat(fixture_campaign, world, action):
     # Managers take the world-state BASE dir; active-campaign.txt points at the fixture.
-    assert CombatManager(WORLD_STATE).is_active(), "fixture should start mid-fight"
+    assert CombatManager(str(world)).is_active(), "fixture should start mid-fight"
 
     assert run_reset(action, "--yes").returncode == 0
 
-    assert not CombatManager(WORLD_STATE).is_active(), \
+    assert not CombatManager(str(world)).is_active(), \
         "initiative and enemy HP leaked into the fresh story"
 
 
 @pytest.mark.parametrize("action", ["archive", "hard"])
-def test_reset_clears_the_legacy_characters_dir(fixture_campaign, action):
+def test_reset_clears_the_legacy_characters_dir(fixture_campaign, world, action):
     """Pre-character.json campaigns keep sheets in characters/ — still story state."""
     (fixture_campaign / "character.json").unlink()
     legacy = fixture_campaign / "characters"
@@ -239,37 +237,23 @@ def test_reset_clears_the_legacy_characters_dir(fixture_campaign, action):
     (legacy / "testarossa.json").write_text(
         '{"name": "Testarossa", "level": 4}\n', encoding="utf-8"
     )
-    assert PlayerManager(WORLD_STATE).list_players()
+    assert PlayerManager(str(world)).list_players()
 
     assert run_reset(action, "--yes").returncode == 0
 
-    assert not PlayerManager(WORLD_STATE).list_players(), \
+    assert not PlayerManager(str(world)).list_players(), \
         "legacy sheets survived the reset"
 
 
-def test_archive_of_an_empty_campaign_dir_fails_without_resetting():
-    """nullglob makes an empty copy loop look successful — it must not.
+def test_archive_of_an_empty_campaign_dir_fails_without_resetting(world):
+    """nullglob makes an empty copy loop look successful — it must not."""
+    empty = world / "campaigns" / f"{FIXTURE_NAME}-empty"
+    empty.mkdir(parents=True)
+    set_active_campaign(world, empty.name + "\n")
 
-    Self-contained on purpose: it needs its own empty campaign rather than the
-    fixture one, so it saves and restores active-campaign.txt itself and leaves
-    the real active campaign untouched even when run alone.
-    """
-    previous_active = ACTIVE_FILE.read_text(encoding="utf-8") if ACTIVE_FILE.exists() else None
-    empty = CAMPAIGNS / f"{FIXTURE_NAME}-empty"
-    empty.mkdir(parents=True, exist_ok=True)
-    set_active_campaign(empty.name + "\n")
-    try:
-        result = run_reset("archive", "--yes")
-        assert result.returncode != 0, "an empty archive must not report success"
-        assert "world unchanged" in (result.stderr + result.stdout).lower()
-    finally:
-        shutil.rmtree(empty, ignore_errors=True)
-        for stale in ARCHIVE.glob(f"{empty.name}-*"):
-            shutil.rmtree(stale, ignore_errors=True)
-        if previous_active is None:
-            ACTIVE_FILE.unlink(missing_ok=True)
-        else:
-            set_active_campaign(previous_active)
+    result = run_reset("archive", "--yes")
+    assert result.returncode != 0, "an empty archive must not report success"
+    assert "world unchanged" in (result.stderr + result.stdout).lower()
 
 
 def test_preview_is_read_only(fixture_campaign):
@@ -281,16 +265,16 @@ def test_preview_is_read_only(fixture_campaign):
 
 
 @pytest.mark.skipif(os.geteuid() == 0, reason="root ignores directory permissions")
-def test_failed_archive_copy_leaves_campaign_untouched(fixture_campaign):
+def test_failed_archive_copy_leaves_campaign_untouched(fixture_campaign, archive):
     before = snapshot(fixture_campaign)
 
-    ARCHIVE.mkdir(parents=True, exist_ok=True)
-    original_mode = ARCHIVE.stat().st_mode
-    ARCHIVE.chmod(0o555)  # can't create the timestamped subdir inside
+    archive.mkdir(parents=True, exist_ok=True)
+    original_mode = archive.stat().st_mode
+    archive.chmod(0o555)  # can't create the timestamped subdir inside
     try:
         result = run_reset("archive", "--yes")
     finally:
-        ARCHIVE.chmod(original_mode)
+        archive.chmod(original_mode)
 
     assert result.returncode != 0, "a failed archive must not report success"
     assert "world unchanged" in (result.stderr + result.stdout).lower()
@@ -340,3 +324,26 @@ def test_campaign_delete_with_yes_completes(fixture_campaign):
     )
     assert result.returncode == 0, result.stderr
     assert not fixture_campaign.exists()
+
+
+def test_the_live_world_state_is_never_touched(fixture_campaign, world):
+    """Isolation itself: a full archive+reset cycle leaves the player's
+    active-campaign.txt and campaigns/ listing bit-for-bit unchanged."""
+    live = ROOT / "world-state"
+    live_active = live / "active-campaign.txt"
+    before = live_active.read_bytes() if live_active.exists() else None
+    before_mtime = live_active.stat().st_mtime_ns if live_active.exists() else None
+    before_campaigns = sorted(p.name for p in (live / "campaigns").iterdir()) \
+        if (live / "campaigns").is_dir() else []
+
+    assert run_reset("archive", "--yes").returncode == 0
+
+    after = live_active.read_bytes() if live_active.exists() else None
+    assert after == before
+    if before_mtime is not None:
+        assert live_active.stat().st_mtime_ns == before_mtime
+    after_campaigns = sorted(p.name for p in (live / "campaigns").iterdir()) \
+        if (live / "campaigns").is_dir() else []
+    assert after_campaigns == before_campaigns
+    assert not (live / "archive").exists() or \
+        not list((live / "archive").glob(f"{FIXTURE_NAME}-*"))

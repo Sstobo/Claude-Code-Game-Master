@@ -12,8 +12,10 @@ exit status under `set -e` killed the script with no output. Those sites now rou
 through require_campaign/campaign_dir, so the tests below assert the diagnostic
 text, not merely that something was printed.
 
-These run the real wrappers against the real repo, so the fixture moves
-world-state/active-campaign.txt aside and puts it back in teardown.
+These run the real wrappers, but never against the live world-state: every test
+sets GM_WORLD_STATE_BASE to an empty tree under tmp_path, which IS the
+no-active-campaign state. The player's active-campaign.txt is never read, moved
+or deleted.
 """
 
 import os
@@ -25,30 +27,15 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent
-ACTIVE_FILE = PROJECT_ROOT / "world-state" / "active-campaign.txt"
 
 NO_CAMPAIGN_DIAGNOSTIC = "No campaign specified and no active campaign found."
 
 
 @pytest.fixture
-def no_active_campaign():
-    """Deactivate the live campaign for the duration of a test, then restore it.
-
-    The file is moved to a sidecar and moved back with os.replace, never deleted
-    and rewritten: a crash mid-test leaves the campaign recoverable on disk
-    instead of erasing which campaign the player was in.
-    """
-    sidecar = ACTIVE_FILE.with_suffix(".txt.testsaved")
-    saved = ACTIVE_FILE.exists()
-    if saved:
-        os.replace(ACTIVE_FILE, sidecar)
-    try:
-        yield
-    finally:
-        if saved:
-            os.replace(sidecar, ACTIVE_FILE)
-        elif ACTIVE_FILE.exists():
-            ACTIVE_FILE.unlink()
+def no_active_campaign(isolated_world_state):
+    """The no-campaign state, built under tmp_path rather than taken from the live tree."""
+    assert not (isolated_world_state / "active-campaign.txt").exists()
+    return isolated_world_state
 
 
 def _run(*args):
@@ -66,6 +53,24 @@ def test_common_sh_survives_set_e(no_active_campaign):
     result = _run("-e", "-c", "source tools/common.sh; echo SOURCED_OK")
     assert result.returncode == 0
     assert "SOURCED_OK" in result.stdout
+
+
+def test_common_sh_takes_its_base_from_the_environment(no_active_campaign):
+    """The seam every test here relies on: the env var, not PROJECT_ROOT, decides."""
+    result = _run("-c", "source tools/common.sh; echo $WORLD_STATE_BASE")
+    assert result.returncode == 0
+    assert result.stdout.strip() == str(no_active_campaign)
+
+
+def test_common_sh_falls_back_to_the_repo_when_unset(no_active_campaign):
+    """Unset, behavior is what it always was: the repo's own world-state."""
+    env = {k: v for k, v in os.environ.items() if k != "GM_WORLD_STATE_BASE"}
+    result = subprocess.run(
+        ["bash", "-c", "source tools/common.sh; echo $WORLD_STATE_BASE"],
+        cwd=PROJECT_ROOT, env=env, capture_output=True, text=True, timeout=120,
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == str(PROJECT_ROOT / "world-state")
 
 
 @pytest.mark.parametrize(
@@ -96,9 +101,21 @@ def test_extract_verbs_needing_a_campaign_fail_loudly(no_active_campaign, verb):
     assert "gm-campaign.sh switch" in output, f"{verb} did not name the fix: {output!r}"
 
 
-def test_active_campaign_file_restored(no_active_campaign):
-    """Guard the fixture: inside the test the file is gone, teardown puts it back."""
-    assert not ACTIVE_FILE.exists()
+def test_wrappers_never_touch_the_live_world_state(no_active_campaign):
+    """Guard the isolation: the live pointer is not read, moved or written, and
+    everything the wrappers do lands under tmp_path."""
+    live_active = PROJECT_ROOT / "world-state" / "active-campaign.txt"
+    before = live_active.read_bytes() if live_active.exists() else None
+    before_mtime = live_active.stat().st_mtime_ns if live_active.exists() else None
+
+    _run("tools/gm-session.sh", "context")
+    _run("tools/gm-campaign.sh", "list")
+
+    after = live_active.read_bytes() if live_active.exists() else None
+    assert after == before
+    if before_mtime is not None:
+        assert live_active.stat().st_mtime_ns == before_mtime
+    assert not (no_active_campaign / "active-campaign.txt").exists()
 
 
 def _isolated_extract(tmp_path: Path) -> Path:
@@ -112,6 +129,12 @@ def _isolated_extract(tmp_path: Path) -> Path:
     return tmp_path / "tools" / "gm-extract.sh"
 
 
+def _isolated_env(tmp_path: Path, **extra) -> dict:
+    """Environment pinning the base dir to this tmp_path, so an exported
+    GM_WORLD_STATE_BASE in the ambient shell cannot reach these tests either."""
+    return {**os.environ, "GM_WORLD_STATE_BASE": str(tmp_path / "world-state"), **extra}
+
+
 def test_clean_is_idempotent_for_a_campaign_that_is_not_there(tmp_path):
     """`clean` removes a directory; a directory that is already gone is the job done,
     not an error. Only this verb gets that pass — the rest still fail hard."""
@@ -120,7 +143,8 @@ def test_clean_is_idempotent_for_a_campaign_that_is_not_there(tmp_path):
 
     result = subprocess.run(
         ["bash", str(script), "clean", "No Such Book"],
-        cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=120,
+        cwd=PROJECT_ROOT, env=_isolated_env(tmp_path),
+        capture_output=True, text=True, timeout=120,
     )
     output = result.stdout + result.stderr
     assert result.returncode == 0, output
@@ -146,7 +170,7 @@ def test_a_broken_resolver_that_still_prints_cannot_produce_a_path(tmp_path):
     result = subprocess.run(
         ["bash", str(script), "clean", "Keeper"],
         cwd=PROJECT_ROOT,
-        env={**os.environ, "PATH": f"{stub_bin}:{os.environ['PATH']}"},
+        env=_isolated_env(tmp_path, PATH=f"{stub_bin}:{os.environ['PATH']}"),
         capture_output=True, text=True, timeout=120,
     )
     output = result.stdout + result.stderr
@@ -168,7 +192,8 @@ def test_clean_refuses_a_path_instead_of_a_campaign_name(tmp_path, name):
 
     result = subprocess.run(
         ["bash", str(script), "clean", name],
-        cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=120,
+        cwd=PROJECT_ROOT, env=_isolated_env(tmp_path),
+        capture_output=True, text=True, timeout=120,
     )
     output = result.stdout + result.stderr
     assert result.returncode != 0, output
@@ -217,18 +242,19 @@ def test_legacy_campaign_directory_is_reachable_from_extract_verbs(tmp_path):
     """
     script = _isolated_extract(tmp_path)
     (tmp_path / "world-state" / "campaigns" / "curse_of_strahd" / "extracted").mkdir(parents=True)
+    env = _isolated_env(tmp_path)
 
     switched = subprocess.run(
         [sys.executable, str(PROJECT_ROOT / "lib" / "campaign_manager.py"), "switch", "Curse of Strahd"],
-        cwd=tmp_path, capture_output=True, text=True, timeout=120,
+        cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120,
     )
     assert switched.returncode == 0, switched.stdout + switched.stderr
     assert (tmp_path / "world-state" / "active-campaign.txt").read_text() == "curse_of_strahd"
 
     result = subprocess.run(
-        ["bash", str(tmp_path / "tools" / "gm-extract.sh"), "normalize"],
+        ["bash", str(script), "normalize"],
         cwd=PROJECT_ROOT,  # so `uv run python` resolves this project's environment
-        capture_output=True, text=True, timeout=120,
+        env=env, capture_output=True, text=True, timeout=120,
     )
     output = result.stdout + result.stderr
     assert result.returncode == 0, output

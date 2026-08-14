@@ -27,8 +27,10 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOOLS_DIR="$PROJECT_ROOT/tools"
 LIB_DIR="$PROJECT_ROOT/lib"
 
-# Base world state directory
-WORLD_STATE_BASE="$PROJECT_ROOT/world-state"
+# Base world state directory. GM_WORLD_STATE_BASE redirects the whole tool layer
+# at another world-state tree (tests run against a tmp one so the player's live
+# campaign is never read or written); unset, it is the repo's own world-state.
+WORLD_STATE_BASE="${GM_WORLD_STATE_BASE:-$PROJECT_ROOT/world-state}"
 
 # Get active campaign directory
 # Returns the campaign-specific directory if an active campaign is set,

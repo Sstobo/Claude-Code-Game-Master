@@ -6,8 +6,9 @@ it is missing, `WORLD_STATE_DIR` (tools/common.sh) is empty — sourcing survive
 layer an empty path and print a traceback. The wrappers now guard instead, and
 the failure names the two commands that fix it.
 
-These run the real wrappers against the real repo, so the fixture moves
-world-state/active-campaign.txt aside and puts it back in teardown.
+These run the real wrappers, but never against the live world-state: the fixture
+builds the "campaigns on disk, none active" state under tmp_path and points
+GM_WORLD_STATE_BASE at it. The player's active-campaign.txt is never touched.
 """
 
 import subprocess
@@ -16,7 +17,6 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent
-ACTIVE_FILE = PROJECT_ROOT / "world-state" / "active-campaign.txt"
 
 # One state-reading verb per guarded wrapper.
 STATE_VERBS = [
@@ -33,18 +33,12 @@ USAGE_ONLY = [
 
 
 @pytest.fixture
-def no_active_campaign():
-    """Deactivate the live campaign for the duration of a test, then restore it."""
-    saved = ACTIVE_FILE.read_text() if ACTIVE_FILE.exists() else None
-    if saved is not None:
-        ACTIVE_FILE.unlink()
-    try:
-        yield
-    finally:
-        if saved is not None:
-            ACTIVE_FILE.write_text(saved)
-        elif ACTIVE_FILE.exists():
-            ACTIVE_FILE.unlink()
+def no_active_campaign(isolated_world_state):
+    """A world-state with a campaign on disk but nothing selected — the exact
+    state the guard exists for, built fresh under tmp_path."""
+    (isolated_world_state / "campaigns" / "some-campaign").mkdir()
+    assert not (isolated_world_state / "active-campaign.txt").exists()
+    return isolated_world_state
 
 
 def _run(*args):
@@ -95,3 +89,19 @@ def test_worldgen_guards_flag_only_invocation(no_active_campaign):
     assert result.returncode != 0
     assert "No active campaign" in output
     assert "Traceback" not in output
+
+
+def test_the_guarded_run_stays_inside_tmp_path(no_active_campaign):
+    """Isolation itself: the live pointer keeps its bytes and its mtime, and the
+    wrappers wrote nothing new into the live tree."""
+    live_active = PROJECT_ROOT / "world-state" / "active-campaign.txt"
+    before = live_active.read_bytes() if live_active.exists() else None
+    before_mtime = live_active.stat().st_mtime_ns if live_active.exists() else None
+
+    for argv in STATE_VERBS:
+        _run(*argv)
+
+    after = live_active.read_bytes() if live_active.exists() else None
+    assert after == before
+    if before_mtime is not None:
+        assert live_active.stat().st_mtime_ns == before_mtime

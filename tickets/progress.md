@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T12:25:26Z  done: test-fixture-isolation — campaign tests fully hermetic  [fable-sott1]
+- 2026-08-14T12:24:23Z  in-review: import-bible-kit-wiring — verified, review dispatched  [fable-sott1]
+- 2026-08-14T12:18:01Z  in-review: test-fixture-isolation — verified; straggler ticket filed  [fable-sott1]
 - 2026-08-14T02:36:08Z  done: executable-world-kit — declared dice actually roll  [fable-sott1]
 - 2026-08-13T22:50:39Z  done: extraction-tiering — nothing deleted, everything disclosed  [fable-sott1]
 - 2026-08-13T22:45:08Z  done: agent-detox — six agents unclamped, quotas gone  [fable-sott1]

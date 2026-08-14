@@ -4,6 +4,7 @@ Campaign management module for GM tools
 Handles multi-campaign support with CRUD operations
 """
 
+import os
 import re
 import sys
 import hashlib
@@ -16,12 +17,28 @@ from datetime import datetime, timezone
 sys.path.insert(0, str(Path(__file__).parent))
 from character_schema import to_flat
 
+# The default base dir every manager falls back to when the caller names none.
+DEFAULT_WORLD_STATE = "world-state"
+
+
+def resolve_world_state_base(world_state_dir):
+    """Where "the default world-state" points.
+
+    Only the default value is redirectable: GM_WORLD_STATE_BASE moves it (tests
+    point the whole system at a tmp tree instead of the player's live campaign).
+    A caller that named a directory always gets that directory. Unset, this is
+    the literal "world-state" every caller used before.
+    """
+    if str(world_state_dir) == DEFAULT_WORLD_STATE:
+        return os.environ.get("GM_WORLD_STATE_BASE") or DEFAULT_WORLD_STATE
+    return world_state_dir
+
 
 class CampaignManager:
     """Manage multiple D&D campaigns"""
 
-    def __init__(self, world_state_dir: str = "world-state"):
-        self.world_state_dir = Path(world_state_dir)
+    def __init__(self, world_state_dir: str = DEFAULT_WORLD_STATE):
+        self.world_state_dir = Path(resolve_world_state_base(world_state_dir))
         self.campaigns_dir = self.world_state_dir / "campaigns"
         self.active_file = self.world_state_dir / "active-campaign.txt"
 
@@ -461,7 +478,7 @@ def main():
         # __init__ would mkdir world-state/campaigns under the caller's cwd.
         # Exit 3 (not 1) so a shell caller can tell "no such campaign" apart
         # from "the interpreter could not run at all".
-        campaigns_dir = Path(args.world_state) / "campaigns"
+        campaigns_dir = Path(resolve_world_state_base(args.world_state)) / "campaigns"
         resolved = CampaignManager._resolve_in(campaigns_dir, args.name)
         if not (campaigns_dir / resolved).is_dir():
             sys.exit(3)
