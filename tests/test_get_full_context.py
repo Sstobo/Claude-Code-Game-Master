@@ -38,6 +38,47 @@ def test_action_menu_off_changes_play_style_line(dcc_world):
     assert "action menu ON" not in ctx
 
 
+def test_action_menu_on_is_a_few_numbered_not_exactly_three(dcc_world):
+    ctx = _context(dcc_world)
+    assert "action menu ON" in ctx
+    assert "a few numbered" in ctx
+    assert "exactly 3" not in ctx
+
+
+def test_choices_on_confirmation_has_no_digit_option_count(dcc_world, capsys, monkeypatch):
+    """The choices CLI confirmation must not re-inject a numeric option cap."""
+    import sys
+    import lib.session_manager as sm_mod
+
+    monkeypatch.setattr(sys, "argv", ["session_manager.py", "choices", "on"])
+    monkeypatch.setattr(sm_mod, "SessionManager", lambda: SessionManager(dcc_world))
+    sm_mod.main()
+    out = capsys.readouterr().out
+    assert "a few numbered" in out
+    assert "3 numbered" not in out
+
+
+def test_adaptive_pacing_sets_no_numeric_cap(dcc_world):
+    ctx = _context(dcc_world)
+    assert "at most one new world development" not in ctx.lower()
+    assert "NEVER convert a failure" not in ctx
+
+
+def test_failure_line_is_one_informing_sentence(dcc_world):
+    failure_lines = [ln for ln in _context(dcc_world).splitlines() if ln.startswith("Failure:")]
+    assert len(failure_lines) == 1
+    assert failure_lines[0].count(".") == 1
+    assert "failure should cost something" in failure_lines[0].lower()
+    assert "NEVER" not in failure_lines[0]
+
+
+def test_tight_pacing_keeps_opt_in_cap(dcc_world):
+    sm = SessionManager(dcc_world)
+    sm.set_preference("beat_length", "tight")
+    ctx = SessionManager(dcc_world).get_full_context()
+    assert "AT MOST ONE new world development" in ctx
+
+
 def test_pending_consequences_render_real_text_not_unknown(dcc_world):
     """Regression guard for the consequence-display bug.
 

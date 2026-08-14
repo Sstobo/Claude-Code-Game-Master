@@ -10,7 +10,7 @@ sources:
   - { resource: /tools/gm-worldgen.sh }
   - { resource: /.claude/settings.json }
 generated: { by: claude-opus-5, at: 2026-08-13T18:35:05Z }
-verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
+verified: { by: cursor-grok-4.6, at: 2026-08-14T18:59:59Z }
 ---
 
 # A play turn

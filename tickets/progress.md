@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T19:20:00Z  done: core-prompt-detox — always-on layer informs; prefs kept  [gk-t8n2wp]
 - 2026-08-14T19:16:00Z  done: clock-tick-magnitude — time-clocks scale with --ticks/--duration; default remains +1  [gk-t8n2wp]
 - 2026-08-14T19:06:00Z  in-review: core-prompt-detox, opening-seed-no-fake-session, clock-tick-magnitude, recall-top-k — verified, reviews dispatched  [gk-t8n2wp]
 - 2026-08-14T18:54:05Z  claimed: core-prompt-detox, opening-seed-no-fake-session, clock-tick-magnitude, recall-top-k  [gk-t8n2wp]

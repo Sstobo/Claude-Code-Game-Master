@@ -35,6 +35,24 @@ def test_lean_core_routes_to_all_skills_not_inline_tables():
     assert "25,000" not in text  # no inline XP-by-CR table
 
 
+def test_lean_core_drops_beat_mandates():
+    text = _claude_md()
+    assert "exactly 3 numbered" not in text
+    assert "AT MOST ONE new world development" not in text
+    assert "Test before sending" not in text
+
+
+def test_gm_md_death_handoff_has_no_verbatim_menu():
+    text = (ROOT / ".claude" / "commands" / "gm.md").read_text(encoding="utf-8")
+    start = text.index("## CHARACTER DEATH")
+    end = text.index("## SAVE SESSION", start)
+    death = text[start:end]
+    assert "Present exactly" not in death
+    assert "1. Take over a PARTY MEMBER" not in death
+    assert "2. Roll a NEW character" not in death
+    assert "3. Step in as a CANON" not in death
+
+
 def test_lean_core_keeps_load_bearing_sections():
     # The audit's must-restore-inline items.
     text = _claude_md()

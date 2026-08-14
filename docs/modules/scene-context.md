@@ -7,7 +7,7 @@ sources:
   - { resource: /lib/scene_context.py }
   - { resource: /lib/search.py }
   - { resource: /tools/gm-context.sh }
-generated: { by: claude-fable-5, at: 2026-08-14T12:15:23Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T18:59:54Z }
 verified: { by: claude-fable-5, at: 2026-08-14T12:19:52Z }
 ---
 
@@ -20,7 +20,7 @@ most common way a beat comes out flat.
 
 | Command | Code | Returns |
 |---|---|---|
-| `gm-session.sh context` | `SessionManager.get_full_context` (`lib/session_manager.py:405`) | The **session brief** — everything below, as formatted prose for the model |
+| `gm-session.sh context` | `SessionManager.get_full_context` (`lib/session_manager.py:412`) | The **session brief** — everything below, as formatted prose for the model |
 | `gm-context.sh ["loc"]` | `SceneContext.build` (`lib/scene_context.py:37`) | The **place brief** — this location, NPCs present, named entities, plus grounded source passages |
 
 Neither contains the other. The session brief has no source passages; the place brief has
@@ -29,25 +29,25 @@ no history, threads, clocks, voice, or rules. Narrating a scene generally wants 
 ## What the session brief carries, and why each block exists
 
 `get_full_context` assembles, in order: header (campaign, session #, location, time) ·
-play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure doctrine** · scene-image gate + chronicler · **narrative voice** ·
+play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** ·
 **previously on** + where-we-paused + open threads · **the world remembers** · story threads · key facts · threat
 clocks · character · party members · **NPC voices** · pending consequences · **your
 world's rules**.
 
 Six of those blocks carry design decisions that are not obvious from reading them:
 
-- **Failure doctrine is the one block that is never preference-gated.** Pacing, dice, action
-  menu and inspiration all read `preferences`; the failure block is appended unconditionally
-  (`lib/session_manager.py:456`). The reason is a live bug: failure-cost rules lived only in
-  on-demand skills — `gm-skills` loads on *"I try to..."* and `gm-social` had none at all — so
-  a social beat could resolve a failed check with no cost rule in context anywhere, and the
-  model handed the stake back as a retry prompt. Anything that must hold on *every* beat
-  belongs here, not in a skill.
+- **Play-style flags stay; failure is one informing sentence.** Pacing, dice, action
+  menu and inspiration still read `preferences` and surface when set. Failure is
+  appended unconditionally — a single reminder that failure should cost something
+  and the stake is decided before the roll — not a NEVER-list or persist-command
+  sermon. Numeric caps and adjudication judgment live in skills / `gm-craft`, not
+  in the always-on brief. The opt-in `tight` beat-length preference is the exception
+  that still injects its own cap, because the player asked for it.
 
 - **Narrative voice is a prose target, not lore.** The block is labelled that way in the
   output for a reason — the sample passages are style exemplars to imitate, and a model
   that treats them as world facts will narrate someone else's scene.
-- **NPC secrets are surfaced by existence only.** `lib/session_manager.py:617` prints
+- **NPC secrets are surfaced by existence only.** `lib/session_manager.py:659` prints
   `"has a secret"` and never the secret text, so a secret can sit in `npcs.json` without
   leaking into narration the moment its owner walks on stage.
 - **Presence does not require a voice, and present NPCs carry their memory.** `_present_npcs`
@@ -68,7 +68,7 @@ Six of those blocks carry design decisions that are not obvious from reading the
   `recall()` falls back to re-gathering the same session log.
 - **World rules are never truncated.** Every other block is bounded — by item count, not
   by chopping an entry mid-sentence — but `campaign_rules` is pretty-printed whole
-  (`lib/session_manager.py:657`). The comment there is the rationale: those rules *are*
+  (`lib/session_manager.py:708`). The comment there is the rationale: those rules *are*
   the magic that makes each book distinct, and the GM is told to follow them exactly, so
   it must see all of them. See [game core and World Kit](game-core-and-world-kit.md).
 

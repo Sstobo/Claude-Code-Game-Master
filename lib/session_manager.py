@@ -22,9 +22,14 @@ class SessionManager(EntityManager):
     """Manage D&D session operations. Inherits from EntityManager for common functionality."""
 
     # Per-campaign play-style defaults. `action_menu` controls whether the GM ends
-    # each beat with 3 numbered choices (on) or an open prompt (off). Stored
+    # each beat with a few numbered choices (on) or an open prompt (off). Stored
     # under overview.preferences; surfaced in get_full_context so the GM honors it.
-    DEFAULT_PREFERENCES = {"action_menu": True}
+    # `player_rolls` hands dice to the player (GM pauses and prompts instead of
+    # rolling); `beat_length` picks the pacing line. Same storage + surfacing.
+    # `rag_inspiration` makes the GM pull source passages every beat or so for
+    # grounded narration detail rather than improvising from memory.
+    DEFAULT_PREFERENCES = {"action_menu": True, "player_rolls": False,
+                           "beat_length": "adaptive", "rag_inspiration": False}
 
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
@@ -425,12 +430,39 @@ class SessionManager(EntityManager):
         lines.append(f"Location: {location} | Time: {time_str}")
 
         # --- Play style (honor every beat; player toggles anytime) ---
-        lines.append("Pacing: match prose length to the beat — most beats stay tight and "
-                     "focused, but let big moments run longer when they earn it. Be "
-                     "pacing-aware; don't pad, don't truncate. One clear beat at a time.")
+        if self.get_preferences().get("beat_length", "adaptive") == "tight":
+            lines.append("Pacing: TIGHT — a beat is the player's action, its immediate "
+                         "consequence, and AT MOST ONE new world development. Then stop at "
+                         "the first moment the player could plausibly act. Scene-state "
+                         "changes (distance closing, arrivals, reveals, an NPC deciding "
+                         "something new) do not happen on their own — each waits for a "
+                         "player action to carry it, and each is its own beat. Before "
+                         "sending, test: could the player reasonably say 'wait — I do X' "
+                         "anywhere in this reply? If yes, cut there. Keep prose short: a few "
+                         "sentences to a short paragraph.")
+        else:
+            lines.append("Pacing: no tight preference is set. Match prose to the beat, one "
+                         "clear beat at a time; don't fast-forward past a choice.")
+
+        if self.get_preferences().get("player_rolls", False):
+            lines.append("Dice: PLAYER ROLLS. Never roll for the player. When a check is "
+                         "needed, stop the narration at the decision point, name the check "
+                         "and its DC, then offer exactly: '1. Roll' / '2. Don't roll (accept "
+                         "what comes)'. On 1, the player's roll decides; on 2, the failure "
+                         "cost you already decided lands directly — declining the roll is "
+                         "ACCEPTING the cost, never dodging it. GM still rolls hidden/NPC dice.")
+
+        # Informing, not adjudicating — caps and judgment live in skills / gm-craft.
+        lines.append("Failure: failure should cost something; decide the stake before the roll.")
+
+        if self.get_preferences().get("rag_inspiration", False):
+            lines.append("Inspiration: every beat (or every other beat), run "
+                         "`gm-search.sh \"<what's happening now>\" --rag-only` and mine the "
+                         "returned passages for a concrete image, phrase, or sensory detail "
+                         "from the source. Synthesize — never paste raw passages.")
         if self.get_preferences().get("action_menu", True):
-            lines.append("Play style: action menu ON — end each beat with exactly 3 numbered "
-                         "options (1, 2, 3).")
+            lines.append("Play style: action menu ON — end each beat with a few numbered "
+                         "options.")
         else:
             lines.append("Play style: action menu OFF — end beats with an open prompt; do "
                          "NOT list numbered choices. The player drives freely. "
@@ -1140,7 +1172,7 @@ def main():
             print(f"Action menu is {state}.")
         else:
             print(f"Action menu turned {state}. "
-                  f"{'Beats will end with 3 numbered choices.' if current else 'Beats will end with an open prompt.'}")
+                  f"{'Beats will end with a few numbered choices.' if current else 'Beats will end with an open prompt.'}")
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ sources:
   - { resource: /.claude/skills/gm-combat/SKILL.md }
   - { resource: /.claude/skills/gm-craft/SKILL.md }
 generated: { by: claude-fable-5, at: 2026-08-13T14:41:47Z }
+verified: { by: cursor-grok-4.6, at: 2026-08-14T18:59:59Z }
 ---
 
 # Lean core, skills on demand

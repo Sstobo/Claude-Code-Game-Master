@@ -15,6 +15,22 @@ Swap `check` for `drift` / `noise` / `index` as needed; the flags never change.
 
 ---
 
+## 2026-08-14 — recall top-k ingest
+
+- `docs/modules/campaign-memory.md` — recall default top-k is 5; `gm-recall.sh recall` takes `--top-k` (`recall-top-k`).
+
+## 2026-08-14 — opening seed does not fabricate a session
+
+- `docs/flows/import-a-book.md`, `author-a-world.md`, `onboarding-and-death.md` — seed-opening is provisional location + `opening_hook` data; no fake session-log, plots not stamped active (`opening-seed-no-fake-session`).
+
+## 2026-08-14 — clock-tick-magnitude ingest
+
+- `docs/modules/living-world.md` — time-clock ticks scale with `--ticks`/`--duration`; default remains 1 (`clock-tick-magnitude`).
+
+## 2026-08-14 — core-prompt-detox ingest
+
+- `docs/modules/scene-context.md` — play-style flags stay; failure is one informing sentence; caps/judgment live in skills/gm-craft (`core-prompt-detox`).
+
 ## 2026-08-14 — alias / enhance / promote ingest
 
 - `docs/modules/entity-graph.md` — normalization folds diacritics; integrity reports near-duplicate keys (`alias-dedupe-integrity`).

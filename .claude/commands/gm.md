@@ -22,11 +22,11 @@ When user invokes `/gm <subcommand>`, route to the appropriate section:
 
 ## ACTION MENU (PLAY STYLE)
 
-The GM can end each beat with exactly 3 numbered (`1.` `2.` `3.`) action options,
-or with an open prompt and no menu. This is a per-campaign, player-togglable
-preference (`preferences.action_menu`, default ON) surfaced in `gm-session.sh
-context`. Match prose length to the beat — most beats stay tight, but let big
-moments run longer when they earn it; be pacing-aware, one beat at a time.
+The GM can end each beat with a few numbered action options, or with an open
+prompt and no menu. This is a per-campaign, player-togglable preference
+(`preferences.action_menu`, default ON) surfaced in `gm-session.sh context`.
+Beat shape and pacing live in CLAUDE.md and the session brief — do not duplicate
+them here.
 
 - Toggle explicitly: `bash tools/gm-session.sh choices on|off|toggle` (no arg shows state).
 - Toggle by asking mid-play ("stop giving me choices", "give me options again"):
@@ -337,13 +337,7 @@ When the PC dies (see Stakes & Death / 0-HP rules in CLAUDE.md):
 
 1. **Persist first** — `bash tools/gm-player.sh kill "<name>" --cause "<how>"` (sets status dead, HP 0, stamps died_at), log it as a fact (`gm-note.sh`), record any triggered consequence (`gm-consequence.sh add`).
 2. **Narrate the death** with weight. No menu yet.
-3. **Offer the hand-off** (the show goes on — not GAME OVER). Present exactly:
-   ```
-   1. Take over a PARTY MEMBER — continue as someone already in the scene.
-   2. Roll a NEW character — a fresh arrival enters the story.
-   3. Step in as a CANON figure from the source — an established character takes the lead.
-   ```
-   (If solo with no party and no fitting canon figure, offer 2 and 3 only.)
+3. **Offer the hand-off** (the show goes on — not GAME OVER). The three routes — take over a party member already in the scene, roll a new character, or step in as a canon figure from the source. Frame them however CLAUDE.md's Death Protocol calls for. (If solo with no party and no fitting canon figure, offer the last two only.)
 4. **SWAP in the new PC:**
    - Party member → `bash tools/gm-player.sh become "<name>"` (copies their party sheet into character.json, archives the fallen PC to `fallen/`).
    - New character → spawn `create-character`, `gm-player.sh save-json '<json>'`, then `gm-player.sh set "<name>"`.
