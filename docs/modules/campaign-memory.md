@@ -7,7 +7,7 @@ sources:
   - { resource: /lib/loremaster.py }
   - { resource: /tools/gm-recall.sh }
   - { resource: /tools/gm-lore.sh }
-generated: { by: claude-fable-5, at: 2026-08-14T12:15:23Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T18:57:59Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -28,9 +28,10 @@ campaign memory keeps its own vectors inside `campaign-memory.json`, not in Chro
 
 Since 2026-08-13, `refresh` embeds every entry via `LocalEmbedder` when the RAG deps are
 installed, and `recall()` does cosine top-k over those vectors — so "have we met the
-clown before?" can now find a summary that says "Grimaldi". Without the deps, both
-degrade to the original keyword-overlap path, where recall finds an event only if the
-query reuses its **words** — query with names and nouns from the fiction there.
+clown before?" can now find a summary that says "Grimaldi". Default top-k is 5;
+`gm-recall.sh recall` takes `--top-k` when a scene needs a wider net. Without the deps,
+both degrade to the original keyword-overlap path, where recall finds an event only if
+the query reuses its **words** — query with names and nouns from the fiction there.
 
 Which path ran is invisible in the output. If recall quality seems paraphrase-blind,
 check whether `campaign-memory.json` has an `embeddings` key before blaming the query.

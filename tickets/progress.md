@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T19:26:00Z  done: opening-seed-no-fake-session — location + KEY FACT hook; no fabricated session  [gk-t8n2wp]
+- 2026-08-14T19:26:00Z  done: recall-top-k — default 5; wrapper --top-k tested  [gk-t8n2wp]
+- 2026-08-14T19:22:00Z  in-review: kit-block-in-context, gm-md-slim  [gk-t8n2wp]
 - 2026-08-14T19:20:00Z  done: core-prompt-detox — always-on layer informs; prefs kept  [gk-t8n2wp]
 - 2026-08-14T19:16:00Z  done: clock-tick-magnitude — time-clocks scale with --ticks/--duration; default remains +1  [gk-t8n2wp]
 - 2026-08-14T19:06:00Z  in-review: core-prompt-detox, opening-seed-no-fake-session, clock-tick-magnitude, recall-top-k — verified, reviews dispatched  [gk-t8n2wp]

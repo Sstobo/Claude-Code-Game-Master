@@ -129,7 +129,7 @@ class CampaignMemory(EntityManager):
         except ImportError:
             return None
 
-    def recall(self, query: str, top_k: int = 3, provenance: str = None) -> List[Dict[str, Any]]:
+    def recall(self, query: str, top_k: int = 5, provenance: str = None) -> List[Dict[str, Any]]:
         """Recall over the campaign's history: cosine over stored embeddings
         when available, keyword overlap otherwise."""
         data = self.json_ops.load_json(self.memory_file) or {}
@@ -205,6 +205,7 @@ def main():
     parser = argparse.ArgumentParser(description="Campaign memory")
     sub = parser.add_subparsers(dest="action")
     r = sub.add_parser("recall"); r.add_argument("query", nargs="+")
+    r.add_argument("--top-k", type=int, default=5)
     r.add_argument("--provenance", choices=["our-story", "book-canon"])
     sub.add_parser("refresh")
     sub.add_parser("memoir")
@@ -218,7 +219,8 @@ def main():
 
     m = CampaignMemory()
     if args.action == "recall":
-        out = m.recall(" ".join(args.query), provenance=getattr(args, "provenance", None))
+        out = m.recall(" ".join(args.query), top_k=args.top_k,
+                       provenance=getattr(args, "provenance", None))
     elif args.action == "refresh":
         out = {"indexed": m.refresh()}
     elif args.action == "arc":

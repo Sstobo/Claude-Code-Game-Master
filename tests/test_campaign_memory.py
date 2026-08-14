@@ -1,8 +1,34 @@
 """Tests for longterm-memory: recall over campaign history + tiered memoir + provenance."""
 
+import json
+import os
+import subprocess
 from pathlib import Path
 
 from lib.campaign_memory import CampaignMemory
+
+ROOT = Path(__file__).resolve().parent.parent
+_TOKEN = "zephyrstone"
+
+
+def _seed_matching_entries(dcc_world, n=8):
+    """Write n keyword-matching entries so top-k caps are observable."""
+    m = CampaignMemory(dcc_world)
+    entries = [
+        {"text": f"{_TOKEN} fragment {i} recovered from the vault.",
+         "provenance": "our-story", "source": "facts:session_events", "tier": "archive"}
+        for i in range(n)
+    ]
+    m.json_ops.save_json("campaign-memory.json", {"entries": entries, "arcs": []})
+    return m
+
+
+def _gm_recall(dcc_world, *args):
+    return subprocess.run(
+        ["bash", str(ROOT / "tools" / "gm-recall.sh"), *args],
+        capture_output=True, text=True,
+        env={**os.environ, "GM_WORLD_STATE_BASE": str(dcc_world)},
+    )
 
 
 def _log(dcc_world):
@@ -77,3 +103,29 @@ def test_recall_falls_back_to_keyword_without_rag_deps(dcc_world):
     m.refresh()
     hits = m.recall("alliance Tutorial Guild Hall")
     assert hits, "recall must return something on a matching query"
+
+
+def test_recall_default_top_k_is_five(dcc_world):
+    m = _seed_matching_entries(dcc_world, n=8)
+    hits = m.recall(_TOKEN)
+    assert len(hits) == 5
+
+
+def test_recall_top_k_eight(dcc_world):
+    m = _seed_matching_entries(dcc_world, n=8)
+    hits = m.recall(_TOKEN, top_k=8)
+    assert len(hits) == 8
+
+
+def test_gm_recall_wrapper_default_top_k_is_five(dcc_world):
+    _seed_matching_entries(dcc_world, n=8)
+    r = _gm_recall(dcc_world, "recall", _TOKEN)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert len(json.loads(r.stdout)) == 5
+
+
+def test_gm_recall_wrapper_top_k_eight(dcc_world):
+    _seed_matching_entries(dcc_world, n=8)
+    r = _gm_recall(dcc_world, "recall", _TOKEN, "--top-k", "8")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert len(json.loads(r.stdout)) == 8
