@@ -13,7 +13,7 @@ show_usage() {
     echo "  move <location>          - Move party to new location"
     echo "  context                  - Full session context (character, party, consequences, rules)"
     echo "  choices [on|off|toggle]  - Toggle the [A]-[E] action menu (no arg: show state)"
-    echo "  world-tick '<json>'      - Persist 1-3 off-screen developments (capped, rollback-able)"
+    echo "  world-tick '<json>'      - Persist off-screen developments (warns if >3, rollback-able)"
     echo "  world-tick-rollback      - Undo the most recent world tick"
     echo "  world-tick-log           - Show world-tick history"
     echo ""
@@ -127,12 +127,13 @@ case "$ACTION" in
         echo "  bash tools/gm-recall.sh arc '{\"summary\": \"what changed this session\","
         echo "    \"who_matters\": [\"...\"], \"open_debts\": [\"...\"]}'"
         echo ""
-        echo "World tick: optionally advance 1-3 SMALL off-screen developments"
+        echo "World tick: optionally advance a few SMALL off-screen developments"
         echo "  (grounded in plots/RAG) with: gm-session.sh world-tick '<json list>'"
+        echo "  Applies all; warns if more than 3. Rollback with world-tick-rollback."
         ;;
 
     world-tick)
-        # Persist GM-proposed off-screen developments (capped, logged, rollback-able).
+        # Persist GM-proposed off-screen developments (all applied, warn if >cap, rollback-able).
         $PYTHON_CMD "$LIB_DIR/world_tick.py" apply "$@"
         ;;
 

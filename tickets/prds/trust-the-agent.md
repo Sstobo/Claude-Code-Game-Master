@@ -5,7 +5,7 @@ status: active
 version: 1
 supersedes: state-of-the-table
 createdAt: 2026-08-14T18:52:00Z
-updatedAt: 2026-08-14T18:52:00Z
+updatedAt: 2026-08-14T20:31:00Z
 ---
 
 ## Problem Statement

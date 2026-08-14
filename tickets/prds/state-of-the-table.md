@@ -1,11 +1,11 @@
 ---
 slug: state-of-the-table
 title: State of the Table — repair sprint + executable World Kit
-status: active
+status: superseded
 version: 1
 supersedes: null
 createdAt: 2026-08-13T15:45:00Z
-updatedAt: 2026-08-13T15:45:00Z
+updatedAt: 2026-08-14T20:31:00Z
 ---
 
 ## Problem Statement

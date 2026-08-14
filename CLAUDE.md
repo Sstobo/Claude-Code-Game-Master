@@ -73,7 +73,7 @@ grounded source passages.
 - **Reactivity:** `gm-session.sh move` / `gm-time.sh` auto-run `gm-consequence.sh tick` — consequences whose triggers match fire (with a reason; veto for timing). `gm-consequence.sh log` / `rollback` for provenance.
 - **Threat clocks:** `gm-clock.sh` — named pressure. Time-clocks auto-advance on `gm-time.sh`; event clocks advance by hand (`gm-clock.sh advance`). A full clock is a beat due (`gm-clock.sh beats`); record a dramatic-choice fork with `gm-clock.sh choose`.
 - **Memory:** `gm-recall.sh recall "..."` surfaces prior events (memory refreshes on save). For a new/important scene, `gm-lore.sh "<location>" [--important]` returns a grounded chapter brief from the source book.
-- **Between sessions:** at session end, optionally propose 1-3 SMALL off-screen developments (grounded in plots/RAG) and persist them: `gm-session.sh world-tick '<json list>'` (capped, logged, `world-tick-rollback` undoes).
+- **Between sessions:** at session end, optionally propose a few SMALL off-screen developments (grounded in plots/RAG) and persist them: `gm-session.sh world-tick '<json list>'` (applies all, warns if more than 3, `world-tick-rollback` undoes).
 
 ## State Persistence — if it happened, persist it FIRST
 | Change | Command |
