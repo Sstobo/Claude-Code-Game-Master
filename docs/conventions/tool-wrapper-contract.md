@@ -7,9 +7,10 @@ sources:
   - { resource: /lib/cli_output.py }
   - { resource: /lib/campaign_manager.py }
   - { resource: /tools/gm-extract.sh }
+  - { resource: /lib/agent_extractor.py }
   - { resource: /lib/json_ops.py }
   - { resource: /tests/test_json_wrappers_player.py }
-generated: { by: claude-opus-5, at: 2026-08-14T14:40:27Z }
+generated: { by: claude-opus-5, at: 2026-08-14T15:13:46Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:46Z }
 ---
 
@@ -37,14 +38,27 @@ Every wrapper sources it, and inherits:
   categories` reported no active campaign and left a stray `/tmp/world-state/` behind. The
   `cd` is what closes that, for every wrapper at once. Because it moves the process,
   `common.sh` first saves the caller's directory as **`CALLER_PWD`**: any verb taking a
-  path argument the user typed relative to *their* directory must resolve it against
-  `CALLER_PWD` (today only `gm-extract.sh prepare <document>`).
+  path argument must resolve a relative one against **two anchors, in order** —
+  `CALLER_PWD` first, then `PROJECT_ROOT` — and only then report it missing, naming both
+  places it looked. Both anchors are real: a human types a path relative to their own
+  directory, while a *tool* emits one relative to the project root every wrapper now
+  stands in. `/new-game` pipes `gm-worldgen.sh compile-canon`'s
+  `world-state/campaigns/<name>/authored-canon.md` straight into `gm-extract.sh prepare
+  <document>` (today's only such verb), and with `CALLER_PWD` as the sole anchor that pipe
+  failed from every directory but the repo root.
 - **`WORLD_STATE_BASE`** — `$PROJECT_ROOT/world-state`, unless `GM_WORLD_STATE_BASE` is
   set in the environment, which wins. That env var is the isolation seam: the Python side
   honours it too (`resolve_world_state_base`, `lib/campaign_manager.py`) whenever a manager
   is constructed without an explicit directory, so exporting it moves a whole wrapper +
   manager run onto another world-state tree. Tests that drive the real wrappers point it at
   a tmp tree instead of mutating the player's live campaign.
+  The `cd` sharpens the trap on the other side of that seam: a manager that BYPASSES
+  `resolve_world_state_base` (as `AgentExtractor` did — it takes its default raw) resolves
+  `world-state` to the **live** tree no matter what the environment says.
+  `lib/agent_extractor.py` did exactly that and wrote whole campaigns
+  into the developer's world-state during tests, so the rule is that a wrapper hands its
+  manager the base explicitly — `--world-state "$WORLD_STATE_BASE"` (`gm-extract.sh`,
+  `clock_seed.py`) or a `$CAMPAIGN_DIR` built from it.
 - **`require_active_campaign`** — multi-campaign support is a single file,
   `world-state/active-campaign.txt`. Every tool reads it; nothing takes a campaign
   argument by default.

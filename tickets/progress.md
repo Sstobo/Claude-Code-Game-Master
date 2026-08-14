@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T15:23:49Z  done: prepare-anchor-fallback — two anchors, real pin, clean live tree  [fable-sott1]
+- 2026-08-14T15:22:26Z  in-review: guard-consolidation — verified, review dispatched  [fable-sott1]
+- 2026-08-14T14:59:33Z  in-review: prepare-anchor-fallback — verified, review dispatched  [fable-sott1]
 - 2026-08-14T14:50:19Z  done: story-escape-hatches — revive, style breaks, no vetoes  [fable-sott1]
 - 2026-08-14T14:48:48Z  triage: prepare-anchor-fallback filed from post-commit review findings  [fable-sott1]
 - 2026-08-14T14:47:08Z  done: wrapper-cwd-anchoring — every wrapper cwd-safe via one cd  [fable-sott1]

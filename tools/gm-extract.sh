@@ -151,11 +151,27 @@ prepare_document() {
         exit 1
     fi
 
-    # common.sh moved us to the project root; the document path is whatever the
-    # user typed, so a relative one still means relative to where they typed it.
+    # common.sh moved us to the project root, so a relative path now has two
+    # possible meanings. A human types one relative to their OWN directory
+    # (CALLER_PWD). A tool EMITS one relative to the project root — the /new-game
+    # pipe feeds us `gm-worldgen.sh compile-canon`'s
+    # world-state/campaigns/<name>/authored-canon.md, which is only findable from
+    # the root we are already standing in. Try the caller's first (a typed path
+    # wins), then the root, and name both when neither is there.
     case "$document" in
         /*) ;;
-        *) document="$CALLER_PWD/$document" ;;
+        *)
+            if [ -f "$CALLER_PWD/$document" ]; then
+                document="$CALLER_PWD/$document"
+            elif [ -f "$PROJECT_ROOT/$document" ]; then
+                document="$PROJECT_ROOT/$document"
+            else
+                echo "Error: File not found: $document"
+                echo "  Looked in: $CALLER_PWD/$document"
+                echo "  Looked in: $PROJECT_ROOT/$document"
+                exit 1
+            fi
+            ;;
     esac
 
     if [ ! -f "$document" ]; then
@@ -177,9 +193,9 @@ prepare_document() {
     # Build command with optional campaign name
     if [ -n "$campaign_name" ]; then
         echo "Campaign name: $campaign_name"
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" prepare "$document" --campaign "$campaign_name"
+        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" prepare "$document" --world-state "$WORLD_STATE_BASE" --campaign "$campaign_name"
     else
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" prepare "$document"
+        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" prepare "$document" --world-state "$WORLD_STATE_BASE"
     fi
 
     echo
@@ -210,7 +226,7 @@ merge_results() {
             exit 1
         fi
 
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" merge --campaign "$campaign_name"
+        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" merge --world-state "$WORLD_STATE_BASE" --campaign "$campaign_name"
     else
         # Check default location
         if [ ! -d "$EXTRACT_DIR/extracted" ] || [ -z "$(ls -A $EXTRACT_DIR/extracted 2>/dev/null)" ]; then
@@ -218,7 +234,7 @@ merge_results() {
             echo "Specify a campaign name or check that agents have completed."
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" merge
+        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" merge --world-state "$WORLD_STATE_BASE"
     fi
 
     echo
@@ -253,14 +269,14 @@ save_to_world() {
             exit 1
         fi
 
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" save "$strategy" --campaign "$campaign_name"
+        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" save "$strategy" --world-state "$WORLD_STATE_BASE" --campaign "$campaign_name"
     else
         if [ ! -f "$EXTRACT_DIR/merged-results.json" ]; then
             echo "Error: No merged results found."
             echo "Run '$0 merge' first."
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" save "$strategy"
+        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" save "$strategy" --world-state "$WORLD_STATE_BASE"
     fi
 
     echo
@@ -284,7 +300,7 @@ review_content() {
             exit 1
         fi
 
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" review --campaign "$campaign_name"
+        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" review --world-state "$WORLD_STATE_BASE" --campaign "$campaign_name"
 
         echo
         echo "To view full details:"
@@ -297,7 +313,7 @@ review_content() {
             exit 1
         fi
 
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" review
+        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" review --world-state "$WORLD_STATE_BASE"
 
         echo
         echo "To view full details:"

@@ -675,17 +675,28 @@ def main():
         print("Usage: agent_extractor.py [prepare|merge|save|review] <args> [--campaign name]")
         sys.exit(1)
 
-    # Check for campaign flag
-    campaign_name = None
-    if '--campaign' in sys.argv:
-        idx = sys.argv.index('--campaign')
-        if idx + 1 < len(sys.argv):
-            campaign_name = sys.argv[idx + 1]
-            # Remove the flag and value from argv
-            sys.argv.pop(idx)
-            sys.argv.pop(idx)
+    def take_flag(flag):
+        """Pull `--flag value` out of argv so the positional parsing below is
+        unaffected by it. Returns the value, or None when the flag is absent."""
+        if flag not in sys.argv:
+            return None
+        idx = sys.argv.index(flag)
+        if idx + 1 >= len(sys.argv):
+            return None
+        value = sys.argv[idx + 1]
+        sys.argv.pop(idx)
+        sys.argv.pop(idx)
+        return value
 
-    extractor = AgentExtractor(campaign_name=campaign_name)
+    campaign_name = take_flag('--campaign')
+    # Which world-state tree this run reads and writes. The default is RELATIVE,
+    # so with common.sh having cd'd to the project root it means the live tree —
+    # every wrapper therefore passes its own WORLD_STATE_BASE (the seam
+    # GM_WORLD_STATE_BASE moves), the same way gm-extract.sh's other verbs hand
+    # their manager an explicit path.
+    world_state_dir = take_flag('--world-state') or "world-state"
+
+    extractor = AgentExtractor(world_state_dir=world_state_dir, campaign_name=campaign_name)
     command = sys.argv[1]
 
     if command == "prepare" and len(sys.argv) > 2:
