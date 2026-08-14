@@ -15,6 +15,10 @@ Swap `check` for `drift` / `noise` / `index` as needed; the flags never change.
 
 ---
 
+## 2026-08-14 — save-restore-completeness ingest
+
+- `docs/schema-reference.md` — whole-campaign saves, `save_version: 1`; legacy restores warn partial; autosaves rotate to 3 (`save-restore-completeness`).
+
 ## 2026-08-14 — kit-aware-character-creation ingest
 
 - `docs/flows/onboarding-and-death.md`, `docs/modules/player-character.md` — Death hand-off new-character route is kit-aware create-character; silent 10/10 HP fallback now warns in the save payload (`kit-aware-character-creation`).

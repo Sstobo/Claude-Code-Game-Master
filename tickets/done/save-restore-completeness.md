@@ -7,14 +7,14 @@ priority: p0
 lane: agent
 parentPrd: trust-the-agent
 blockedBy: [kit-block-in-context]
-claimedBy: null
-claimedAt: null
-changedFiles: []
-resolution: null
-reviewRounds: null
-implementer: null
+claimedBy: gk-t8n2wp
+claimedAt: 2026-08-14T19:30:58Z
+changedFiles: [lib/session_manager.py, docs/schema-reference.md, docs/log.md, tests/test_save_restore.py]
+resolution: whole-campaign saves, save_version 1; legacy warns partial; autosaves rotate to 3
+reviewRounds: 1
+implementer: a0980324-f80f-43fe-a8e0-b7de2b5a68c2
 createdAt: 2026-08-13T15:47:00Z
-updatedAt: 2026-08-14T18:52:00Z
+updatedAt: 2026-08-14T19:53:00Z
 ---
 
 ## Parent
@@ -46,10 +46,10 @@ forever.
 
 ## Acceptance criteria
 
-- [ ] Round-trip test: snapshot → mutate plots, clocks, items, NPCs, character → restore → every stateful file deep-equals the snapshot state.
-- [ ] Restoring a legacy (pre-version) save prints a partial-restore warning listing what was not covered.
-- [ ] After 10 autosave cycles, at most N autosave snapshots exist; named saves persist.
-- [ ] `docs/schema-reference.md` save section restamped and true.
+- [x] Round-trip test: snapshot → mutate plots, clocks, items, NPCs, character → restore → every stateful file deep-equals the snapshot state.
+- [x] Restoring a legacy (pre-version) save prints a partial-restore warning listing what was not covered.
+- [x] After 10 autosave cycles, at most N autosave snapshots exist; named saves persist.
+- [x] `docs/schema-reference.md` save section restamped and true.
 
 ## Out of scope
 
@@ -68,11 +68,21 @@ kit-block-in-context (session_manager.py one-writer chain)
 
 ## QA Reports
 
+### 2026-08-14T19:53:00Z — reviewed perfect [c5209227]
+No correctness, regression, or criteria-gap findings.
+
+### 2026-08-14T19:42:00Z — verified [gk-t8n2wp]
+Round-trip restores plots/clocks/items/NPCs/character/combat_state/fallen; legacy restore warns plots.json+items.json+threat-clocks.json and leaves mixed plots; 10 autosaves rotate to 3 and named saves persist. `uv run pytest tests/test_save_restore.py` 4 passed.
+
 ### 2026-08-14T17:56:17Z — fail [gk-a8r14q]
 blocked: file collision on CLAUDE.md / lib/session_manager.py — live-session uncommitted edits; user parked until those files are clean
 
 ## History
 
+- 2026-08-14T19:53:00Z  reviewed perfect → done  [gk-t8n2wp]
+- 2026-08-14T19:42:00Z  verified → in-review, review dispatched  [gk-t8n2wp]
+- 2026-08-14T19:36:00Z  doc-grounding confirmed — user pre-confirmed "do ALL of this now"; implementer dispatched  [gk-t8n2wp]
+- 2026-08-14T19:30:58Z  claimed; doc-grounding confirmed — user pre-confirmed "do ALL of this now"  [gk-t8n2wp]
 - 2026-08-14T18:52:00Z  blocked → ready; parent trust-the-agent; blockedBy kit-block-in-context  [gk-t8n2wp]
 - 2026-08-13T15:47:00Z  created → ready  [team-lead]
 - 2026-08-14T17:56:17Z  ready → blocked  file collision on CLAUDE.md + lib/session_manager.py  [gk-a8r14q]

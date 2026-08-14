@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T19:53:00Z  done: save-restore-completeness — whole-campaign saves, save_version 1; legacy warns partial; autosaves rotate to 3  [gk-t8n2wp]
 - 2026-08-14T19:50:00Z  done: kit-aware-character-creation — kit spine vs dnd5e branch; Death Protocol no 5e wizards; 10/10 HP warns  [gk-t8n2wp]
 - 2026-08-14T19:42:00Z  in-review: save-restore-completeness, kit-aware-character-creation  [gk-t8n2wp]
 - 2026-08-14T19:42:00Z  done: gm-md-slim — gm.md sheds templates, d6 table, startup checklist  [gk-t8n2wp]
