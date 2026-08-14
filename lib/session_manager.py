@@ -516,6 +516,13 @@ class SessionManager(EntityManager):
             return text
         return text[:limit - 3].rstrip() + "..."
 
+    @staticmethod
+    def _remainder(hidden: int, noun: str, hint: str) -> Optional[str]:
+        """Disclosure line for a truncated list: '+N more <noun> — <hint>'."""
+        if hidden <= 0:
+            return None
+        return f"+{hidden} more {noun} — {hint}"
+
     def get_full_context(self, full: bool = False) -> str:
         """
         Aggregate all session state into a single readable output.
@@ -639,18 +646,34 @@ class SessionManager(EntityManager):
             if style:
                 lines.append(f"Style: {style}")
             if vocab:
-                lines.append("In-world terms to favor: " + ", ".join(vocab[:8]))
-            for p in passages[:3]:
+                shown_vocab = vocab if full else vocab[:12]
+                lines.append("In-world terms to favor: " + ", ".join(shown_vocab))
+                rem = None if full else self._remainder(
+                    len(vocab) - len(shown_vocab), "terms", "--full")
+                if rem:
+                    lines.append(rem)
+            shown_passages = passages if full else passages[:3]
+            for p in shown_passages:
                 lines.append(f"  | {p}")
+            rem = None if full else self._remainder(
+                len(passages) - len(shown_passages), "sample passages", "--full")
+            if rem:
+                lines.append(rem)
 
         # --- Previously On (story spine: resume story-aware, not stat-amnesiac) ---
         # Bounded by item COUNT, never by chopping a single entry. --full shows all.
-        summaries = self._recent_session_summaries(n=None if full else 3)
+        all_summaries = self._recent_session_summaries(n=None)
+        summaries = all_summaries if full else all_summaries[-3:]
         if summaries:
             lines.append("")
             lines.append("--- PREVIOUSLY ON ---")
             for s in summaries:
                 lines.append(f"- {s}")
+            rem = None if full else self._remainder(
+                len(all_summaries) - len(summaries), "sessions",
+                "--full or session-log.md")
+            if rem:
+                lines.append(rem)
             meta = self._latest_session_meta()
             cliff = meta.get('cliffhanger') or self._cliffhanger(summaries[-1])
             if cliff:
@@ -670,15 +693,23 @@ class SessionManager(EntityManager):
             for d in open_debts:
                 lines.append(f"OPEN DEBT: {d}")
             if held_back:
-                lines.append(f"... closest {len(remembered)} of {held_back} remembered "
-                             f"entries (use --full or gm-recall.sh for the rest)")
+                rem = self._remainder(
+                    held_back, "remembered entries", "--full or gm-recall.sh")
+                if rem:
+                    lines.append(rem)
 
         # --- Story Threads (active plots, main first, each with its latest beat) ---
-        threads = self._active_plot_threads(limit=None if full else 6)
+        all_threads = self._active_plot_threads(limit=None)
+        threads = all_threads if full else all_threads[:6]
         if threads:
             lines.append("")
             lines.append("--- STORY THREADS ---")
             lines.extend(threads)
+            rem = None if full else self._remainder(
+                len(all_threads) - len(threads), "threads",
+                "gm-plot.sh threads for all")
+            if rem:
+                lines.append(rem)
 
         # --- Key Facts (established plot facts the GM must keep continuity on) ---
         key_facts = self._key_facts(per_category=None if full else 3)
@@ -687,6 +718,12 @@ class SessionManager(EntityManager):
             lines.append("--- KEY FACTS ---")
             for fact_line in key_facts:
                 lines.append(f"- {fact_line}")
+            if not full:
+                hidden_facts = len(self._key_facts(per_category=None)) - len(key_facts)
+                rem = self._remainder(hidden_facts, "facts",
+                                      "--full or gm-note.sh list")
+                if rem:
+                    lines.append(rem)
 
         # --- Threat Clocks (felt, mounting pressure; only when any are declared) ---
         clocks = self.json_ops.load_json("threat-clocks.json") or {}
@@ -763,7 +800,10 @@ class SessionManager(EntityManager):
                     lines.append(f"  {recent}")
                 lines.append("")
             if not full and len(party_items) > max_party:
-                lines.append(f"... and {len(party_items) - max_party} more party members (use --full)")
+                rem = self._remainder(
+                    len(party_items) - max_party, "party members", "--full")
+                if rem:
+                    lines.append(rem)
                 lines.append("")
         else:
             lines.append("(none)")
@@ -788,6 +828,15 @@ class SessionManager(EntityManager):
                 lines.append(f"{header}:")
                 for vl in vlines:
                     lines.append(f'  "{vl}"')
+                if not full:
+                    ctx_raw = inner.get('context', [])
+                    raw_lines = ctx_raw if isinstance(ctx_raw, list) else (
+                        [ctx_raw] if ctx_raw else [])
+                    raw_n = len([x for x in raw_lines if x])
+                    rem = self._remainder(
+                        raw_n - len(vlines), "voice lines", "--full")
+                    if rem:
+                        lines.append(f"  {rem}")
                 # Party members already carry their history in the block above.
                 if not inner.get('is_party_member'):
                     recent = self._recent_events(inner, full=full)
@@ -824,7 +873,11 @@ class SessionManager(EntityManager):
             for p in pending[:max_pending]:
                 lines.append(p)
             if not full and len(pending) > max_pending:
-                lines.append(f"... and {len(pending) - max_pending} more pending consequences (use --full)")
+                rem = self._remainder(
+                    len(pending) - max_pending, "pending consequences",
+                    "--full or gm-consequence.sh check")
+                if rem:
+                    lines.append(rem)
         else:
             lines.append("(none)")
 
@@ -1045,7 +1098,7 @@ class SessionManager(EntityManager):
 
         Presence is `npcs_present` (party OR exact location tag). This method
         slices voice lines; it does not decide who is here. Returns
-        [(name, [lines])]; up to 2 lines each unless full, and an empty list when
+        [(name, [lines])]; up to 4 lines each unless full, and an empty list when
         the NPC has no extracted dialogue — presence does NOT require a voice, or
         stubbed and original-world NPCs would stand in the room invisibly.
         Read-only — never touches the stored `context` field (PROTECT
@@ -1056,7 +1109,7 @@ class SessionManager(EntityManager):
             ctx = d.get('context', [])
             vlines = ctx if isinstance(ctx, list) else ([ctx] if ctx else [])
             vlines = [str(x) for x in vlines if x]
-            out.append((name, vlines if full else vlines[:2]))
+            out.append((name, vlines if full else vlines[:4]))
         return out
 
     def _count_items(self, filename: str) -> int:

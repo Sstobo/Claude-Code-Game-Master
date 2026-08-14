@@ -1,4 +1,7 @@
-"""Tests for between-session-worldtick: bounded off-screen developments + rollback."""
+"""Tests for between-session-worldtick: off-screen developments + rollback.
+
+The cap is advisory: every proposal applies, and overflow is warned rather than dropped.
+"""
 
 import json
 from pathlib import Path
@@ -20,11 +23,14 @@ DEVS = [
 ]
 
 
-def test_cap_is_enforced(dcc_world):
+def test_cap_is_enforced(dcc_world, capsys):
     applied = WorldTick(dcc_world).apply(DEVS, cap=3)
-    assert len(applied) == 3
+    assert len(applied) == 5
     texts = " ".join(c["consequence"] for c in _active(dcc_world))
-    assert "rival crew" in texts and "fifth development" not in texts
+    assert "rival crew" in texts and "fifth development" in texts
+    err = capsys.readouterr().err
+    assert "fifth development" in err
+    assert "cap 3" in err
 
 
 def test_disabled_is_a_noop_tone_respecting(dcc_world):
@@ -37,7 +43,7 @@ def test_tick_is_logged_and_rollbackable(dcc_world):
     wt = WorldTick(dcc_world)
     before = len(_active(dcc_world))
     wt.apply(DEVS, cap=2)
-    assert len(_active(dcc_world)) == before + 2
+    assert len(_active(dcc_world)) == before + 5
     assert wt.history()  # provenance log
     assert wt.rollback_last() is True
     assert len(_active(dcc_world)) == before  # developments removed

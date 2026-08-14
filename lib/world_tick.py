@@ -2,11 +2,12 @@
 """
 Between-session world tick — the world keeps living when you look away.
 
-On session end/start a world-builder pass proposes 1-3 SMALL off-screen
-developments (grounded in source RAG + existing plots — that generation is a
-model call in /gm). This module owns the deterministic, safe machinery: enforce
-the cap, write each development as a consequence, log the tick for provenance, and
-allow a one-tick rollback so a misfire never silently rewrites the world.
+On session end/start a world-builder pass proposes SMALL off-screen developments
+(grounded in source RAG + existing plots — that generation is a model call in
+/gm). This module owns the deterministic, safe machinery: write every proposed
+development as a consequence, warn when the proposal count exceeds the advisory
+cap (default 3), log the tick for provenance, and allow a one-tick rollback so a
+misfire never silently rewrites the world.
 """
 
 import sys
@@ -23,13 +24,19 @@ class WorldTick:
         self.cm = ConsequenceManager(world_state_dir)
         self.json_ops = self.cm.json_ops
         self.log_file = "world-tick-log.json"
+        self.last_overflow: List[Dict[str, Any]] = []
 
     def apply(self, developments: List[Dict[str, Any]], cap: int = 3, enabled: bool = True) -> List[Dict[str, Any]]:
-        """Write up to `cap` proposed developments as consequences. enabled=False = no-op (tone)."""
+        """Write every proposed development as a consequence. enabled=False = no-op (tone).
+
+        `cap` is advisory: all proposals apply, and anything past `cap` is named
+        in a warning (stderr + `last_overflow`).
+        """
+        self.last_overflow: List[Dict[str, Any]] = []
         if not enabled or not developments:
             return []
         applied = []
-        for d in developments[:cap]:
+        for d in developments:
             text = d.get("text", "")
             if not text:
                 continue
@@ -38,6 +45,12 @@ class WorldTick:
                 trigger_type=d.get("trigger_type"), match=d.get("match"))
             if cid:
                 applied.append({"id": cid, "text": text, "source": "world-tick"})
+
+        if len(applied) > cap:
+            self.last_overflow = applied[cap:]
+            names = ", ".join(a["text"] for a in self.last_overflow)
+            print(f"[WORLD TICK] warning: cap {cap} exceeded; also applied: {names}",
+                  file=sys.stderr)
 
         if applied:
             log = self.json_ops.load_json(self.log_file) or {"ticks": []}
@@ -115,7 +128,15 @@ def main():
             import io
             with contextlib.redirect_stdout(io.StringIO()):
                 applied = wt.apply(devs, cap=args.cap)
-            emit({"applied": applied}, json_mode=True)
+            payload = {"applied": applied}
+            overflow = getattr(wt, "last_overflow", []) or []
+            if overflow:
+                payload["overflow"] = overflow
+                payload["warning"] = (
+                    f"cap {args.cap} exceeded; also applied: "
+                    + ", ".join(a["text"] for a in overflow)
+                )
+            emit(payload, json_mode=True)
         else:
             applied = wt.apply(devs, cap=args.cap)
             for a in applied:

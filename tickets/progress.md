@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T20:30:00Z  done: fence-disclosures — tick fires 2 and discloses rest; world-tick applies all + warns; context +N more  [gk-t8n2wp]
+- 2026-08-14T20:20:00Z  in-review: fence-disclosures  [gk-t8n2wp]
+- 2026-08-14T20:09:48Z  claimed: fence-disclosures  [gk-t8n2wp]
 - 2026-08-14T20:10:00Z  done: presence-resolver-unification — one npcs_present helper; alias-aware getters; doors agree  [gk-t8n2wp]
 - 2026-08-14T19:58:00Z  in-review: presence-resolver-unification  [gk-t8n2wp]
 - 2026-08-14T19:53:04Z  claimed: presence-resolver-unification  [gk-t8n2wp]

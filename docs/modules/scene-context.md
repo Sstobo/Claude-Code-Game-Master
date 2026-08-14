@@ -9,7 +9,7 @@ sources:
   - { resource: /lib/search.py }
   - { resource: /lib/entity_manager.py }
   - { resource: /tools/gm-context.sh }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:59:23Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T20:20:11Z }
 verified: { by: claude-fable-5, at: 2026-08-14T12:19:52Z }
 ---
 
@@ -22,7 +22,7 @@ most common way a beat comes out flat.
 
 | Command | Code | Returns |
 |---|---|---|
-| `gm-session.sh context` | `SessionManager.get_full_context` (`lib/session_manager.py:413`) | The **session brief** — everything below, as formatted prose for the model |
+| `gm-session.sh context` | `SessionManager.get_full_context` (`lib/session_manager.py:526`) | The **session brief** — everything below, as formatted prose for the model |
 | `gm-context.sh ["loc"]` | `SceneContext.build` (`lib/scene_context.py:37`) | The **place brief** — this location, NPCs present, named entities, plus grounded source passages |
 
 Neither contains the other. The session brief has no source passages; the place brief has
@@ -30,13 +30,13 @@ no history, threads, clocks, voice, or rules. Narrating a scene generally wants 
 
 ## What the session brief carries, and why each block exists
 
-`get_full_context` (`lib/session_manager.py:413`) assembles, in order: header (campaign, session #, location, time) ·
+`get_full_context` (`lib/session_manager.py:526`) assembles, in order: header (campaign, session #, location, time) ·
 **KIT** · play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** ·
 **previously on** + where-we-paused + open threads · **the world remembers** · story threads · key facts · threat
 clocks · character · party members · **NPC voices** · pending consequences · **your
 world's rules**.
 
-Seven of those blocks carry design decisions that are not obvious from reading them:
+Eight of those blocks carry design decisions that are not obvious from reading them:
 
 - **KIT is ambient so skills do not re-derive it.** It sits right under the campaign
   header and names kit identity, resolution, progression, vitals, and skills, loaded
@@ -56,7 +56,7 @@ Seven of those blocks carry design decisions that are not obvious from reading t
 - **Narrative voice is a prose target, not lore.** The block is labelled that way in the
   output for a reason — the sample passages are style exemplars to imitate, and a model
   that treats them as world facts will narrate someone else's scene.
-- **NPC secrets are surfaced by existence only.** `lib/session_manager.py:680` prints
+- **NPC secrets are surfaced by existence only.** `lib/session_manager.py:826` prints
   `"has a secret"` and never the secret text, so a secret can sit in `npcs.json` without
   leaking into narration the moment its owner walks on stage.
 - **Presence does not require a voice, and present NPCs carry their memory.** Who is here
@@ -76,9 +76,15 @@ Seven of those blocks carry design decisions that are not obvious from reading t
   (no memory file, no embedding deps, a half-written index), so a broken memory costs the
   brief nothing mid-session. It also drops hits that repeat PREVIOUSLY ON, because
   `recall()` falls back to re-gathering the same session log.
+- **Truncated lists disclose their remainder.** Tight bounds exist so the brief stays a
+  brief — story threads 6, facts 3/category, previously-on 3, pending 10, party 8, NPC
+  voice lines 4, vocab 12, sample passages 3, world-remembers 3. `--full` lifts them.
+  Each truncation prints `+N more <noun> — <how to see the rest>` rather than dropping
+  the tail silently. YOUR WORLD'S RULES is never truncated and never gets a remainder
+  pointer.
 - **World rules prefer kit `signature_systems`, then `campaign_rules`, and are never
   truncated.** Every other block is bounded — by item count, not by chopping an entry
-  mid-sentence — but YOUR WORLD'S RULES is printed whole (`lib/session_manager.py:725`).
+  mid-sentence — but YOUR WORLD'S RULES is printed whole (`lib/session_manager.py:891`).
   A kit that declares `signature_systems` (list or the Conan dict form) is the live
   surface; a legacy campaign with none still gets `campaign_rules`. Those rules *are*
   the magic that makes each book distinct, and the GM is told to follow them exactly, so

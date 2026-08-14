@@ -15,6 +15,11 @@ Swap `check` for `drift` / `noise` / `index` as needed; the flags never change.
 
 ---
 
+## 2026-08-14 — fence-disclosures ingest
+
+- `docs/modules/living-world.md` — tick fires 2 and discloses the rest (already-fired annotates, does not suppress); world-tick applies every proposal and warns on cap overflow (`fence-disclosures`).
+- `docs/modules/scene-context.md` — truncated context sections print `+N more`; NPC voice lines 4, vocab 12 (`fence-disclosures`).
+
 ## 2026-08-14 — presence-resolver-unification ingest
 
 - `docs/modules/scene-context.md`, `entity-graph.md`, `living-world.md`, `gotchas/npc-location-tag-split.md` — presence is one helper (party OR exact location tag); CLI tag search stays substring (`presence-resolver-unification`).

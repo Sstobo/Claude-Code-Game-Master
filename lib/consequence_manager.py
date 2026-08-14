@@ -32,6 +32,9 @@ class ConsequenceManager(EntityManager):
 
     # Structured trigger types the reactivity engine can evaluate automatically.
     TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_event')
+    # Fuzzy bands: >= FIRE_SCORE fires / discloses; NEAR_MISS_SCORE..FIRE_SCORE is advisory.
+    FIRE_SCORE = 0.5
+    NEAR_MISS_SCORE = 0.3
 
     def add_consequence(self, description: str, trigger: str,
                         trigger_type: str = None, match: str = None,
@@ -79,16 +82,18 @@ class ConsequenceManager(EntityManager):
         Pending consequences.
 
         - No world_state  -> the raw active list (legacy accessor).
-        - With world_state -> only consequences that FIRE now, each annotated with
-          a `match_reason`, sorted by confidence and capped at `limit`. Structured
-          triggers match exactly; legacy free-text triggers are scored fuzzily.
-          Expired consequences (past their `expiry`) are auto-archived to resolved.
+        - With world_state -> every consequence that MATCHES now (score >= FIRE_SCORE),
+          each annotated with `match_reason`, sorted by confidence. The top `limit`
+          are the fire slice; the rest are disclosed (`matched_not_fired`) rather
+          than dropped. Structured triggers match exactly; legacy free-text
+          triggers are scored fuzzily. Expired consequences (past their `expiry`)
+          are auto-archived to resolved.
 
         world_state keys (all optional): location (str), present_npcs (list[str]),
         time (str), events (list[str]), date (str).
 
         Firing does NOT remove a consequence — the GM vetoes for timing or resolves
-        it explicitly; the tick layer dedups so it does not re-fire every beat.
+        it explicitly; the tick layer stamps last_fired_key so a beat doesn't stutter.
         """
         data = self.json_ops.load_json(self.consequences_file)
         active = data.get('active', [])
@@ -96,7 +101,7 @@ class ConsequenceManager(EntityManager):
         if world_state is None:
             return active
 
-        fired = []
+        matched = []
         survivors = []
         expired = []
         for c in active:
@@ -107,18 +112,23 @@ class ConsequenceManager(EntityManager):
                 continue
             survivors.append(c)
             score, reason = self._evaluate_trigger(c, world_state)
-            if score > 0:
+            if score >= self.FIRE_SCORE:
                 hit = dict(c)
                 hit['match_reason'] = reason
-                fired.append((score, hit))
+                matched.append((score, hit))
 
         if expired:
             data['active'] = survivors
             data.setdefault('resolved', []).extend(expired)
             self.json_ops.save_json(self.consequences_file, data)
 
-        fired.sort(key=lambda t: t[0], reverse=True)
-        return [hit for _, hit in fired[:limit]]
+        matched.sort(key=lambda t: t[0], reverse=True)
+        out = []
+        for i, (_, hit) in enumerate(matched):
+            if i >= limit:
+                hit['matched_not_fired'] = True
+            out.append(hit)
+        return out
 
     @staticmethod
     def _world_text(world_state: Dict[str, Any]) -> str:
@@ -142,7 +152,7 @@ class ConsequenceManager(EntityManager):
         return re.search(pattern, self._world_text(world_state)) is not None
 
     def _evaluate_trigger(self, consequence: Dict[str, Any], world_state: Dict[str, Any]):
-        """Return (score, reason). score 0 = no fire. Structured = 1.0; fuzzy < 1."""
+        """Return (score, reason). 0 = ignore; >= 0.3 near-miss; >= 0.5 match. Structured = 1.0."""
         ttype = consequence.get('trigger_type')
         match = str(consequence.get('match', '')).lower()
 
@@ -171,17 +181,21 @@ class ConsequenceManager(EntityManager):
             return 0.0, ''
         hits = [w for w in words if w in world_text]
         score = len(hits) / len(words)
-        if score >= 0.5:
+        if score >= self.FIRE_SCORE:
             return score, f"fuzzy match on: {', '.join(sorted(hits))}"
+        if score >= self.NEAR_MISS_SCORE:
+            return score, f"near-miss on: {', '.join(sorted(hits))}"
         return 0.0, ''
 
-    def tick(self, world_state: Dict[str, Any], limit: int = 2) -> List[Dict[str, Any]]:
-        """Fire matching consequences ONCE per context, stamping last_fired_key.
+    def tick(self, world_state: Dict[str, Any], limit: int = 2) -> Dict[str, List[Dict[str, Any]]]:
+        """Evaluate all active consequences; fire the top `limit` that are new here.
 
-        Same scene (location|time|date) won't re-fire the same consequence; a
-        changed scene re-arms it. Expired consequences are archived. Returns the
-        newly-fired consequences (with match_reason). The GM may still veto a
-        fired consequence narratively — it stays active either way.
+        Same scene (location|time|date) will not re-stamp a consequence that already
+        fired on this ctx_key — it is disclosed as already-fired, not suppressed.
+        Remaining matches (score >= FIRE_SCORE) are disclosed, not dropped.
+        Near-misses (NEAR_MISS_SCORE <= score < FIRE_SCORE) are advisory only.
+        Expired consequences are archived. Newly fired items get last_fired_key +
+        provenance; the GM may still veto narratively — they stay active either way.
         """
         data = self.json_ops.load_json(self.consequences_file)
         active = data.get('active', [])
@@ -194,7 +208,8 @@ class ConsequenceManager(EntityManager):
             str(world_state.get('date', '')),
         ]).lower()
 
-        survivors, expired, candidates = [], [], []
+        survivors, expired = [], []
+        matches, near_misses = [], []
         for c in active:
             if self._is_expired(c, world_state):
                 aged = dict(c)
@@ -203,16 +218,35 @@ class ConsequenceManager(EntityManager):
                 continue
             survivors.append(c)
             score, reason = self._evaluate_trigger(c, world_state)
-            if score > 0 and c.get('last_fired_key') != ctx_key:
-                candidates.append((score, c, reason))
+            if score >= self.FIRE_SCORE:
+                matches.append((score, c, reason))
+            elif score >= self.NEAR_MISS_SCORE:
+                hit = dict(c)
+                hit['match_reason'] = reason
+                near_misses.append((score, hit))
 
-        candidates.sort(key=lambda t: t[0], reverse=True)
-        fired = []
-        for _score, c, reason in candidates[:limit]:
-            c['last_fired_key'] = ctx_key  # stamp the live object (in survivors)
+        matches.sort(key=lambda t: t[0], reverse=True)
+        near_misses.sort(key=lambda t: t[0], reverse=True)
+
+        already_fired, new_matches = [], []
+        for score, c, reason in matches:
             hit = dict(c)
             hit['match_reason'] = reason
-            fired.append(hit)
+            if c.get('last_fired_key') == ctx_key:
+                hit['already_fired'] = True
+                already_fired.append(hit)
+            else:
+                new_matches.append((c, reason, hit))
+
+        fired, disclosed = [], []
+        for i, (c, reason, hit) in enumerate(new_matches):
+            if i < limit:
+                c['last_fired_key'] = ctx_key  # stamp the live object (in survivors)
+                stamped = dict(c)
+                stamped['match_reason'] = reason
+                fired.append(stamped)
+            else:
+                disclosed.append(hit)
 
         if expired or fired:
             data['active'] = survivors
@@ -231,7 +265,12 @@ class ConsequenceManager(EntityManager):
                     'fired_at': now,
                 })
             self.json_ops.save_json(self.consequences_file, data)
-        return fired
+        return {
+            'fired': fired,
+            'disclosed': disclosed,
+            'already_fired': already_fired,
+            'near_misses': [hit for _, hit in near_misses],
+        }
 
     def get_provenance(self) -> List[Dict[str, Any]]:
         """Return the 'why did this fire' log (newest last)."""
@@ -253,7 +292,7 @@ class ConsequenceManager(EntityManager):
             return True
         return False
 
-    def tick_from_session(self, limit: int = 2) -> List[Dict[str, Any]]:
+    def tick_from_session(self, limit: int = 2) -> Dict[str, List[Dict[str, Any]]]:
         """Build world_state from current campaign state, then tick()."""
         overview = self.json_ops.load_json("campaign-overview.json") or {}
         pos = overview.get("player_position", {})
@@ -304,6 +343,40 @@ class ConsequenceManager(EntityManager):
         """
         data = self.json_ops.load_json(self.consequences_file)
         return data.get('resolved', [])
+
+
+def _print_tick_report(result: Dict[str, List[Dict[str, Any]]]) -> None:
+    """Human CLI for tick(): fire slice plus disclosed remainder."""
+    fired = result.get('fired') or []
+    disclosed = result.get('disclosed') or []
+    already = result.get('already_fired') or []
+    near = result.get('near_misses') or []
+    if not (fired or disclosed or already or near):
+        print("[REACTIVITY] (nothing triggered here)")
+        return
+    extra = ""
+    if disclosed:
+        names = [c.get('consequence', c.get('id', '?')) for c in disclosed]
+        extra = f", {len(disclosed)} more matched: [{', '.join(names)}]"
+    print(f"[REACTIVITY] fired these {len(fired)}{extra}")
+    for c in fired:
+        print(f"  [{c['id']}] {c['consequence']}")
+        print(f"      ↳ fired because: {c['match_reason']} (veto if the timing's wrong)")
+    if disclosed:
+        print("  matched-not-fired:")
+        for c in disclosed:
+            print(f"  [{c['id']}] {c['consequence']}")
+            print(f"      ↳ {c.get('match_reason', '')}")
+    if already:
+        print("  already fired here:")
+        for c in already:
+            print(f"  [{c['id']}] {c['consequence']}")
+            print(f"      ↳ {c.get('match_reason', '')} (already fired here)")
+    if near:
+        print("  near-misses (advisory):")
+        for c in near:
+            print(f"  [{c['id']}] {c['consequence']}")
+            print(f"      ↳ {c.get('match_reason', '')}")
 
 
 def main():
@@ -366,6 +439,9 @@ def main():
     if json_mode and args.action == 'check':
         emit({"pending": manager.check_pending()}, json_mode=True)
         return
+    if json_mode and args.action == 'tick':
+        emit(manager.tick_from_session(), json_mode=True)
+        return
 
     if args.action == 'add':
         if not manager.add_consequence(args.description, args.trigger,
@@ -383,14 +459,7 @@ def main():
                 print(f"  [{c['id']}] {c['consequence']} (triggers: {c['trigger']})")
 
     elif args.action == 'tick':
-        fired = manager.tick_from_session()
-        if fired:
-            print(f"[REACTIVITY] {len(fired)} consequence(s) fired this scene:")
-            for c in fired:
-                print(f"  [{c['id']}] {c['consequence']}")
-                print(f"      ↳ fired because: {c['match_reason']} (veto if the timing's wrong)")
-        else:
-            print("[REACTIVITY] (nothing triggered here)")
+        _print_tick_report(manager.tick_from_session())
 
     elif args.action == 'log':
         prov = manager.get_provenance()

@@ -11,7 +11,7 @@ sources:
   - { resource: /tools/gm-time.sh }
   - { resource: /tools/gm-session.sh }
   - { resource: /tools/gm-clock.sh }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:59:23Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T20:20:11Z }
 verified: { by: cursor-grok-4.6, at: 2026-08-14T19:13:47Z }
 ---
 
@@ -25,7 +25,7 @@ developments. **They are wired to very different degrees.** Verified 2026-08-13:
 |---|---|---|
 | Consequences | **Yes** | `gm-session.sh move` and `gm-time.sh` both call `gm-consequence.sh tick` after they write |
 | Threat clocks | **Time-clocks: yes** (since 2026-08-13) | `gm-time.sh` runs `threat_clocks.py tick-time` — every `advance_on: "time"` clock gains ticks scaled to elapsed magnitude when `--ticks` / `--duration` is passed (default 1, so Dawn→Noon stays +1). Event clocks stay manual: `gm-clock.sh advance "<name>"`. Filling one fires its consequence (below) |
-| World tick | **No** — GM-invoked by design | the developments are a model call; `gm-session.sh world-tick '<json>'` persists them (capped, logged, rollback-able). Before 2026-08-13 `WorldTick` had no caller at all |
+| World tick | **No** — GM-invoked by design | the developments are a model call; `gm-session.sh world-tick '<json>'` persists every proposal, warns (naming the overflow) when the count exceeds the advisory cap of 3, and stays logged / rollback-able. Before 2026-08-13 `WorldTick` had no caller at all |
 
 So three weeks and ten minutes are not the same pressure: the GM passes how much time
 actually elapsed, a same-day hop still costs one segment, and a full clock announces
@@ -55,17 +55,20 @@ structurally incapable of carrying the payload.
 
 ## Firing does not resolve
 
-`tick()` stamps `last_fired_key` = `location|time|date` on the consequence and leaves it
-**active** (`lib/consequence_manager.py:202-211`). Consequences:
+`tick()` stamps `last_fired_key` = `location|time|date` on newly fired consequences and
+leaves them **active**. The stamp is an annotation, not a suppressor: a second tick in
+the same scene still reports the match as already-fired (no re-stamp, no new provenance).
+Walking away and coming back **re-arms it**, because the key changed.
 
-- The same consequence will not re-fire while the scene key is unchanged, so a beat can't
-  stutter — but walking away and coming back **re-arms it**, because the key changed.
+The fire slice is still `limit=2` (highest-confidence first) so a beat does not stutter
+with five payoffs at once — remaining matches are disclosed as matched-not-fired rather
+than dropped. Fuzzy near-misses (≥ 0.3, below the 0.5 fire threshold) are advisory and
+do not fire. `check_pending(..., world_state)` uses the same disclose-not-hide rule.
+
 - The GM can veto a firing narratively and nothing needs undoing; the consequence is
   still there.
 - A consequence only leaves `active` via explicit `resolve <id>` or by expiring. A
   campaign that never resolves accumulates a permanently pending list.
-
-At most `limit=2` consequences fire per tick, highest-confidence first.
 
 ## Two ways a trigger matches, and one that misfires
 
@@ -90,9 +93,10 @@ Every firing appends to `provenance` in `consequences.json` (`gm-consequence.sh 
 but the snapshot is overwritten by the next tick, so **rollback is exactly one beat deep**.
 
 `WorldTick` keeps a separate, deeper log (`world-tick-log.json`) and rolls back by removing
-the consequence IDs it added. Both rollbacks are ordered write-then-verify: if the log
-write fails, `WorldTick.apply` deletes the consequences it just created rather than leaving
-un-rollbackable state (`lib/world_tick.py:49-56`).
+the consequence IDs it added. `apply` writes every proposal; the cap of 3 is a warning
+that names what overflowed, not a silent drop. Both rollbacks are ordered write-then-verify:
+if the log write fails, `WorldTick.apply` deletes the consequences it just created rather
+than leaving un-rollbackable state (`lib/world_tick.py:62-69`).
 
 ## Presence is shared; old campaigns still hide untagged NPCs
 

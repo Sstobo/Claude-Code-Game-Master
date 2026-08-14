@@ -1,9 +1,10 @@
 """Tests for reactivity-engine.
 
-check_pending(world_state) evaluates triggers against the scene and returns only
-the consequences that FIRE (annotated with a match_reason, capped, sorted),
-auto-archiving expired ones. check_pending() with no args stays the legacy
-raw-active accessor.
+check_pending(world_state) evaluates triggers against the scene and returns
+the consequences that MATCH (annotated with a match_reason, sorted),
+auto-archiving expired ones. The fire-slice `limit` annotates overflow as
+`matched_not_fired` rather than dropping them. check_pending() with no args
+stays the legacy raw-active accessor.
 """
 
 import json
@@ -47,11 +48,15 @@ def test_nothing_fires_when_no_match(dcc_world):
     assert fired == []
 
 
-def test_cap_limits_results(dcc_world):
+def test_cap_discloses_overflow_instead_of_dropping(dcc_world):
     cm = ConsequenceManager(dcc_world)
     ws = {"location": "Floor 4", "time": "night", "present_npcs": [], "events": []}
-    assert len(cm.check_pending(ws, limit=10)) >= 2  # Sheol + Nightstalker both match
-    assert len(cm.check_pending(ws, limit=1)) == 1
+    all_hits = cm.check_pending(ws, limit=10)
+    assert len(all_hits) >= 2  # Sheol + Nightstalker both match
+    sliced = cm.check_pending(ws, limit=1)
+    assert len(sliced) == len(all_hits)
+    assert not sliced[0].get("matched_not_fired")
+    assert any(c.get("matched_not_fired") for c in sliced[1:])
 
 
 def test_expired_consequence_is_archived_not_fired(dcc_world):
