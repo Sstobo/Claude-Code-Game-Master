@@ -5,6 +5,10 @@ chain. Two things have to hold or the chain writes a half-empty campaign that lo
 imported: the count must be true for EVERY shape an agent emits (a list-shaped
 items.json of 43 items used to report "EMPTY (0 entities)"), and a real failure must
 exit non-zero naming the type, not print "All files valid".
+
+These run the real wrapper, but never against the live world-state: every test
+pins GM_WORLD_STATE_BASE to a tree under tmp_path, so the fixture campaigns are
+built and read there and the player's active-campaign.txt is never touched.
 """
 
 import json
@@ -17,14 +21,23 @@ import pytest
 from lib.minor_stubs import entry_count, normalize_entity_shape
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+LIVE_ACTIVE_FILE = REPO_ROOT / "world-state" / "active-campaign.txt"
 
 EXTRACTION_TYPES = ["npcs", "locations", "items", "plots"]
 
 
+@pytest.fixture(autouse=True)
+def pinned_world_state(isolated_world_state):
+    """Every test in this module resolves world-state to tmp_path. Autouse because
+    an ambient GM_WORLD_STATE_BASE outranks the script's own location, so the
+    throwaway PROJECT_ROOT below is not isolation on its own."""
+    return isolated_world_state
+
+
 def isolated_tools(tmp_path: Path) -> Path:
-    """A throwaway PROJECT_ROOT — common.sh derives every path from the script's own
-    location, so copying tools/ and symlinking lib/ relocates the whole tool away
-    from the live world-state (and its active-campaign.txt)."""
+    """A throwaway PROJECT_ROOT — common.sh derives every non-redirected path from
+    the script's own location, so copying tools/ and symlinking lib/ keeps even a
+    tool that ignores the env seam away from the live world-state."""
     (tmp_path / "tools").mkdir()
     for script in ("common.sh", "gm-extract.sh"):
         shutil.copy(REPO_ROOT / "tools" / script, tmp_path / "tools" / script)
@@ -149,7 +162,7 @@ def test_every_extractor_shape_lands_flat_and_keyed(type_name, shape):
     assert normalize_entity_shape(data, type_name) == keyed
 
 
-def test_normalize_command_flattens_a_list_into_the_campaign_root(tmp_path):
+def test_normalize_command_flattens_a_list_into_the_campaign_root(tmp_path, pinned_world_state):
     """The shell pass, not just the helper: a list-shaped items.json must land as
     keyed items.json at the campaign root, which is all the runtime can read."""
     script = isolated_tools(tmp_path)
@@ -158,7 +171,7 @@ def test_normalize_command_flattens_a_list_into_the_campaign_root(tmp_path):
     result = run(script, "normalize", "fixture")
     assert result.returncode == 0, result.stdout + result.stderr
 
-    written = json.loads((tmp_path / "world-state" / "campaigns" / "fixture" / "items.json").read_text())
+    written = json.loads((pinned_world_state / "campaigns" / "fixture" / "items.json").read_text())
     assert len(written) == 43
     assert written["Item 0"]["type"] == "wondrous"
 
@@ -253,3 +266,25 @@ def test_duplicate_names_are_reported_not_silently_collapsed(tmp_path):
     result = run(script, "validate", "fixture")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "items: 3 entries, 2 unique names" in result.stdout
+
+
+# --- isolation ------------------------------------------------------------
+
+
+def test_the_live_world_state_is_never_touched(tmp_path, pinned_world_state):
+    """Isolation itself: a validate + normalize cycle leaves the player's pointer
+    unmodified, and writes its campaign only under the pinned tmp base."""
+    before = LIVE_ACTIVE_FILE.read_bytes() if LIVE_ACTIVE_FILE.exists() else None
+    before_mtime = LIVE_ACTIVE_FILE.stat().st_mtime_ns if LIVE_ACTIVE_FILE.exists() else None
+
+    script = isolated_tools(tmp_path)
+    write_extraction(tmp_path, "fixture", full_extraction())
+    assert run(script, "validate", "fixture").returncode == 0
+    assert run(script, "normalize", "fixture").returncode == 0
+
+    after = LIVE_ACTIVE_FILE.read_bytes() if LIVE_ACTIVE_FILE.exists() else None
+    assert after == before
+    if before_mtime is not None:
+        assert LIVE_ACTIVE_FILE.stat().st_mtime_ns == before_mtime
+    assert not (REPO_ROOT / "world-state" / "campaigns" / "fixture").exists()
+    assert (pinned_world_state / "campaigns" / "fixture" / "items.json").exists()

@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T13:41:15Z  done: live-state-test-stragglers — fixture-corruption class closed  [fable-sott1]
 - 2026-08-14T13:38:59Z  done: new-game-parity — authored worlds open alive; reconciler advisories ticketed  [fable-sott1]
 - 2026-08-14T13:32:47Z  in-review: new-game-parity — verified, review dispatched  [fable-sott1]
 - 2026-08-14T13:27:00Z  in-review: live-state-test-stragglers — verified, review dispatched  [fable-sott1]
