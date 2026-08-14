@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from entity_aliases import resolve_entity_name
+from entity_aliases import reuse_existing_key
 from schemas import PLOT_TYPES
 
 # The four extraction types, and the wrapper key an agent may nest its list/dict
@@ -120,6 +120,14 @@ PLOT_TYPE_SYNONYMS = {
 }
 
 
+def _add_alias(entity: dict, variant: str):
+    if not isinstance(entity, dict):
+        return
+    aliases = entity.setdefault("aliases", [])
+    if variant not in aliases:
+        aliases.append(variant)
+
+
 def _make_npc_stub(name: str, referenced_by: str) -> dict:
     return {
         "name": name,
@@ -139,7 +147,9 @@ def stub_missing_npcs(npcs: dict, plots: dict) -> dict:
     """Stub never-extracted plot.npcs refs; rewrite the rest to canonical keys.
 
     `npcs` holds the whole extraction (active and background alike), so a stub is
-    only created for a name that is not in it under any spelling.
+    only created for a name that matches no existing entity even after
+    normalization. A descriptive spelling that attaches to an existing record is
+    stored as an alias on that record and the plot ref is rewritten to its key.
     """
     report = {"stubbed": [], "kept": 0}
     for pname, plot in (plots or {}).items():
@@ -147,8 +157,10 @@ def stub_missing_npcs(npcs: dict, plots: dict) -> dict:
             continue
         new_refs = []
         for ref in plot.get("npcs", []) or []:
-            key = resolve_entity_name(ref, npcs)
+            key = reuse_existing_key(ref, npcs)
             if key:
+                if ref != key:
+                    _add_alias(npcs[key], ref)
                 new_refs.append(key)
                 report["kept"] += 1
             else:

@@ -13,7 +13,7 @@ sources:
   - { resource: /lib/minor_stubs.py }
   - { resource: /lib/plot_manager.py }
   - { resource: /lib/search.py }
-generated: { by: claude-fable-5, at: 2026-08-14T02:28:57Z }
+generated: { by: gk-a8r14q, at: 2026-08-14T18:04:32Z }
 ---
 
 # The entity graph and name resolution
@@ -30,10 +30,10 @@ disagree.
 
 ## One resolution order, four steps of increasing looseness
 
-`resolve_entity_name` (`lib/entity_aliases.py:47`): exact → case-insensitive → explicit
-`aliases` on the target → normalized equality. Normalization lowercases, strips
-parentheticals and punctuation, and drops **leading title tokens** from a fixed set
-(`lord`, `captain`, `the`, `saint`, …).
+`resolve_entity_name` (`lib/entity_aliases.py`): exact → case-insensitive → explicit
+`aliases` on the target → normalized equality. Normalization lowercases, folds
+diacritics, strips parentheticals and punctuation, and drops **leading title tokens**
+from a fixed set (`lord`, `captain`, `the`, `saint`, …).
 
 Two consequences worth knowing before you rely on it:
 
@@ -61,18 +61,23 @@ repairable.
 2. **`connection_normalize`** — canonicalize resolvable `connections[].to`, and move
    rule-phrases that are not places at all ("Any line", "Transfer stations ending in 1")
    into the location's `notes` so reconcile doesn't silently delete them.
-3. **`location_reconcile`** — for each location reference that still doesn't resolve,
-   **stub** it: a lightweight node wired bidirectionally to the most-connected hub and
-   flagged `low_confidence: true`. Only a connection target that states a routing rule
-   rather than a destination is dropped — the same reference arriving from a plot or a tag
-   names a place and is always stubbed. Dropped names are written to `facts.json` under
-   `dropped_references` rather than printed and lost.
-4. **`minor_stubs`** — the same repair for `plot.npcs`: a reference that resolves to no
-   NPC at all gets a minimal stub. Because the cap tiers rather than deletes, this now
-   fires only for characters the book's plots name and extraction never produced.
+3. **`location_reconcile`** — attach a location reference to an existing node when
+   the normalizer can, recording the phrasing as an `aliases` entry rather than
+   stubbing a near-dupe. Otherwise **stub** it: a lightweight node wired bidirectionally
+   to the most-connected hub and flagged `low_confidence: true`. Only a connection
+   target that states a routing rule rather than a destination is dropped — the same
+   reference arriving from a plot or a tag names a place and is always stubbed. Dropped
+   names are written to `facts.json` under `dropped_references` rather than printed
+   and lost.
+4. **`minor_stubs`** — the same repair for `plot.npcs`: a reference that attaches to
+   no NPC at all gets a minimal stub; a spelling that normalizes onto an existing
+   record is aliased there and the plot ref rewritten to that key. Because the cap
+   tiers rather than deletes, stubs fire only for characters the book's plots name
+   and extraction never produced.
 5. **`integrity_gate`** — resolve every remaining cross-reference to a canonical key,
    rewrite the reference in place, and record the variant as an `aliases` entry on the
-   target. Strict mode exits non-zero on anything unresolved.
+   target. Strict mode exits non-zero on anything unresolved **or on near-duplicate
+   keys** (two existing keys that normalize equal, e.g. Belit vs Bêlit).
 
 A background entity is a **valid resolution target**: it sits in the same file under the
 same key, so `plot.npcs: ["Walkon41"]` resolves whether or not Walkon41 is in the
@@ -81,6 +86,11 @@ playable core. Tiering therefore costs the gate nothing.
 Step 5's alias recording is what makes the repair permanent: the drifted spelling that
 was rewritten is remembered on the target, so a later reference using the old spelling
 resolves at runtime through step 3 of the resolver.
+
+The unresolved count cannot see duplicate keys. `Belit` and `Bêlit` each resolve to
+themselves, so a gate that only counted dangling refs reported a clean import over two
+nodes for one person. Near-duplicate keys are findings for that reason; stub and
+reconcile refuse to mint the second node.
 
 `run_gate(campaign_dir, strict=False)` (or `--no-strict`) reports without failing — the
 right call when diagnosing an import, never the right call inside one.

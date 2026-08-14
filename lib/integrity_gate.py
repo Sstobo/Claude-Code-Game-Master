@@ -5,7 +5,8 @@ Extracted files cross-reference each other by NAME (plot.npcs, plot.locations,
 npc.location_tags, location.connections[].to). Naming drift makes those links break
 at runtime. This pass resolves every reference to a real entity key via the shared
 alias resolver, rewrites the reference to the canonical key, and records the variant
-as an `aliases` entry on the target. Anything still unresolved is reported; in strict
+as an `aliases` entry on the target. Anything still unresolved is reported; near-duplicate
+keys (two existing keys that normalize equal) are reported as findings. In strict
 mode the gate exits non-zero so a broken import is caught, not shipped.
 
 Run AFTER cap and (when present) AFTER missing-location reconciliation, which can
@@ -17,7 +18,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from entity_aliases import resolve_entity_name
+from entity_aliases import normalize_entity_name, resolve_entity_name
 
 
 def _add_alias(entity: dict, variant: str):
@@ -51,9 +52,24 @@ def _resolve_list(refs, target_entities, owner_kind, owner_name, report):
     return out
 
 
+def _near_duplicate_keys(entities: dict, kind: str) -> list:
+    """Groups of keys that normalize equal — each is a valid target for itself."""
+    buckets = {}
+    for k in entities or {}:
+        n = normalize_entity_name(k)
+        if not n:
+            continue
+        buckets.setdefault(n, []).append(k)
+    return [
+        {"kind": kind, "normalized": n, "keys": keys}
+        for n, keys in buckets.items()
+        if len(keys) > 1
+    ]
+
+
 def canonicalize(npcs: dict, locations: dict, plots: dict) -> dict:
     """Canonicalize all cross-references in place. Returns a report dict."""
-    report = {"rewritten": [], "aliased": [], "unresolved": []}
+    report = {"rewritten": [], "aliased": [], "unresolved": [], "near_duplicates": []}
 
     for pname, plot in (plots or {}).items():
         if not isinstance(plot, dict):
@@ -79,14 +95,21 @@ def canonicalize(npcs: dict, locations: dict, plots: dict) -> dict:
             if isinstance(conn, dict) and "to" in conn:
                 resolved = _resolve_list([conn["to"]], locations, "loc.conn", lname, report)
                 conn["to"] = resolved[0]
+
+    report["near_duplicates"] = (
+        _near_duplicate_keys(npcs, "npc")
+        + _near_duplicate_keys(locations, "location")
+        + _near_duplicate_keys(plots, "plot")
+    )
     return report
 
 
 def run_gate(campaign_dir, strict: bool = True) -> dict:
     """Canonicalize the campaign's cross-refs in place and report.
 
-    Returns the report. If strict and any reference is unresolved, raises
-    SystemExit(1) after writing the report (so callers/CI see the failure).
+    Returns the report. If strict and any reference is unresolved or any
+    near-duplicate keys exist, raises SystemExit(1) after writing the report
+    (so callers/CI see the failure).
     """
     cdir = Path(campaign_dir)
 
@@ -104,10 +127,17 @@ def run_gate(campaign_dir, strict: bool = True) -> dict:
     if plots:
         (cdir / "plots.json").write_text(json.dumps(plots, indent=2))
 
-    if strict and report["unresolved"]:
-        sys.stderr.write(f"INTEGRITY GATE FAILED: {len(report['unresolved'])} unresolved reference(s):\n")
-        for u in report["unresolved"]:
-            sys.stderr.write(f"  {u['owner']} -> '{u['ref']}'\n")
+    if strict and (report["unresolved"] or report["near_duplicates"]):
+        if report["unresolved"]:
+            sys.stderr.write(f"INTEGRITY GATE FAILED: {len(report['unresolved'])} unresolved reference(s):\n")
+            for u in report["unresolved"]:
+                sys.stderr.write(f"  {u['owner']} -> '{u['ref']}'\n")
+        if report["near_duplicates"]:
+            sys.stderr.write(
+                f"INTEGRITY GATE FAILED: {len(report['near_duplicates'])} near-duplicate key group(s):\n"
+            )
+            for d in report["near_duplicates"]:
+                sys.stderr.write(f"  {d['kind']}: {d['keys']}\n")
         raise SystemExit(1)
     return report
 
@@ -122,6 +152,7 @@ def main():
     print(f"  rewritten:  {len(report['rewritten'])}")
     print(f"  aliased:    {len(report['aliased'])}")
     print(f"  unresolved: {len(report['unresolved'])}")
+    print(f"  near-dupes: {len(report['near_duplicates'])}")
 
 
 if __name__ == "__main__":

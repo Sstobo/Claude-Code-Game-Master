@@ -9,6 +9,23 @@ def test_normalize_strips_title_paren_case():
     assert normalize_entity_name("KING Rust") == "rust"
 
 
+def test_normalize_folds_diacritics():
+    assert normalize_entity_name("Bêlit") == normalize_entity_name("Belit") == "belit"
+
+
+def test_diacritic_parenthetical_resolves():
+    entities = {"Belit": {}}
+    assert resolve_entity_name("Bêlit (long qualifier)", entities) == "Belit"
+
+
+def test_reuse_descriptive_phrasing_prefix():
+    from lib.entity_aliases import reuse_existing_key
+    entities = {"The Scarlet Citadel": {}}
+    assert reuse_existing_key(
+        "The Scarlet Citadel and the pits beneath it", entities
+    ) == "The Scarlet Citadel"
+
+
 def test_pure_title_normalizes_empty():
     # "King" alone must not collapse onto every titled entity.
     assert normalize_entity_name("King") == ""

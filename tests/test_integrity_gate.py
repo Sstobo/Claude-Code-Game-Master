@@ -58,3 +58,22 @@ def test_clean_refs_pass_strict_and_persist(tmp_path):
     saved = json.loads((tmp_path / "plots.json").read_text())
     assert saved["P"]["npcs"] == ["Donut"]
     assert report["unresolved"] == []
+    assert report["near_duplicates"] == []
+
+
+def test_near_duplicate_keys_are_reported():
+    npcs = {"Belit": {}, "Bêlit": {}}
+    report = canonicalize(npcs, {}, {})
+    assert report["unresolved"] == []
+    assert len(report["near_duplicates"]) == 1
+    finding = report["near_duplicates"][0]
+    assert finding["kind"] == "npc"
+    assert finding["normalized"] == "belit"
+    assert set(finding["keys"]) == {"Belit", "Bêlit"}
+
+
+def test_strict_gate_fails_on_near_duplicates(tmp_path):
+    (tmp_path / "npcs.json").write_text(json.dumps({"Belit": {}, "Bêlit": {}}))
+    with pytest.raises(SystemExit) as exc:
+        run_gate(str(tmp_path), strict=True)
+    assert exc.value.code == 1

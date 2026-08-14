@@ -67,3 +67,24 @@ def test_run_reconcile_writes_files(tmp_path):
     saved = json.loads((tmp_path / "locations.json").read_text())
     assert "Station 72" in saved
     assert report["stubbed"] == ["Station 72"]
+
+
+def test_diacritic_parenthetical_reuses_existing_with_alias():
+    locations = {"Belit": {"connections": []}}
+    plots = {"P": {"locations": ["Bêlit (long qualifier)"]}}
+    report = reconcile({}, locations, plots)
+    assert report["stubbed"] == []
+    assert "Bêlit (long qualifier)" not in locations
+    assert plots["P"]["locations"] == ["Belit"]
+    assert locations["Belit"]["aliases"] == ["Bêlit (long qualifier)"]
+
+
+def test_descriptive_phrasing_reuses_existing_location():
+    locations = {"The Scarlet Citadel": {"connections": []}}
+    plots = {"P": {"locations": ["The Scarlet Citadel and the pits beneath it"]}}
+    report = reconcile({}, locations, plots)
+    assert report["stubbed"] == []
+    assert report["dropped"] == []
+    assert "The Scarlet Citadel and the pits beneath it" not in locations
+    assert plots["P"]["locations"] == ["The Scarlet Citadel"]
+    assert "The Scarlet Citadel and the pits beneath it" in locations["The Scarlet Citadel"]["aliases"]

@@ -5,14 +5,17 @@ Runtime entity lookups (npcs/locations/plots) are exact-match by key, so any
 title / case / parenthetical drift in a cross-reference becomes a broken link
 (e.g. a plot referencing "Princess Donut" when the NPC key is "Donut").
 
-`normalize_entity_name()` canonicalizes a name (lowercase, drop parentheticals,
-drop punctuation, strip leading honorifics). `resolve_entity_name()` matches a
-query against a set of entity keys in increasing looseness: exact -> case-fold ->
-explicit aliases -> normalized equality. Used by entity_manager at runtime and by
-the import integrity gate / connection normalizer at extract time.
+`normalize_entity_name()` canonicalizes a name (lowercase, fold diacritics, drop
+parentheticals, drop punctuation, strip leading honorifics). `resolve_entity_name()`
+matches a query against a set of entity keys in increasing looseness: exact ->
+case-fold -> explicit aliases -> normalized equality. `reuse_existing_key()` is the
+import-time variant: resolve, then the longest existing key whose normalized name
+is a token-prefix of the query (descriptive phrasings). Used by entity_manager at
+runtime and by the import integrity gate / connection normalizer at extract time.
 """
 
 import re
+import unicodedata
 
 # Leading honorifics/titles stripped during normalization.
 _TITLES = {
@@ -29,13 +32,14 @@ _NONWORD_RE = re.compile(r"[^\w\s]")
 def normalize_entity_name(name: str) -> str:
     """Canonicalize an entity name for loose matching.
 
-    Lowercases, removes parentheticals and punctuation, strips leading title
-    tokens. Returns "" for empty/None or a name that is nothing but titles.
+    Lowercases, folds diacritics, removes parentheticals and punctuation, strips
+    leading title tokens. Returns "" for empty/None or a name that is nothing but titles.
     """
     if not name:
         return ""
     s = name.lower()
     s = _PAREN_RE.sub(" ", s)
+    s = "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
     s = _NONWORD_RE.sub(" ", s)
     tokens = s.split()
     while tokens and tokens[0] in _TITLES:
@@ -93,3 +97,26 @@ def resolve_entity_name(query, entities, aliases_key="aliases"):
                 return k
 
     return None
+
+
+def reuse_existing_key(query, entities, aliases_key="aliases"):
+    """Canonical key for an import-time reference, or None.
+
+    resolve_entity_name first; if that fails, the longest existing key whose
+    normalized name equals the query or is a token-prefix of it — so a
+    descriptive phrasing attaches to the node it names rather than becoming a stub.
+    """
+    key = resolve_entity_name(query, entities, aliases_key)
+    if key:
+        return key
+    q_norm = normalize_entity_name(query)
+    if not q_norm:
+        return None
+    keys = list(entities.keys()) if isinstance(entities, dict) else list(entities)
+    best, best_len = None, 0
+    for k in keys:
+        k_norm = normalize_entity_name(k)
+        if k_norm and (q_norm == k_norm or q_norm.startswith(k_norm + " ")):
+            if len(k_norm) > best_len:
+                best, best_len = k, len(k_norm)
+    return best

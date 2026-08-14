@@ -69,3 +69,13 @@ def test_run_stubs_makes_all_plot_npcs_resolve(tmp_path):
     # every plot.npcs ref now exists as a key
     for ref in plots["P"]["npcs"]:
         assert ref in npcs
+
+
+def test_diacritic_parenthetical_reuses_existing_with_alias():
+    npcs = {"Belit": {}}
+    plots = {"P": {"npcs": ["Bêlit (long qualifier)"]}}
+    report = stub_missing_npcs(npcs, plots)
+    assert report["stubbed"] == []
+    assert "Bêlit (long qualifier)" not in npcs
+    assert plots["P"]["npcs"] == ["Belit"]
+    assert npcs["Belit"]["aliases"] == ["Bêlit (long qualifier)"]

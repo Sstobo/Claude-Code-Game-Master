@@ -4,7 +4,8 @@
 Plots, NPC location_tags, and location connections reference places that were
 never extracted as nodes (e.g. stairwell stations 24/36/48/72). This pass, for
 every location reference that does not resolve to a real key via the alias
-resolver, STUBS it: a lightweight node with a source passage, a bidirectional
+resolver (including a descriptive phrasing that normalizes onto an existing
+node — those are aliased onto that node, not stubbed), STUBS it: a lightweight node with a source passage, a bidirectional
 connection to the most-connected hub, and `low_confidence: true` — the flag says
 "the book named this place, nobody has verified what it is", which is a judgment
 the GM can make in play and a shape heuristic cannot.
@@ -33,7 +34,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from connection_normalize import _is_rule_phrase
-from entity_aliases import resolve_entity_name
+from entity_aliases import reuse_existing_key
+
+
+def _add_alias(entity: dict, variant: str):
+    if not isinstance(entity, dict):
+        return
+    aliases = entity.setdefault("aliases", [])
+    if variant not in aliases:
+        aliases.append(variant)
 
 
 def _is_stubbable(name: str, is_connection: bool = False) -> bool:
@@ -93,9 +102,11 @@ def reconcile(npcs: dict, locations: dict, plots: dict, passage_fn=None) -> dict
 
     def ensure(name, is_connection=False):
         """Return a real key for `name`, creating a stub if needed; None if dropped."""
-        key = resolve_entity_name(name, locations)
+        key = reuse_existing_key(name, locations)
         if key:
             report["kept"] += 1
+            if name != key:
+                _add_alias(locations[key], name)
             return key
         if _is_stubbable(name, is_connection):
             passage = ""
