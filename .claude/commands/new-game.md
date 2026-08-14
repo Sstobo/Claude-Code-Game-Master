@@ -180,6 +180,11 @@ bash tools/gm-extract.sh campaign-rules
 # writes (overview.story_spine + the plots it sequenced).
 bash tools/gm-extract.sh spine "<CAMPAIGN_NAME>"          # arc order + through-line
 bash tools/gm-extract.sh seed-clocks "<CAMPAIGN_NAME>"    # threat clocks from countdown plots
+# Provisional: the world has to open somewhere before a PC exists. The opening
+# play uses is re-chosen when the PC first exists — `gm-player.sh onboard`
+# (the three-door handoff), or the first `gm-player.sh set` if they rolled a
+# sheet via `/create-character` `save-json` — so it matches the protagonist
+# (location + active plot + session-log hook, together).
 bash tools/gm-extract.sh seed-opening "<CAMPAIGN_NAME>"   # starting location + opening beat + log hook
 ```
 
@@ -233,10 +238,13 @@ bash tools/gm-npc.sh set-appearance "<NPC name>" \
 (Extracted/imported NPCs already carry the empty block from `NPC_SCHEMA` — fill it.)
 
 Update `campaign-overview.json` (date/time, `session_count: 0` — Phase E's
-`seed-opening` already set `player_position.current_location`; only override it if
-the arc's opening location is wrong) and append the world summary to
-`session-log.md` (starting location, key NPCs, the three plot tiers) alongside the
-opening hook `seed-opening` wrote. Then display a summary box and hand off:
+`seed-opening` already set a *provisional* `player_position.current_location`;
+only override it if the arc's opening location is wrong) and append the world
+summary to `session-log.md` (starting location, key NPCs, the three plot tiers)
+alongside the opening hook `seed-opening` wrote. Do not treat the Phase E
+location as final: `onboard` re-seeds it to match the protagonist, and so does
+the first `gm-player.sh set` if they used `/create-character` `save-json`.
+Then display a summary box and hand off:
 
 ```
 Your world awaits its hero. Who are you in this world?
@@ -250,8 +258,12 @@ Then ask that **one question** — identity first, mechanics later — and offer
 - **someone of their own** → `bash tools/gm-player.sh onboard original "<name>" "<one-line concept>"`
 - **no one yet** → `bash tools/gm-player.sh onboard nameless`
 
-Persist the answer and open the scene. `/create-character` remains the **opt-in** full
+Persist the answer with `onboard` and open the scene — `onboard` re-seeds the
+opening to match that PC. `/create-character` remains the **opt-in** full
 builder for a player who wants to roll a sheet properly — offer it, don't impose it.
+If they used `/create-character` (`save-json`), the first `gm-player.sh set`
+re-seeds (the opening has never been PC-matched). A later `set` after a matched
+opening leaves it.
 
 ---
 

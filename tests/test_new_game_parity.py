@@ -17,7 +17,9 @@ import pytest
 from lib.book_bible import write_campaign_rules
 from lib.campaign_manager import CampaignManager
 from lib.clock_seed import seed_from_campaign
+from lib.identity_onboarding import IdentityOnboarding
 from lib.opening_seed import seed_opening
+from lib.player_manager import PlayerManager
 from lib.plot_spine import apply_spine
 from lib.schemas import PLOT_TYPES
 from lib.world_author import WorldAuthor
@@ -177,3 +179,72 @@ def test_an_authored_world_opens_alive(isolated_world_state, authored_campaign):
 
     # The rules block the GM reads every beat, derived from the bible.
     assert overview["campaign_rules"]["signature_systems"] == BIBLE["signature_systems"]
+
+
+def test_first_set_current_player_reseeds_opening(isolated_world_state, authored_campaign):
+    """Phase E's seed-opening is provisional; set reseeds while opening_matched_to_pc is unset."""
+    _ground(isolated_world_state, authored_campaign)
+
+    plots = _read(authored_campaign, "plots.json")
+    plots["The Salt-Road Bargain"] = {
+        "type": "main",
+        "description": "A pirate charter signed in blood on the salt-road.",
+        "npcs": ["Belit"],
+        "locations": ["The Weeping Stair"],
+        "status": "available",
+    }
+    (authored_campaign / "plots.json").write_text(json.dumps(plots), encoding="utf-8")
+    ov = _read(authored_campaign, "campaign-overview.json")
+    ov["story_spine"]["arc"] = ["The Tide-Oath Comes Due", "The Salt-Road Bargain"]
+    ov["current_character"] = None
+    (authored_campaign / "campaign-overview.json").write_text(json.dumps(ov), encoding="utf-8")
+    assert not ov.get("opening_matched_to_pc")
+
+    (authored_campaign / "character.json").write_text(json.dumps({
+        "name": "Belit", "level": 1, "hp": {"current": 10, "max": 10},
+        "aliases": ["Queen of the Black Coast"],
+        "concept": "pirate queen signing a salt-road charter",
+    }), encoding="utf-8")
+
+    assert PlayerManager().set_current_player("Belit")
+
+    ov = _read(authored_campaign, "campaign-overview.json")
+    plots = _read(authored_campaign, "plots.json")
+    assert ov["current_character"] == "Belit"
+    assert ov.get("opening_matched_to_pc") is True
+    assert ov["player_position"]["current_location"] == "The Weeping Stair"
+    assert plots["The Salt-Road Bargain"]["status"] == "active"
+    assert plots["The Tide-Oath Comes Due"]["status"] == "available"
+    log = (authored_campaign / "session-log.md").read_text(encoding="utf-8")
+    assert "salt-road" in log.lower() or "Salt-Road" in log
+
+
+def test_onboard_reseeds_authored_world_opening(isolated_world_state, authored_campaign):
+    """/new-game handoff is onboard, not set — the opening must match that PC."""
+    _ground(isolated_world_state, authored_campaign)
+
+    plots = _read(authored_campaign, "plots.json")
+    plots["The Salt-Road Bargain"] = {
+        "type": "main",
+        "description": "A pirate charter signed in blood on the salt-road.",
+        "npcs": ["Belit"],
+        "locations": ["The Weeping Stair"],
+        "status": "available",
+    }
+    (authored_campaign / "plots.json").write_text(json.dumps(plots), encoding="utf-8")
+    ov = _read(authored_campaign, "campaign-overview.json")
+    ov["story_spine"]["arc"] = ["The Tide-Oath Comes Due", "The Salt-Road Bargain"]
+    (authored_campaign / "campaign-overview.json").write_text(json.dumps(ov), encoding="utf-8")
+
+    result = IdentityOnboarding().onboard(
+        "original", name="Belit", concept="pirate queen signing a salt-road charter",
+    )
+    assert result["success"]
+
+    ov = _read(authored_campaign, "campaign-overview.json")
+    plots = _read(authored_campaign, "plots.json")
+    assert ov["current_character"] == "Belit"
+    assert ov.get("opening_matched_to_pc") is True
+    assert ov["player_position"]["current_location"] == "The Weeping Stair"
+    assert plots["The Salt-Road Bargain"]["status"] == "active"
+    assert plots["The Tide-Oath Comes Due"]["status"] == "available"

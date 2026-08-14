@@ -16,7 +16,9 @@ sources:
   - { resource: /lib/plot_spine.py }
   - { resource: /lib/clock_seed.py }
   - { resource: /lib/opening_seed.py }
-generated: { by: claude-opus-5, at: 2026-08-14T12:21:54Z }
+  - { resource: /lib/player_manager.py }
+  - { resource: /lib/identity_onboarding.py }
+generated: { by: gk-a8r14q, at: 2026-08-14T18:26:30Z }
 ---
 
 # Importing a book
@@ -70,7 +72,7 @@ have repaired:
 | `integrity` | canonicalize every cross-reference; **strict-fail on unresolved** | all repairs done |
 | `spine` | order main plots into an arc by source position | plots final |
 | `seed-clocks` | seed threat clocks from time pressure in plot text | spine |
-| `seed-opening` | set starting position + opening beat + session-log hook | spine |
+| `seed-opening` | **provisional** starting position + opening beat + session-log hook. Play's opening is re-seeded when the PC first exists (`gm-player.sh onboard`, or the first `gm-player.sh set` after `/create-character` `save-json`) | spine |
 | `archive` | move `extracted/` aside | everything |
 
 The passes most likely to surprise:
@@ -137,8 +139,16 @@ pass all read the bible. The two real failures are a missing `current-document.t
 
 `plot_spine` orders the arc by **earliest chunk position in the source**, not by asking a
 model which plot comes first. Same book in, same arc out. `seed-opening` then reads that
-arc's first location to decide where the campaign starts, which is why a fresh import opens
-on the book's actual opening rather than in a void.
+arc's first location so the campaign is not a void — but that seed is **provisional**.
+There is no protagonist yet, so spine position 1 is a placeholder, not a commitment. A
+book with two viable entry arcs (king-era vs pirate-era) will otherwise open on the
+wrong life. The opening play uses is rewritten when the PC first exists: `onboard`
+(the three-door handoff) always re-seeds; `set_current_player` re-seeds only while
+`opening_matched_to_pc` is unset (the `/create-character` `save-json` path). Location,
+the active plot (the previous spine opening returns to `available`), and the
+session-log hook move together. A partial rewrite is how those three used to disagree.
+The PC's own name on `plot.npcs` does not pick the arc — the protagonist is listed on
+many plots — era and concept overlap do.
 
 ## Where an import goes wrong
 

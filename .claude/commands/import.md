@@ -358,10 +358,16 @@ bash tools/gm-extract.sh spine "<campaign-name>"
 # full-clock consequence + linked plot, so the arc has live pressure (not just prose).
 bash tools/gm-extract.sh seed-clocks "<campaign-name>"
 
-# Seed the opening beat: set the starting player_position to the arc's opening
-# location, mark the first spine plot active with an opening beat, and write a
-# session-log "Previously On / Where We Paused" hook — so the first /gm session
-# opens on the book's actual opening, not a blank void. (Run after spine.)
+# Seed the opening beat (PROVISIONAL): set the starting player_position to the
+# arc's opening location, mark the first spine plot active with an opening beat,
+# and write a session-log "Previously On / Where We Paused" hook — so the
+# campaign opens somewhere before a PC exists, not a blank void. (Run after
+# spine.) This is not the opening play uses. `gm-player.sh onboard` re-seeds
+# location + active plot + session-log hook together to match the protagonist
+# (a book with two entry eras otherwise opens on spine position 1 regardless of
+# who the player became). If they roll a sheet via `/create-character`
+# (`save-json`), the first `gm-player.sh set` re-seeds — only while the opening
+# has never been PC-matched (`opening_matched_to_pc` unset).
 bash tools/gm-extract.sh seed-opening "<campaign-name>"
 
 # Archive the extracted/ folder (temporary working directory)
@@ -689,8 +695,14 @@ So don't hand them a 9-step character builder; hand them **one question**:
 - **someone of their own** → `bash tools/gm-player.sh onboard original "<name>" "<one-line concept>"`
 - **no one yet** → `bash tools/gm-player.sh onboard nameless`
 
-Persist their answer, then go straight into the opening scene. Mechanics are inferred
-silently against the imported World Kit and can be deepened during play.
+Persist their answer with `onboard`, then go straight into the opening scene —
+`onboard` re-seeds location, active plot, and the session-log hook to match
+that PC (do not keep the provisional spine[0] beat). If they roll a sheet
+(`/create-character` → `gm-player.sh save-json`), call `gm-player.sh set
+"<name>"` after saving: that first `set` re-seeds while the opening has never
+been PC-matched. A later `set` after a matched opening leaves it. Mechanics
+are inferred silently against the imported World Kit and can be deepened
+during play.
 
 `/create-character` stays available as the **opt-in** full builder — offer it to a player who
 wants to roll a sheet properly, never impose it as the price of entry.

@@ -12,7 +12,9 @@ sources:
   - { resource: /lib/plot_spine.py }
   - { resource: /lib/clock_seed.py }
   - { resource: /lib/opening_seed.py }
-generated: { by: claude-opus-5, at: 2026-08-14T13:25:05Z }
+  - { resource: /lib/player_manager.py }
+  - { resource: /lib/identity_onboarding.py }
+generated: { by: gk-a8r14q, at: 2026-08-14T18:26:30Z }
 ---
 
 # Authoring an original world
@@ -31,8 +33,8 @@ and two mechanisms are aimed at it.
 | **B — Skeleton** | the world's spine authored in one pass while the seed is fresh, then **shown to the user for approval** | serial |
 | **C — Fan-out** | one `world-author` per axis + one `world-kit-author` | **parallel** |
 | **D — Reconcile** | `world-reconciler` runs three checks, emits `reconcile-report.json` | serial |
-| **E — Ground** | consolidate → compile-canon → `gm-extract.sh prepare` → confirm bible → `campaign-rules` → `spine` → `seed-clocks` → `seed-opening` → validate | serial |
-| **F — Handoff** | overview, session log, lock the chronicler + art style, hand to character creation | serial |
+| **E — Ground** | consolidate → compile-canon → `gm-extract.sh prepare` → confirm bible → `campaign-rules` → `spine` → `seed-clocks` → `seed-opening` (provisional) → validate | serial |
+| **F — Handoff** | overview, session log, lock the chronicler + art style, hand to the three-door `onboard`. `onboard` re-seeds the opening to match the PC (first `set` does the same after `/create-character` `save-json`) | serial |
 
 ## The fan-out is race-free by file ownership, not by locking
 
@@ -69,6 +71,14 @@ arbitrary: `spine` writes the arc, and both `seed-clocks` and `seed-opening` rea
 it wrote (`lib/opening_seed.py` opens on `overview.story_spine.arc[0]`, falling back to
 the first `main` plot). A world whose axes authored no `main` plot has no arc to open
 on, and `seed-opening` says so rather than guessing.
+
+That Phase E seed is **provisional** — the world has to stand somewhere before a
+hero exists. Phase F still hands off to the three-door question; the opening play
+uses is the one rewritten when the PC first exists (`gm-player.sh onboard`, or the
+first `gm-player.sh set` if they rolled a sheet via `/create-character`
+`save-json`), so a pirate-era sheet does not inherit a king-era beat. Location,
+active plot, and the session-log hook move together. A later `set` after a
+PC-matched opening (`opening_matched_to_pc`) leaves it.
 
 `campaign-rules` is the odd one out: it derives the overview's `campaign_rules` from
 the bible's `signature_systems`, not from plots, so it can run anywhere after the

@@ -145,10 +145,19 @@ class IdentityOnboarding(EntityManager):
 
         saved = self.json_ops.load_json("character.json") or {}
         name = saved.get("name", "")
+        overview = self.json_ops.load_json("campaign-overview.json") or {}
+        unmatched = not overview.get("opening_matched_to_pc")
         # Make the PC visible to session start / status / world_stats.
         self.json_ops.update_json("campaign-overview.json", {"current_character": name})
         if char.get("origin") == "canon":
             self._mark_as_pc(name)
+
+        # First PC: import / /new-game hand off here and never call set.
+        # Same gate as set_current_player — a PC-matched opening is left
+        # alone so death-handoff --replace doesn't rewrite location/plot/log.
+        if unmatched:
+            from opening_seed import reseed_opening
+            reseed_opening(str(self.campaign_dir), saved)
 
         return {"success": True, "character": saved, "archived": archived}
 

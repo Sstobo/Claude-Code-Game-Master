@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T18:30:00Z  done: opening-beat-after-character — opening re-seeds on first PC (onboard/unmatched set); --replace leaves a matched opening  [gk-a8r14q]
 - 2026-08-14T18:06:58Z  done: party-promote-real-stats — promote copies existing NPC HP/AC; defaults disclosed  [gk-a8r14q]
 - 2026-08-14T18:06:58Z  done: enhancement-relevance-honesty — 0-name-bearing attaches nothing; batch warns and exits at 25%  [gk-a8r14q]
 - 2026-08-14T18:06:58Z  done: alias-dedupe-integrity — fold diacritics; refuse near-dupe stubs; integrity reports duplicate keys  [gk-a8r14q]

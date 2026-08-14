@@ -6,8 +6,9 @@ sources:
   - { resource: /lib/identity_onboarding.py }
   - { resource: /tools/gm-player.sh }
   - { resource: /lib/player_manager.py }
+  - { resource: /lib/opening_seed.py }
   - { resource: /CLAUDE.md }
-generated: { by: claude-opus-5, at: 2026-08-14T14:46:17Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T18:35:04Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
@@ -21,7 +22,7 @@ dying costs one choice.
 
 "Who are you in this world?" is invoked as **`bash tools/gm-player.sh onboard <mode> [args]`**,
 which runs `IdentityOnboarding.onboard()` — guard, `build()`, save, and the wiring below,
-in one call (`lib/identity_onboarding.py:123`; builders at `:86`, save at `:93`, CLI at `:160`):
+in one call (`lib/identity_onboarding.py:123`; builders at `:86`, save at `:93`, CLI at `:169`):
 
 | Mode | Command | Where the sheet comes from |
 |---|---|---|
@@ -43,6 +44,13 @@ half-swapped PC:
   archives the outgoing sheet to `fallen/` before writing
 - it sets `current_character` on `campaign-overview.json`, which is what session start,
   status, and world stats read
+- it **re-seeds the opening beat** (`reseed_opening`) so location, the active plot, and
+  the session-log hook match this PC — only while `opening_matched_to_pc` is absent/false
+  (the real first-PC path; import / `/new-game` never call `set`). `--replace` after that
+  flag is true is a death hand-off into a world already in play, and must leave the
+  opening; same gate as `set`. Provisional `seed-opening` left the flag unset; re-seed
+  sets it. `/create-character` persists via `save-json` and does not re-seed; the first
+  `set` covers that path while the flag is still unset
 - `canon` marks the source NPC `is_player_character` (plus `is_party_member: false` /
   `became_pc: true`) so scene context stops voicing the PC as an NPC standing nearby, and
   the lifted sheet is `status: alive` with no death stamp — the allow-list lift can't carry
@@ -62,7 +70,7 @@ wastes it.
 
 `_default_vitals()` returns a **fresh nested dict every call** — an explicit fix for
 characters aliasing one another's HP, and the reason there's a regression test for it
-(`tests/test_identity_onboarding.py:40`).
+(`tests/test_identity_onboarding.py:45`).
 
 ## Death: persist, narrate, then offer the hand-off
 

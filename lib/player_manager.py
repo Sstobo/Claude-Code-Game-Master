@@ -283,7 +283,15 @@ class PlayerManager(EntityManager):
         return summaries
 
     def set_current_player(self, name: str) -> bool:
-        """Set character as current active PC in campaign"""
+        """Set character as current active PC in campaign.
+
+        Re-seed the opening when it has never been matched to a PC
+        (``opening_matched_to_pc`` absent/false). Provisional ``seed_opening``
+        does not set that flag; ``reseed_opening`` does. Covers the
+        ``save-json`` path, where ``current_character`` may already be filled.
+        Later ``set`` / ``become`` calls leave a PC-matched opening alone.
+        ``onboard`` always re-seeds on its own (the real first-PC path).
+        """
         char = self._load_character(name)
         if not char:
             print(f"[ERROR] Character '{name}' not found")
@@ -292,8 +300,14 @@ class PlayerManager(EntityManager):
         # Get actual name from character file
         actual_name = char.get('name', name)
 
+        campaign = self.json_ops.load_json(self.campaign_file) or {}
+        unmatched = not campaign.get('opening_matched_to_pc')
+
         if self.json_ops.update_json(self.campaign_file, {'current_character': actual_name}):
             print(f"[SUCCESS] Set current character to: {actual_name}")
+            if unmatched:
+                from opening_seed import reseed_opening
+                reseed_opening(str(self.campaign_dir), char)
             return True
         return False
 

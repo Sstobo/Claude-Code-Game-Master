@@ -20,6 +20,7 @@ Swap `check` for `drift` / `noise` / `index` as needed; the flags never change.
 - `docs/modules/entity-graph.md` — normalization folds diacritics; integrity reports near-duplicate keys (`alias-dedupe-integrity`).
 - `docs/modules/rag-stack.md` — 0-name-bearing enhancement attaches nothing; batch warns/exits at 25% (`enhancement-relevance-honesty`).
 - `docs/modules/npc-model.md` — promote copies existing stats; defaults only for statless, disclosed (`party-promote-real-stats`).
+- `docs/flows/import-a-book.md`, `author-a-world.md`, `onboarding-and-death.md` — opening is provisional then re-seeded on first PC (`opening-beat-after-character`).
 
 ## 2026-08-13 — bundle created
 
