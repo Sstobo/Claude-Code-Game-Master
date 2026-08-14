@@ -522,7 +522,7 @@ class SessionManager(EntityManager):
             lines.extend(threads)
 
         # --- Key Facts (established plot facts the GM must keep continuity on) ---
-        key_facts = self._key_facts(per_category=None if full else 4)
+        key_facts = self._key_facts(per_category=None if full else 3)
         if key_facts:
             lines.append("")
             lines.append("--- KEY FACTS ---")
@@ -774,13 +774,21 @@ class SessionManager(EntityManager):
         return [f"[{ptype}] {name}" + (f" - latest: {latest}" if latest else "")
                 for _, _seq, ptype, name, latest in chosen]
 
-    def _key_facts(self, per_category=4):
-        """Established plot facts (local/regional/world). per_category=None = all."""
+    # Categories that carry continuity the GM must not contradict. `player_choices`
+    # and `npc_relations` were advertised by gm-note.sh and read by nothing, so the
+    # two categories that hold what the player DID were write-only. `session_events`
+    # stays out (the session log and PREVIOUSLY ON own it) and so does `rules` (the
+    # world's own rules block owns that); both remain reachable through recall.
+    KEY_FACT_CATEGORIES = ('plot_local', 'plot_regional', 'plot_world',
+                           'player_choices', 'npc_relations', 'lore')
+
+    def _key_facts(self, per_category=3):
+        """Established facts the GM must keep continuity on. per_category=None = all."""
         facts = self.json_ops.load_json("facts.json") or {}
         if not isinstance(facts, dict):
             return []
         out = []
-        for cat in ('plot_local', 'plot_regional', 'plot_world'):
+        for cat in self.KEY_FACT_CATEGORIES:
             items = facts.get(cat)
             if not isinstance(items, list):
                 continue

@@ -8,7 +8,7 @@ sources:
   - { resource: /lib/search.py }
   - { resource: /tools/gm-context.sh }
 generated: { by: claude-fable-5, at: 2026-08-14T12:15:23Z }
-verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
+verified: { by: claude-fable-5, at: 2026-08-14T12:19:52Z }
 ---
 
 # Scene context — the two doors
@@ -29,12 +29,20 @@ no history, threads, clocks, voice, or rules. Narrating a scene generally wants 
 ## What the session brief carries, and why each block exists
 
 `get_full_context` assembles, in order: header (campaign, session #, location, time) ·
-pacing + action-menu style · scene-image gate + chronicler · **narrative voice** ·
+play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure doctrine** · scene-image gate + chronicler · **narrative voice** ·
 **previously on** + where-we-paused + open threads · **the world remembers** · story threads · key facts · threat
 clocks · character · party members · **NPC voices** · pending consequences · **your
 world's rules**.
 
-Five of those blocks carry design decisions that are not obvious from reading them:
+Six of those blocks carry design decisions that are not obvious from reading them:
+
+- **Failure doctrine is the one block that is never preference-gated.** Pacing, dice, action
+  menu and inspiration all read `preferences`; the failure block is appended unconditionally
+  (`lib/session_manager.py:456`). The reason is a live bug: failure-cost rules lived only in
+  on-demand skills — `gm-skills` loads on *"I try to..."* and `gm-social` had none at all — so
+  a social beat could resolve a failed check with no cost rule in context anywhere, and the
+  model handed the stake back as a retry prompt. Anything that must hold on *every* beat
+  belongs here, not in a skill.
 
 - **Narrative voice is a prose target, not lore.** The block is labelled that way in the
   output for a reason — the sample passages are style exemplars to imitate, and a model
