@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from json_ops import JsonOperations
 from campaign_manager import CampaignManager
-from game_core import make_progression, resolve_check
+from game_core import make_progression, opposed_check, resolve_check
 
 
 DEFAULT_RULESET = {
@@ -53,6 +53,8 @@ class WorldKit:
         self.json_ops = JsonOperations(str(self.campaign_dir))
         self.ruleset = self.json_ops.load_json("ruleset.json") or dict(DEFAULT_RULESET)
         prog = self.ruleset.get("progression", {}) or {}
+        if isinstance(prog, str):          # shorthand: "progression": "milestone"
+            prog = {"model": prog}
         self.progression = make_progression(
             prog.get("model", "milestone"),
             **{k: v for k, v in prog.items() if k != "model"},
@@ -76,14 +78,36 @@ class WorldKit:
 
     def vitals(self) -> List[str]:
         """Vital tracks this world declares ('hp' plus kit vitals: vigor,
-        corruption, water, ...). Empty when the kit declares none."""
-        return (self.stat_schema() or {}).get("vitals", []) or []
+        corruption, water, ...).
+
+        A kit that declares none — no `stat_schema`, an empty list, or no ruleset at
+        all — gets ['hp']. Every world has a body; returning nothing here would make
+        an under-declared kit refuse plain damage.
+        """
+        return (self.stat_schema() or {}).get("vitals") or ["hp"]
+
+    def resolution(self) -> Dict[str, Any]:
+        """{'model': name, 'params': {...}} regardless of ruleset syntax.
+
+        A kit may declare `"resolution": "dice-pool"` or the fuller
+        `{"model": "dice-pool", "target": 5}`; game_core.resolve_check gets the
+        same clean shape either way.
+        """
+        raw = self.ruleset.get("resolution") or {}
+        if isinstance(raw, str):
+            return {"model": raw, "params": {}}
+        params = {k: v for k, v in raw.items() if k != "model"}
+        params.update(params.pop("params", {}) or {})
+        return {"model": raw.get("model") or "d20-vs-dc", "params": params}
 
     def resolution_model(self) -> str:
-        return (self.ruleset.get("resolution", {}) or {}).get("model", "d20-vs-dc")
+        return self.resolution()["model"]
 
     def progression_model(self) -> str:
-        return (self.ruleset.get("progression", {}) or {}).get("model", "milestone")
+        prog = self.ruleset.get("progression") or {}
+        if isinstance(prog, str):
+            return prog
+        return prog.get("model", "milestone")
 
     def active_agents(self) -> List[str]:
         return self.ruleset.get("active_agents", [])
@@ -103,7 +127,14 @@ class WorldKit:
 
     # --- play, driven through the generic core ---
     def resolve(self, modifier: int = 0, dc: int = 10, advantage: str = None) -> Dict[str, Any]:
-        return resolve_check(modifier, dc, advantage)
+        """Roll under THIS world's resolution model (d20, 2d6, dice pool, ...)."""
+        return resolve_check(modifier, dc, advantage, model=self.resolution())
+
+    def oppose(self, modifier_a: int = 0, modifier_b: int = 0,
+               advantage_a: str = None, advantage_b: str = None) -> Dict[str, Any]:
+        """Contest two sides under THIS world's resolution model."""
+        return opposed_check(modifier_a, modifier_b, advantage_a, advantage_b,
+                             model=self.resolution())
 
     def advance_progression(self, state: Dict[str, Any], **kw) -> Dict[str, Any]:
         return self.progression.advance(state, **kw)

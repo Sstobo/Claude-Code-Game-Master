@@ -583,17 +583,9 @@ class SessionManager(EntityManager):
                 if desc:
                     lines.append(f"  {desc}")
 
-                # Recent events
-                events = npc_data.get('events', [])
-                if events:
-                    recent = events[-3:] if full else events[-2:]
-                    event_strs = []
-                    for ev in recent:
-                        if isinstance(ev, dict):
-                            event_strs.append(f"\"{self._truncate(ev.get('event', ''), 120, full)}\"")
-                        else:
-                            event_strs.append(f"\"{self._truncate(str(ev), 120, full)}\"")
-                    lines.append(f"  Recent: {' -> '.join(event_strs)}")
+                recent = self._recent_events(npc_data, full=full)
+                if recent:
+                    lines.append(f"  {recent}")
                 lines.append("")
             if not full and len(party_items) > max_party:
                 lines.append(f"... and {len(party_items) - max_party} more party members (use --full)")
@@ -602,12 +594,13 @@ class SessionManager(EntityManager):
             lines.append("(none)")
             lines.append("")
 
-        # --- NPC Voices (canonical lines for present NPCs; surface, never mutate) ---
-        npc_voices = self._present_npc_voices(npcs, location, full=full)
-        if npc_voices:
+        # --- Present NPCs (voices, inner life, and what they remember; never mutate) ---
+        present_npcs = self._present_npcs(npcs, location, full=full)
+        if present_npcs:
             lines.append("")
-            lines.append("--- NPC VOICES (present NPCs, speak in their own words) ---")
-            for npc_name, vlines in npc_voices:
+            lines.append("--- NPC VOICES (present NPCs — speak in their own words; "
+                         "they remember what is listed under them) ---")
+            for npc_name, vlines in present_npcs:
                 inner = npcs.get(npc_name, {}) if isinstance(npcs, dict) else {}
                 tags = []
                 if inner.get('current_mood'):
@@ -620,6 +613,11 @@ class SessionManager(EntityManager):
                 lines.append(f"{header}:")
                 for vl in vlines:
                     lines.append(f'  "{vl}"')
+                # Party members already carry their history in the block above.
+                if not inner.get('is_party_member'):
+                    recent = self._recent_events(inner, full=full)
+                    if recent:
+                        lines.append(f"  {recent}")
 
         # --- Pending Consequences ---
         lines.append("")
@@ -777,12 +775,34 @@ class SessionManager(EntityManager):
                     out.append(txt)
         return out
 
-    def _present_npc_voices(self, npcs, location, full=False):
-        """Canonical voice lines for NPCs present in the scene.
+    def _recent_events(self, entity, full=False):
+        """The 'they remember you' line for an NPC, or None.
+
+        Shared by the party block and the present-NPC block so a character's
+        history renders identically wherever they appear.
+        """
+        if not isinstance(entity, dict):
+            return None
+        events = entity.get('events', [])
+        if not isinstance(events, list) or not events:
+            return None
+        recent = events[-3:] if full else events[-2:]
+        parts = []
+        for ev in recent:
+            text = ev.get('event', '') if isinstance(ev, dict) else str(ev)
+            if text:
+                parts.append(f'"{self._truncate(text, 120, full)}"')
+        return f"Recent: {' -> '.join(parts)}" if parts else None
+
+    def _present_npcs(self, npcs, location, full=False):
+        """NPCs present in the scene, with any canonical voice lines they have.
 
         Present = party members OR NPCs tagged to the current location. Returns
-        [(name, [lines])]; up to 2 lines each unless full. Read-only — never
-        touches the stored `context` field (PROTECT canonical-voice extraction).
+        [(name, [lines])]; up to 2 lines each unless full, and an empty list when
+        the NPC has no extracted dialogue — presence does NOT require a voice, or
+        stubbed and original-world NPCs would stand in the room invisibly.
+        Read-only — never touches the stored `context` field (PROTECT
+        canonical-voice extraction).
         """
         if not isinstance(npcs, dict):
             return []
@@ -799,8 +819,6 @@ class SessionManager(EntityManager):
             ctx = d.get('context', [])
             vlines = ctx if isinstance(ctx, list) else ([ctx] if ctx else [])
             vlines = [str(x) for x in vlines if x]
-            if not vlines:
-                continue
             out.append((name, vlines if full else vlines[:2]))
         return out
 

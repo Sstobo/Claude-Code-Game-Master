@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T02:36:08Z  done: executable-world-kit — declared dice actually roll  [fable-sott1]
 - 2026-08-13T22:50:39Z  done: extraction-tiering — nothing deleted, everything disclosed  [fable-sott1]
 - 2026-08-13T22:45:08Z  done: agent-detox — six agents unclamped, quotas gone  [fable-sott1]
 - 2026-08-13T22:44:25Z  in-review: executable-world-kit — verified, review dispatched  [fable-sott1]

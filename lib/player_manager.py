@@ -48,6 +48,11 @@ class PlayerManager(EntityManager):
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
 
+        # Base dir the kit is loaded from (self.world_state_dir below is a legacy
+        # alias for the CAMPAIGN dir, so the real base has to be kept separately).
+        self._kit_base = world_state_dir
+        self._kit = None
+
         # Additional paths specific to player management
         self.world_state_dir = self.campaign_dir  # Alias for compatibility
         self.campaign_file = "campaign-overview.json"
@@ -132,33 +137,57 @@ class PlayerManager(EntityManager):
         char_path.parent.mkdir(parents=True, exist_ok=True)
         return self.json_ops.save_json(str(char_path), data)
 
+    def world_kit(self):
+        """The active campaign's World Kit (cached). The single source of truth for
+        vitals and the progression model, so a ruleset-less campaign gets the kit's
+        own defaults instead of a second, disagreeing fallback here."""
+        if self._kit is None:
+            from world_kit import WorldKit
+            self._kit = WorldKit(self._kit_base)
+        return self._kit
+
     def _xp_thresholds(self):
         """Level thresholds from the active World Kit (xp-levels model), else the
         default table. Index L = XP required to reach level L+1; index 0 == 0.
 
         This is how leveling delegates to the kit instead of a hardcoded 5e path.
+        Asked of the kit's built progression object rather than re-parsed from
+        ruleset.json, so every ruleset syntax the kit accepts (including the bare
+        string form and the 'level' alias) is understood here too.
         """
-        ruleset = self.json_ops.load_json("ruleset.json") or {}
-        prog = ruleset.get("progression", {}) or {}
-        if prog.get("model") == "xp-levels" and prog.get("thresholds"):
-            return [0] + list(prog["thresholds"])
+        progression = self.world_kit().progression
+        thresholds = getattr(progression, 'thresholds', None)
+        if progression.name == "xp-levels" and thresholds:
+            return [0] + list(thresholds)
         return self.DEFAULT_XP_THRESHOLDS
 
-    def _normalize_xp(self, char: Dict) -> Dict:
-        """Normalize XP to object format {current, next_level}"""
-        xp = char.get('xp', 0)
-        level = char.get('level', 1)
+    def _max_level(self) -> int:
+        """Top level this kit's threshold table describes (5e's 20 is just the
+        default table's length, not a law of the engine)."""
+        return len(self._xp_thresholds())
+
+    def _xp_view(self, char: Dict) -> Dict[str, int]:
+        """{current, next_level} READ off the sheet without writing anything.
+
+        Both stored shapes are honored (legacy plain int, canonical object). Nothing
+        is created: a milestone or resource-axis sheet that has never tracked XP
+        must not grow a phantom xp object just because something read it.
+        """
         thresholds = self._xp_thresholds()
+        level = char.get('level', 1)
+        raw = char.get('xp', 0)
 
-        if isinstance(xp, int):
-            # Old format: plain integer
-            next_threshold = thresholds[level] if level < len(thresholds) else xp
-            char['xp'] = {'current': xp, 'next_level': next_threshold}
-        elif not isinstance(xp, dict):
-            # Invalid format, reset
-            char['xp'] = {'current': 0, 'next_level': thresholds[1] if len(thresholds) > 1 else 0}
+        if isinstance(raw, dict):
+            current = int(raw.get('current', 0) or 0)
+            next_level = raw.get('next_level')
+        elif isinstance(raw, (int, float)):
+            current, next_level = int(raw), None
+        else:
+            current, next_level = 0, None
 
-        return char
+        if next_level is None:
+            next_level = thresholds[level] if level < len(thresholds) else current
+        return {'current': current, 'next_level': int(next_level)}
 
     def get_player(self, name: str) -> Optional[Dict]:
         """Get full player character data"""
@@ -278,16 +307,12 @@ class PlayerManager(EntityManager):
             print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
 
-        # Normalize XP structure
-        char = self._normalize_xp(char)
-
-        # Add XP
-        char['xp']['current'] += amount
-        current_xp = char['xp']['current']
+        current_xp = self._xp_view(char)['current'] + amount
         current_level = char.get('level', 1)
 
         # Check for level up — bound by the active kit's thresholds, not a hardcoded 20.
         thresholds = self._xp_thresholds()
+        max_level = self._max_level()
         new_level = current_level
         while new_level < len(thresholds) and current_xp >= thresholds[new_level]:
             new_level += 1
@@ -296,10 +321,10 @@ class PlayerManager(EntityManager):
         if leveled_up:
             char['level'] = new_level
 
-        # Update next level threshold (kit-driven)
-        thresholds = self._xp_thresholds()
+        # Write the canonical XP object (kit-driven next threshold). An explicit XP
+        # award is the ONLY thing that puts one on a sheet.
         next_threshold = thresholds[new_level] if new_level < len(thresholds) else current_xp
-        char['xp']['next_level'] = next_threshold
+        char['xp'] = {'current': current_xp, 'next_level': next_threshold}
 
         # Save character
         if not self._save_character(name, char):
@@ -310,7 +335,7 @@ class PlayerManager(EntityManager):
             'name': char.get('name', name),
             'xp_gained': amount,
             'current_xp': current_xp,
-            'next_level_xp': next_threshold if new_level < 20 else 'MAX',
+            'next_level_xp': next_threshold if new_level < max_level else 'MAX',
             'level_up': leveled_up,
             'old_level': current_level,
             'new_level': new_level
@@ -319,10 +344,10 @@ class PlayerManager(EntityManager):
         # Print result
         if leveled_up:
             print(f"LEVEL_UP {char.get('name', name)} gained {amount} XP and leveled up to Level {new_level}!")
-            print(f"XP: {current_xp}/{next_threshold if new_level < 20 else 'MAX'}")
+            print(f"XP: {current_xp}/{next_threshold if new_level < max_level else 'MAX'}")
         else:
             print(f"XP_GAIN {char.get('name', name)} gained {amount} XP!")
-            print(f"XP: {current_xp}/{next_threshold if new_level < 20 else 'MAX'}")
+            print(f"XP: {current_xp}/{next_threshold if new_level < max_level else 'MAX'}")
 
         return result
 
@@ -333,9 +358,11 @@ class PlayerManager(EntityManager):
         import game_core
         ruleset = self.json_ops.load_json("ruleset.json") or {}
         prog = ruleset.get("progression", {}) or {}
-        spec = prog.get("spectacle", {}) or {}
+        spec = (prog.get("spectacle") or {}) if isinstance(prog, dict) else {}
         return {
-            'model': prog.get("model", "milestone"),
+            # The EFFECTIVE model (what make_progression built), so a typo'd model
+            # name degrades to milestone here exactly as it does in the core.
+            'model': self.world_kit().progression.name,
             'tiers': spec.get("tiers") or game_core.DEFAULT_SPECTACLE_TIERS,
             'follower_field': spec.get("follower_field"),   # e.g. "followers"
             'follower_label': spec.get("follower_label", "followers"),
@@ -359,9 +386,10 @@ class PlayerManager(EntityManager):
         cfg = self._spectacle_config()
         actual_name = char.get('name', name)
 
-        # XP gap to next level (drives XP scaling; 0 for non-XP kits).
-        char = self._normalize_xp(char)
-        xp_to_next = max(0, char['xp']['next_level'] - char['xp']['current'])
+        # XP gap to next level (drives XP scaling; read-only — a milestone or
+        # resource-axis sheet must not gain an xp object from a spectacle beat).
+        xp = self._xp_view(char)
+        xp_to_next = max(0, xp['next_level'] - xp['current'])
 
         award = game_core.spectacle_award(
             tier,
@@ -416,15 +444,15 @@ class PlayerManager(EntityManager):
             print(f"[ERROR] Character '{name}' not found")
             return None
 
-        # Normalize XP structure for reading only — a status check never writes.
-        char = self._normalize_xp(char)
-
-        current_xp = char['xp']['current']
+        # Read-only view of XP — a status check never writes, and never invents an
+        # xp object on a sheet that does not track one.
+        xp = self._xp_view(char)
+        current_xp = xp['current']
         current_level = char.get('level', 1)
-        next_level_xp = char['xp']['next_level']
+        next_level_xp = xp['next_level']
 
-        # Check if ready to level up
-        ready_to_level = current_xp >= next_level_xp and current_level < 20
+        # Check if ready to level up (top level comes from the kit's table)
+        ready_to_level = current_xp >= next_level_xp and current_level < self._max_level()
         remaining = next_level_xp - current_xp if not ready_to_level else 0
 
         char_name = char.get('name', name)
@@ -521,12 +549,13 @@ class PlayerManager(EntityManager):
 
     def _kit_vitals(self) -> List[str]:
         """Vital tracks the active World Kit declares — 'hp' plus whatever else the
-        world runs on (vigor, corruption, water, heat). Read straight off
-        ruleset.json like _xp_thresholds, so a manager pointed at any campaign
-        directory reports that campaign's kit.
+        world runs on (vigor, corruption, water, heat).
+
+        Asked of the kit rather than re-read off ruleset.json here, so a campaign
+        with no ruleset gets the kit's own default (['hp']) instead of an empty list
+        that would refuse a plain HP change.
         """
-        ruleset = self.json_ops.load_json("ruleset.json") or {}
-        return (ruleset.get("stat_schema", {}) or {}).get("vitals", []) or []
+        return self.world_kit().vitals()
 
     @staticmethod
     def _read_vital(char: Dict, vital: str):

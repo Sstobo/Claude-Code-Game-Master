@@ -6,7 +6,7 @@ sources:
   - { resource: /lib/character_schema.py }
   - { resource: /lib/player_manager.py }
   - { resource: /features/character-creation/save_character.py }
-generated: { by: claude-opus-5, at: 2026-08-13T20:38:05Z }
+generated: { by: claude-opus-5, at: 2026-08-14T02:30:47Z }
 ---
 
 # The player character sheet
@@ -24,7 +24,7 @@ round-trip because unrecognized keys are swept into `details` on the way out and
 back to the top level on the way in. `stats` is an open dict, so "flat" does not mean
 "D&D's six abilities" despite the legacy field names.
 
-**Migration happens on first read.** `_normalize_loaded` (`lib/player_manager.py:113`)
+**Migration happens on first read.** `_normalize_loaded` (`lib/player_manager.py`)
 converts an open-schema file and **writes it back immediately**. So loading a legacy
 character mutates it on disk as a side effect — expected, but surprising the first time a
 read-only operation dirties the campaign.
@@ -36,7 +36,11 @@ in `ruleset.json` → `stat_schema.vitals` is readable and writable through
 `modify_vital` (`lib/player_manager.py`) and `gm-player.sh vital <vital> <±N|set N>` — the
 argument is the vital's name, not a character's, unlike every sibling verb — and appears in
 `show` output. The declaration is the authority: a vital the kit never declared is refused
-rather than silently created, so a typo does not quietly grow a new track.
+rather than silently created, so a typo does not quietly grow a new track. That
+declaration is read by *asking the `WorldKit`*, not by reaching into `ruleset.json` here —
+one fallback, so a campaign whose kit declares no vitals at all (no ruleset, no
+`stat_schema`, or an empty list) inherits `['hp']` and can still take damage instead of
+having every vital refused.
 
 Two shapes are honored because sheets use both — a `{current, max}` dict clamps to its max
 and stays a dict, a plain number stays a plain number. `hp` is declared like any other
@@ -65,11 +69,23 @@ produced a duplicate validator still exists at the builder boundary — see
 
 ## XP delegates to the kit, then falls back
 
-`_xp_thresholds` (`lib/player_manager.py:135`) reads `ruleset.json` and uses the kit's
-thresholds **only when the model is `xp-levels` and thresholds are present**. Anything
-else — milestone kits, resource-axis kits, an `xp-levels` kit that forgot its table —
-silently uses `DEFAULT_XP_THRESHOLDS`. So a milestone world still accrues levels if
-something calls `award_xp`.
+`_xp_thresholds` asks the kit's built `progression` object — not `ruleset.json` — and uses
+its thresholds **only when the model is `xp-levels` (or its `level` alias) and thresholds
+are present**. Anything else — milestone kits, resource-axis kits, an `xp-levels` kit that
+forgot its table — silently uses `DEFAULT_XP_THRESHOLDS`. So a milestone world still
+accrues levels if something calls `award_xp`. Going through the kit is what keeps every
+ruleset shorthand it accepts (a bare `"progression": "milestone"`, the `level` alias) from
+raising here.
+
+That table also sets the ceiling: `_max_level` is its length, so `MAX` and
+`ready_to_level` come from the kit. A world declaring eleven thresholds tops out at level
+12; 20 is only where the *default* table ends, not a rule of the engine.
+
+**Reads never write.** `_xp_view` returns `{current, next_level}` off the sheet — honoring
+both the legacy plain-integer XP and the canonical object — and creates nothing. A
+milestone or resource-axis sheet that has never tracked XP therefore does not sprout an
+`xp` object from a status check, a spectacle beat, or an HP change. `award_xp` is the only
+thing that writes the object, because that call is an explicit grant.
 
 `award_xp` prints the literal token `LEVEL_UP` on a level gain, and `get_xp_status` prints
 `READY_TO_LEVEL_UP`. Those strings are the interface: the GM watches for them to trigger
@@ -79,10 +95,9 @@ the level-up ceremony. Changing their wording breaks the routing described in
 ## Spectacle awards route back through `award_xp`
 
 `award_spectacle` computes amounts via `game_core.spectacle_award`, then — for XP-based
-kits — applies them **through `award_xp`** rather than writing XP directly
-(`lib/player_manager.py:378`), specifically so `LEVEL_UP` detection still fires. A
-spectacle beat can therefore level the character, which is the point: non-kill
-achievements advance the same axis kills do. See
+kits — applies them **through `award_xp`** rather than writing XP directly, specifically
+so `LEVEL_UP` detection still fires. A spectacle beat can therefore level the character,
+which is the point: non-kill achievements advance the same axis kills do. See
 [game core and World Kit](game-core-and-world-kit.md).
 
 ## Death is a state, not a deletion
@@ -93,11 +108,11 @@ archives the fallen PC to `fallen/<name>-<id>.json`, clearing `died_at` and the 
 on the new sheet. Nothing is destroyed, which is what lets the world keep referencing,
 mourning, and avenging the dead hero.
 
-`modify_hp` refuses outright once `status == 'dead'` (`lib/player_manager.py:464`) — a
+`modify_hp` refuses outright once `status == 'dead'` (`lib/player_manager.py`) — a
 corpse neither takes damage nor heals; the call returns `success: False` and the sheet is
 untouched. `kill_character` writes HP itself and never routes through `modify_hp`, so the
-guard cannot block a death. Below that gate, `modify_hp` still runs the *dying* gate
-(`:485`): 0 HP sets `status: 'dying'`, healing off 0 sets it back to `alive`.
+guard cannot block a death. Below that gate, `modify_hp` still runs the *dying* gate: 0 HP
+sets `status: 'dying'`, healing off 0 sets it back to `alive`.
 
 ## Related
 

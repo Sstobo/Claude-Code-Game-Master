@@ -13,7 +13,7 @@ sources:
   - { resource: /lib/minor_stubs.py }
   - { resource: /lib/plot_manager.py }
   - { resource: /lib/search.py }
-generated: { by: claude-opus-5, at: 2026-08-13T22:46:28Z }
+generated: { by: claude-fable-5, at: 2026-08-14T02:28:57Z }
 ---
 
 # The entity graph and name resolution
@@ -88,7 +88,7 @@ right call when diagnosing an import, never the right call inside one.
 ## Background entities do not leak into scenes
 
 For **NPCs, presence is decided by tags, not by tiering**. `search_npcs_by_tag('locations',
-…)` (`lib/search.py`) and `SessionManager._present_npc_voices` both answer "who is here"
+…)` (`lib/search.py`) and `SessionManager._present_npcs` both answer "who is here"
 with *party member, or tagged to this location* — an unchanged rule that a `background`
 flag neither widens nor narrows. A background NPC surfaces exactly when the book put them
 in the room the party is standing in, which is the correct answer, and never as an

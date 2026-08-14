@@ -7,7 +7,7 @@ sources:
   - { resource: /lib/scene_context.py }
   - { resource: /lib/search.py }
   - { resource: /tools/gm-context.sh }
-generated: { by: claude-opus-5, at: 2026-08-13T13:52:08Z }
+generated: { by: claude-fable-5, at: 2026-08-14T02:28:57Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -34,7 +34,7 @@ pacing + action-menu style · scene-image gate + chronicler · **narrative voice
 clocks · character · party members · **NPC voices** · pending consequences · **your
 world's rules**.
 
-Three of those blocks carry design decisions that are not obvious from reading them:
+Four of those blocks carry design decisions that are not obvious from reading them:
 
 - **Narrative voice is a prose target, not lore.** The block is labelled that way in the
   output for a reason — the sample passages are style exemplars to imitate, and a model
@@ -42,6 +42,14 @@ Three of those blocks carry design decisions that are not obvious from reading t
 - **NPC secrets are surfaced by existence only.** `lib/session_manager.py:617` prints
   `"has a secret"` and never the secret text, so a secret can sit in `npcs.json` without
   leaking into narration the moment its owner walks on stage.
+- **Presence does not require a voice, and present NPCs carry their memory.** `_present_npcs`
+  returns an NPC tagged to this location even when `context` holds no extracted dialogue —
+  it used to `continue` past them, which made every stubbed and original-world NPC invisible
+  while standing in the room. Each present NPC's recent `events` render under their entry
+  (`_recent_events`, shared with the party block so history looks the same wherever a
+  character appears; party members render theirs once, in the party block). This is the
+  wire that lets an NPC act like they remember what the player did to them — the write side
+  is `gm-npc.sh update "<name>" "<event>"`.
 - **World rules are never truncated.** Every other block is bounded — by item count, not
   by chopping an entry mid-sentence — but `campaign_rules` is pretty-printed whole
   (`lib/session_manager.py:657`). The comment there is the rationale: those rules *are*
