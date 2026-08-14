@@ -10,8 +10,9 @@ blockedBy: [core-prompt-detox]
 claimedBy: gk-t8n2wp
 claimedAt: 2026-08-14T19:17:09Z
 changedFiles: [.claude/commands/gm.md, tests/test_gm_md_slim.py]
+resolution: gm.md sheds box templates, d6 table, and startup checklist; sheets phone-friendly
 reviewRounds: 1
-updatedAt: 2026-08-14T19:22:00Z
+updatedAt: 2026-08-14T19:42:00Z
 ---
 
 ## Parent
@@ -64,11 +65,15 @@ core-prompt-detox
 
 ## QA Reports
 
+### 2026-08-14T19:42:00Z — reviewed perfect [e31298bc]
+No correctness/regression findings. New-criteria notes (non-blocking): pin "Complete Steps 1-2"; box-drawing guard could include ━; ASCII-art AC lives on create-character.md (kit-aware).
+
 ### 2026-08-14T19:22:00Z — verified [gk-t8n2wp]
 No box-drawing; no d6/encounter-cap/skip-setup; no ASCII-art mandate; startup is two state steps. tests/test_gm_md_slim.py + test_lean_core pass.
 
 ## History
 
+- 2026-08-14T19:42:00Z  reviewed perfect → done  [gk-t8n2wp]
 - 2026-08-14T19:22:00Z  verified → in-review, review dispatched  [gk-t8n2wp]
 - 2026-08-14T19:17:09Z  doc-grounding confirmed — user pre-confirmed "do ALL of this now"  [gk-t8n2wp]
 - 2026-08-14T19:17:09Z  claimed  [gk-t8n2wp]

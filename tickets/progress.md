@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T19:42:00Z  in-review: save-restore-completeness, kit-aware-character-creation  [gk-t8n2wp]
+- 2026-08-14T19:42:00Z  done: gm-md-slim — gm.md sheds templates, d6 table, startup checklist  [gk-t8n2wp]
+- 2026-08-14T19:32:00Z  claimed: save-restore-completeness, kit-aware-character-creation  [gk-t8n2wp]
 - 2026-08-14T19:32:00Z  done: kit-block-in-context — KIT block in context; signature_systems render; skills defer  [gk-t8n2wp]
 - 2026-08-14T19:26:00Z  done: opening-seed-no-fake-session — location + KEY FACT hook; no fabricated session  [gk-t8n2wp]
 - 2026-08-14T19:26:00Z  done: recall-top-k — default 5; wrapper --top-k tested  [gk-t8n2wp]
