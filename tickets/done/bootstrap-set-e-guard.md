@@ -11,6 +11,7 @@ claimedBy: fable-sott1
 claimedAt: 2026-08-13T16:06:15Z
 changedFiles: [tools/common.sh, tests/test_bootstrap_no_campaign.py]
 reviewRounds: 1
+resolution: set -e guard + bootstrap tests
 implementer: null
 createdAt: 2026-08-13T16:20:00Z
 updatedAt: 2026-08-13T18:42:45Z

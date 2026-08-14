@@ -13,7 +13,7 @@ changedFiles: []
 reviewRounds: null
 implementer: null
 createdAt: 2026-08-13T16:20:00Z
-updatedAt: 2026-08-13T16:20:00Z
+updatedAt: 2026-08-14T17:56:17Z
 ---
 
 ## Parent
@@ -66,6 +66,10 @@ None.
 
 ## QA Reports
 
+### 2026-08-14T17:56:17Z — fail [gk-a8r14q]
+blocked: file collision on CLAUDE.md / lib/session_manager.py — live-session uncommitted edits; user parked until those files are clean
+
 ## History
 
 - 2026-08-13T16:20:00Z  created → ready  [gm-session]
+- 2026-08-14T17:56:17Z  ready → blocked  file collision on CLAUDE.md + lib/session_manager.py  [gk-a8r14q]

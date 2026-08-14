@@ -1,6 +1,14 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T18:06:58Z  done: party-promote-real-stats — promote copies existing NPC HP/AC; defaults disclosed  [gk-a8r14q]
+- 2026-08-14T18:06:58Z  done: enhancement-relevance-honesty — 0-name-bearing attaches nothing; batch warns and exits at 25%  [gk-a8r14q]
+- 2026-08-14T18:06:58Z  done: alias-dedupe-integrity — fold diacritics; refuse near-dupe stubs; integrity reports duplicate keys  [gk-a8r14q]
+- 2026-08-14T18:06:58Z  in-review: alias-dedupe-integrity, enhancement-relevance-honesty, opening-beat-after-character, party-promote-real-stats — verified, reviews dispatched  [gk-a8r14q]
+- 2026-08-14T17:56:17Z  blocked: save-restore-completeness, core-prompt-detox, kit-block-in-context, presence-resolver-unification, advisory-fences, import-preflight-and-signal — file collision on CLAUDE.md + session_manager.py  [gk-a8r14q]
+- 2026-08-14T17:56:17Z  doc-grounding confirmed on alias-dedupe, enhancement-honesty, opening-beat, party-promote  [gk-a8r14q]
+- 2026-08-14T17:27:15Z  claimed: alias-dedupe-integrity, enhancement-relevance-honesty, opening-beat-after-character, party-promote-real-stats — doc-grounding announced  [gk-a8r14q]
+- 2026-08-14T17:27:15Z  prd: make-the-world-remember archived (four tickets already in done/)  [gk-a8r14q]
 - 2026-08-14T15:43:25Z  done: guard-consolidation — one guard, honest routing  [fable-sott1]
 - 2026-08-14T15:23:49Z  done: prepare-anchor-fallback — two anchors, real pin, clean live tree  [fable-sott1]
 - 2026-08-14T15:22:26Z  in-review: guard-consolidation — verified, review dispatched  [fable-sott1]

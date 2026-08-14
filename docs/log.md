@@ -15,6 +15,12 @@ Swap `check` for `drift` / `noise` / `index` as needed; the flags never change.
 
 ---
 
+## 2026-08-14 — alias / enhance / promote ingest
+
+- `docs/modules/entity-graph.md` — normalization folds diacritics; integrity reports near-duplicate keys (`alias-dedupe-integrity`).
+- `docs/modules/rag-stack.md` — 0-name-bearing enhancement attaches nothing; batch warns/exits at 25% (`enhancement-relevance-honesty`).
+- `docs/modules/npc-model.md` — promote copies existing stats; defaults only for statless, disclosed (`party-promote-real-stats`).
+
 ## 2026-08-13 — bundle created
 
 First OKF pass on the repo. Prior state: four unversioned docs, last touched

@@ -6,7 +6,7 @@ kind: afk
 priority: p1
 lane: agent
 parentPrd: state-of-the-table
-blockedBy: [kit-block-in-context, executable-world-kit, identity-onboarding-wiring]
+blockedBy: [kit-block-in-context]
 claimedBy: null
 claimedAt: null
 changedFiles: []
@@ -64,7 +64,7 @@ Lane: agent
 
 ## Blocked by
 
-kit-block-in-context, executable-world-kit, identity-onboarding-wiring
+kit-block-in-context (executable-world-kit and identity-onboarding-wiring are done)
 
 ---
 
@@ -73,6 +73,7 @@ kit-block-in-context, executable-world-kit, identity-onboarding-wiring
 ## History
 
 - 2026-08-13T15:47:00Z  created → ready  [team-lead]
+- 2026-08-14T17:27:15Z  blockedBy trimmed — executable-world-kit + identity-onboarding-wiring are done  [gk-a8r14q]
 
 ## Triage note (2026-08-13, fable-sott1, from review-vitals-2)
 

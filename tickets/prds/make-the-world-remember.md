@@ -1,11 +1,11 @@
 ---
 slug: make-the-world-remember
 title: Make the World Remember — wire the push side of memory and pressure
-status: active
+status: archived
 version: 1
 supersedes: null
 createdAt: 2026-08-14T02:25:26Z
-updatedAt: 2026-08-14T02:25:26Z
+updatedAt: 2026-08-14T17:27:15Z
 ---
 
 ## Problem Statement
@@ -82,3 +82,11 @@ OKF: `docs/modules/scene-context.md` claims `lib/session_manager.py`;
 `docs/modules/living-world.md` claims `lib/threat_clocks.py`;
 `docs/modules/campaign-memory.md` covers the recall path. Update and restamp claiming docs
 in the same commit as the code.
+
+---
+
+## History
+
+- 2026-08-14T02:25:26Z  created, status active  [fable-remember]
+- 2026-08-14T12:30:00Z  all four tickets shipped  [fable-remember]
+- 2026-08-14T17:27:15Z  archived — four tickets in done/  [gk-a8r14q]

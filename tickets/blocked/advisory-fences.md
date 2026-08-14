@@ -14,7 +14,7 @@ resolution: null
 reviewRounds: null
 implementer: null
 createdAt: 2026-08-13T21:30:00Z
-updatedAt: 2026-08-13T21:30:00Z
+updatedAt: 2026-08-14T17:56:17Z
 ---
 
 ## Parent
@@ -74,6 +74,10 @@ core-prompt-detox
 
 ## QA Reports
 
+### 2026-08-14T17:56:17Z — fail [gk-a8r14q]
+blocked: file collision on CLAUDE.md / lib/session_manager.py — live-session uncommitted edits; user parked until those files are clean
+
 ## History
 
 - 2026-08-13T21:30:00Z  created → ready (Trust the Agent review)  [fable-sott1]
+- 2026-08-14T17:56:17Z  ready → blocked  file collision on CLAUDE.md + lib/session_manager.py  [gk-a8r14q]

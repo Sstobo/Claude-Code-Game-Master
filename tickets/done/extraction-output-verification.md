@@ -11,6 +11,7 @@ claimedBy: fable-sott1
 claimedAt: 2026-08-13T18:54:15Z
 changedFiles: [tools/gm-extract.sh, lib/minor_stubs.py, '.claude/commands/import.md', docs/import-guide.md, tests/test_extraction_gate.py]
 reviewRounds: 2
+resolution: validate is a real gate
 implementer: null
 createdAt: 2026-08-13T16:20:00Z
 updatedAt: 2026-08-13T19:23:30Z

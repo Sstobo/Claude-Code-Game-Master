@@ -11,6 +11,7 @@ claimedBy: fable-sott1
 claimedAt: 2026-08-13T18:09:55Z
 changedFiles: [features/character-creation/save_character.py, lib/player_manager.py, lib/world_kit.py, tools/gm-player.sh, docs/modules/player-character.md, tests/test_kit_vitals.py]
 reviewRounds: 2
+resolution: kit-honoring save path + first-class vitals
 implementer: null
 createdAt: 2026-08-13T16:20:00Z
 updatedAt: 2026-08-13T18:51:32Z
