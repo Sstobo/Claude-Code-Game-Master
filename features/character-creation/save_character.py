@@ -78,19 +78,26 @@ def calculate_saves(class_name, level, stats):
 
 def resolve_hp(character_data, stats, is_dnd5e):
     """HP as {current, max}. An authored HP is preserved exactly — only the
-    dnd5e kit derives it from the class hit die + CON formula."""
+    dnd5e kit derives it from the class hit die + CON formula.
+
+    Returns (hp_dict, warning_or_None). Non-dnd5e with no authored HP falls
+    back to 10/10; the warning names that fallback so the caller can surface it.
+    """
     authored = character_data.get('hp')
     if isinstance(authored, dict):
         max_hp = authored.get('max', authored.get('current', 0))
-        return {"current": authored.get('current', max_hp), "max": max_hp}
+        return {"current": authored.get('current', max_hp), "max": max_hp}, None
     if isinstance(authored, (int, float)):
-        return {"current": authored, "max": authored}
+        return {"current": authored, "max": authored}, None
     if is_dnd5e:
         rolled = calculate_hp(character_data['class'], character_data['level'],
                               calculate_modifier(stats.get('con', 10)))
-        return {"current": rolled, "max": rolled}
+        return {"current": rolled, "max": rolled}, None
     # Non-5e kits own their own HP curve; nothing here can guess it.
-    return {"current": 10, "max": 10}
+    return (
+        {"current": 10, "max": 10},
+        "hp defaulted to 10/10; the kit does not derive HP — author it",
+    )
 
 
 def create_character_id(name):
@@ -100,9 +107,18 @@ def create_character_id(name):
 def save_character(character_data):
     """Save character to campaign's character.json file"""
 
+    # The active kit decides which derivations are legitimate. 5e hit dice and
+    # saving throws belong to dnd5e; every other world declares its own.
+    kit = WorldKit()
+    is_dnd5e = kit.kit() == 'dnd5e'
+
     # Validate required fields. `attributes` is the World Kit's stat_schema name;
     # `stats` is the legacy alias (and the canonical flat key we persist).
-    required_fields = ['name', 'race', 'class', 'level']
+    # race/class are dnd5e sheet fields — optional elsewhere, matching
+    # schemas.validate_character (only name + level are universal).
+    required_fields = ['name', 'level']
+    if is_dnd5e:
+        required_fields += ['race', 'class']
     for field in required_fields:
         if field not in character_data:
             return {"error": f"Missing required field: {field}"}
@@ -113,19 +129,17 @@ def save_character(character_data):
     # Generate character ID
     char_id = create_character_id(character_data['name'])
 
-    # The active kit decides which derivations are legitimate. 5e hit dice and
-    # saving throws belong to dnd5e; every other world declares its own.
-    kit = WorldKit()
-    is_dnd5e = kit.kit() == 'dnd5e'
+    hp, hp_warning = resolve_hp(character_data, stats, is_dnd5e)
+    warnings = [hp_warning] if hp_warning else []
 
     # Build complete character object
     character = {
         "id": char_id,
         "name": character_data['name'],
-        "race": character_data['race'],
-        "class": character_data['class'],
+        "race": character_data.get('race', ''),
+        "class": character_data.get('class', ''),
         "level": character_data['level'],
-        "hp": resolve_hp(character_data, stats, is_dnd5e),
+        "hp": hp,
         "ac": character_data.get('ac', 10),  # Default AC, can be overridden
         "stats": stats,
         "skills": character_data.get('skills', {}),
@@ -179,7 +193,8 @@ def save_character(character_data):
             "character_id": char_id,
             "file_path": str(file_path),
             "campaign": campaign_mgr.get_active() or "legacy",
-            "character": character
+            "character": character,
+            "warnings": warnings,
         }
 
     except Exception as e:

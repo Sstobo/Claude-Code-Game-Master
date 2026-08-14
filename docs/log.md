@@ -15,6 +15,10 @@ Swap `check` for `drift` / `noise` / `index` as needed; the flags never change.
 
 ---
 
+## 2026-08-14 — kit-aware-character-creation ingest
+
+- `docs/flows/onboarding-and-death.md`, `docs/modules/player-character.md` — Death hand-off new-character route is kit-aware create-character; silent 10/10 HP fallback now warns in the save payload (`kit-aware-character-creation`).
+
 ## 2026-08-14 — kit-block-in-context ingest
 
 - `docs/modules/scene-context.md`, `game-core-and-world-kit.md`, `lean-core-and-skill-routing.md` — KIT block in session context; signature_systems render in YOUR WORLD'S RULES (campaign_rules is the legacy fallback); STEP-0 defers to that block (`kit-block-in-context`).

@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T19:50:00Z  done: kit-aware-character-creation — kit spine vs dnd5e branch; Death Protocol no 5e wizards; 10/10 HP warns  [gk-t8n2wp]
 - 2026-08-14T19:42:00Z  in-review: save-restore-completeness, kit-aware-character-creation  [gk-t8n2wp]
 - 2026-08-14T19:42:00Z  done: gm-md-slim — gm.md sheds templates, d6 table, startup checklist  [gk-t8n2wp]
 - 2026-08-14T19:32:00Z  claimed: save-restore-completeness, kit-aware-character-creation  [gk-t8n2wp]

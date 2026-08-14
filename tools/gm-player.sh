@@ -1,5 +1,5 @@
 #!/bin/bash
-# Player Character management for D&D campaign
+# Player Character management
 # Thin CLI wrapper - logic in lib/player_manager.py
 
 # Source common utilities
@@ -208,7 +208,7 @@ case "$ACTION" in
         ;;
 
     *)
-        echo "D&D Player Character Manager"
+        echo "Player Character Manager"
         echo "Usage: gm-player.sh <action> [args]"
         echo ""
         echo "Actions:"

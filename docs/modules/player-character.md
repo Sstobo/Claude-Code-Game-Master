@@ -6,7 +6,7 @@ sources:
   - { resource: /lib/character_schema.py }
   - { resource: /lib/player_manager.py }
   - { resource: /features/character-creation/save_character.py }
-generated: { by: claude-opus-5, at: 2026-08-14T14:46:17Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:39:48Z }
 ---
 
 # The player character sheet
@@ -53,9 +53,16 @@ own keys) so one verb never returns two response shapes.
 `attributes` (`stats` remains a legacy alias) and derives HP from the class hit die + CON
 and writes a 5e `saves` block **only** when the active kit is `dnd5e`. An authored HP is
 preserved verbatim in **every** kit, `dnd5e` included — authoring beats deriving, so a
-rolled or hand-tuned sheet is never silently recomputed. Declared kit vitals supplied at
-creation are carried onto the sheet. See [the schema reference](../schema-reference.md) for
-where the declaration lives.
+rolled or hand-tuned sheet is never silently recomputed.
+
+The landmine is the *unauthored* path on a non-dnd5e kit: the code cannot guess that
+world's HP curve, so it persists 10/10. That used to be silent — a Conan death-replacement
+could save as an unplayable 10/10 with no signal. The fallback is still 10/10 (refusing
+would strand the save), but the return payload now carries a `warnings` list naming it.
+Author the vital; do not rely on the default. `race`/`class` are required only for
+`dnd5e`, matching `schemas.validate_character` (only `name` and `level` are universal).
+Declared kit vitals supplied at creation are carried onto the sheet. See
+[the schema reference](../schema-reference.md) for where the declaration lives.
 
 ## One validator: `schemas.validate_character`
 

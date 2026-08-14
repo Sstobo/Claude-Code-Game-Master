@@ -8,7 +8,8 @@ sources:
   - { resource: /lib/player_manager.py }
   - { resource: /lib/opening_seed.py }
   - { resource: /CLAUDE.md }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:15:42Z }
+  - { resource: /.claude/commands/create-character.md }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T19:39:48Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
@@ -66,10 +67,10 @@ live sheet. See [the player character sheet](../modules/player-character.md).
 
 This is the *default* entry path, and the three prompt surfaces that reach it say so:
 `/gm`'s startup checklist and character display, `/import` Step 8, and `/new-game`'s
-Phase F hand-off all route the no-character moment here. The full 9-step builder still
-exists as `/create-character` — an opt-in deep dive, offered and never imposed. The design
-bet: a player arrives with an "I love this book" spike, and spending it on ability scores
-wastes it.
+Phase F hand-off all route the no-character moment here. Kit-aware `/create-character`
+(generic spine, or the dnd5e race/class/spell branch) is still the opt-in deep dive,
+offered and never imposed. The design bet: a player arrives with an "I love this book"
+spike, and spending it on ability scores wastes it.
 
 `_default_vitals()` returns a **fresh nested dict every call** — an explicit fix for
 characters aliasing one another's HP, and the reason there's a regression test for it
@@ -86,7 +87,9 @@ ordering exists to prevent.
 2. Narrate the death with weight. **No menu yet.**
 3. Offer three continuations: take over a **party member**, roll a **new character**, or
    step in as a **canon figure**. (Solo with no party and no fitting canon figure: options
-   2 and 3 only.)
+   2 and 3 only.) Rolling a new character spawns kit-aware `create-character` — it
+   branches on the KIT block / `WorldKit.kit()`, so a Conan death does not open a 5e
+   wizard builder. `CLAUDE.md` SWAP is the runtime instruction.
 4. Swap, bridge the fiction, resume.
 
 That hand-off stays the narrative default — death is meant to move the story to someone

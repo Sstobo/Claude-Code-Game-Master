@@ -35,7 +35,7 @@ PERSIST FIRST, then narrate, then offer the hand-off.
 
 SWAP (make the chosen character the active PC):
 - Party member → `bash tools/gm-player.sh become "<name>"` (copies their party sheet into character.json, archives the fallen PC to fallen/).
-- New character → spawn `create-character`, persist via `gm-player.sh save-json '<json>'`, then `gm-player.sh set "<name>"`.
+- New character → spawn `create-character` (kit-aware: it follows the active kit, not a 5e wizard builder), persist via `gm-player.sh save-json '<json>'`, then `gm-player.sh set "<name>"`.
 - Canon figure → onboarding canon path (identity_onboarding from_canon) → flesh out via create-character if the sheet is thin → save to character.json → `gm-player.sh set "<name>"`.
 
 ## Action Router — load the matching Skill on demand

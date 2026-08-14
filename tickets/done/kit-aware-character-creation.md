@@ -7,14 +7,14 @@ priority: p1
 lane: agent
 parentPrd: trust-the-agent
 blockedBy: [kit-block-in-context]
-claimedBy: null
-claimedAt: null
-changedFiles: []
-resolution: null
-reviewRounds: null
-implementer: null
+claimedBy: gk-t8n2wp
+claimedAt: 2026-08-14T19:30:58Z
+changedFiles: [.claude/commands/create-character.md, .claude/agents/create-character.md, tools/gm-player.sh, CLAUDE.md, features/character-creation/save_character.py, docs/flows/onboarding-and-death.md, docs/modules/player-character.md, docs/log.md, tests/test_kit_aware_character_creation.py, tests/test_kit_vitals.py]
+resolution: create-character branches on kit; Death Protocol no longer hands out 5e wizards; 10/10 HP warns
+reviewRounds: 1
+implementer: 5d1d8bb0-0f1d-4217-bc85-76c77eef07ba
 createdAt: 2026-08-13T15:47:00Z
-updatedAt: 2026-08-14T18:52:00Z
+updatedAt: 2026-08-14T19:50:00Z
 ---
 
 ## Parent
@@ -46,11 +46,11 @@ death in a bespoke world hands the player a 5e wizard builder.
 
 ## Acceptance criteria
 
-- [ ] On the conan fixture, the creation flow presents conan's stat schema and vitals and never mentions 5e races/classes/spell slots; the saved character validates via `schemas.validate_character` (kit-aware).
-- [ ] On a dnd5e campaign, the existing 5e flow is preserved.
-- [ ] The Death Protocol section routes new characters through the kit-aware path.
-- [ ] No ASCII-art mandate remains in create-character.md; gm-player.sh banner is kit-neutral.
-- [ ] Claiming docs restamped.
+- [x] On the conan fixture, the creation flow presents conan's stat schema and vitals and never mentions 5e races/classes/spell slots; the saved character validates via `schemas.validate_character` (kit-aware).
+- [x] On a dnd5e campaign, the existing 5e flow is preserved.
+- [x] The Death Protocol section routes new characters through the kit-aware path.
+- [x] No ASCII-art mandate remains in create-character.md; gm-player.sh banner is kit-neutral.
+- [x] Claiming docs restamped.
 
 ## Out of scope
 
@@ -70,8 +70,18 @@ kit-block-in-context (executable-world-kit and identity-onboarding-wiring are do
 
 ## QA Reports
 
+### 2026-08-14T19:50:00Z — reviewed perfect [e0ad5764]
+No correctness/regression findings. Nits (non-blocking): KIT block omits attributes so spine should prefer world_kit.py info; generic save-json example is Hyborian-shaped; agent persist uses `./tools/`; player-character.md overclaims validate_character race/class; empty race/class strings on non-dnd5e; save_character docstring still says D&D.
+
+### 2026-08-14T19:42:00Z — verified [gk-t8n2wp]
+Generic spine vs dnd5e branch in command+agent; Conan-live (no kit field) sheet without race/class validates; 10/10 fallback warns; Death Protocol SWAP is kit-aware; no ASCII mandate; gm-player banner kit-neutral. pytest kit_aware + kit_vitals + lean_core + character_schema + identity_onboarding: 73 passed.
+
 ## History
 
+- 2026-08-14T19:50:00Z  reviewed perfect → done  [gk-t8n2wp]
+- 2026-08-14T19:42:00Z  verified → in-review, review dispatched  [gk-t8n2wp]
+- 2026-08-14T19:36:00Z  doc-grounding confirmed — user pre-confirmed "do ALL of this now"; implementer dispatched  [gk-t8n2wp]
+- 2026-08-14T19:30:58Z  claimed; doc-grounding confirmed — user pre-confirmed "do ALL of this now"  [gk-t8n2wp]
 - 2026-08-14T18:52:00Z  parent → trust-the-agent  [gk-t8n2wp]
 - 2026-08-13T15:47:00Z  created → ready  [team-lead]
 - 2026-08-14T17:27:15Z  blockedBy trimmed — executable-world-kit + identity-onboarding-wiring are done  [gk-a8r14q]

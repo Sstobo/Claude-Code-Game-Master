@@ -226,3 +226,16 @@ def test_dnd5e_authored_hp_is_preserved_verbatim(dnd_world):
     sheet = _sheet(dnd_world)
     assert sheet["hp"] == {"current": 7, "max": 14}     # not the formula's 12/12
     assert sheet["saves"]["str"] == 5                   # 5e derivation still runs
+
+
+def test_non_dnd5e_missing_hp_warns_and_defaults_to_10(hyborian_world):
+    """Unauthored HP on a non-dnd5e kit persists 10/10 and names the fallback."""
+    payload = {k: v for k, v in CONAN.items() if k != "hp"}
+    r = _save(hyborian_world, payload)
+    assert r.returncode == 0, r.stdout + r.stderr
+    result = json.loads(r.stdout)
+    assert _sheet(hyborian_world)["hp"] == {"current": 10, "max": 10}
+    warnings = result["warnings"]
+    assert isinstance(warnings, list) and warnings
+    assert any("10/10" in w for w in warnings)
+    assert any("author" in w.lower() for w in warnings)
