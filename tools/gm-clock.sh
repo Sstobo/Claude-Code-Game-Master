@@ -2,7 +2,9 @@
 # gm-clock.sh - Threat clocks (thin wrapper for threat_clocks.py)
 #
 #   gm-clock.sh list                          Show all clocks
-#   gm-clock.sh add "Name" 6 [--on time|event]  New clock with N segments
+#   gm-clock.sh add "Name" 6 [--on time|event] [--consequence "..."] [--linked-plot "..."]
+#                                             New clock with N segments; the
+#                                             consequence fires into the world when it fills
 #   gm-clock.sh advance "Name" [--ticks 2]    Advance one clock by hand
 #   gm-clock.sh tick-time                     Advance all time-clocks (auto-run by gm-time.sh)
 #   gm-clock.sh beats                         Filled clocks = dramatic beats due

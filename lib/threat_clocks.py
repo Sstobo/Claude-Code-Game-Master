@@ -40,12 +40,43 @@ class ThreatClockManager(EntityManager):
         self.json_ops.save_json(self.clocks_file, data)
         return data[name]
 
+    def _fire_if_filled(self, name: str, clock: Dict[str, Any], was_full: bool) -> Optional[str]:
+        """Write a clock's stored consequence into the world as it FILLS.
+
+        A clock carried its `consequence` text only as a printed FULL flag, so a
+        countdown running out was a line the GM might notice rather than a beat
+        that arrived. Firing writes a PENDING consequence — it does not resolve
+        it or force the GM's hand, same as every other consequence.
+
+        Firing is the *transition* into full, which is what keeps it to once per
+        countdown without a flag to keep in sync: a clock that was already full
+        fires nothing, and one reset or extended back below full fires again the
+        next time it fills. Mutates `clock` (stamps `consequence_fired` as
+        provenance); the caller saves.
+        """
+        if was_full or int(clock.get("current", 0)) < int(clock.get("max", 1)):
+            return None
+        text = clock.get("consequence")
+        if not text:
+            return None
+        import contextlib
+        from consequence_manager import ConsequenceManager
+        # add_consequence announces itself on stdout; this one fires from inside
+        # advance/tick-time, whose --json output must stay parseable.
+        with contextlib.redirect_stdout(sys.stderr):
+            cid = ConsequenceManager(self._wsd).add_consequence(
+                f"[Clock — {name}] {text}", trigger=f"the {name} clock ran out")
+        clock["consequence_fired"] = cid
+        return cid
+
     def advance(self, name: str, ticks: int = 1) -> Optional[Dict[str, Any]]:
         data = self._load()
         c = data.get(name)
         if not c:
             return None
+        was_full = int(c.get("current", 0)) >= int(c.get("max", 1))
         c["current"] = min(c["max"], int(c.get("current", 0)) + int(ticks))
+        self._fire_if_filled(name, c, was_full)
         self.json_ops.save_json(self.clocks_file, data)
         return c
 
@@ -66,6 +97,7 @@ class ThreatClockManager(EntityManager):
             if cur >= mx:
                 continue
             c["current"] = min(mx, cur + int(ticks))
+            self._fire_if_filled(name, c, was_full=False)  # full clocks skipped above
             advanced[name] = c
         if advanced:
             self.json_ops.save_json(self.clocks_file, data)
@@ -127,6 +159,8 @@ def main():
     sub = parser.add_subparsers(dest="action")
     p = sub.add_parser("add"); p.add_argument("name"); p.add_argument("segments", type=int)
     p.add_argument("--on", default="time")
+    p.add_argument("--consequence", help="what happens when it fills (fired into the world)")
+    p.add_argument("--linked-plot", dest="linked_plot")
     p = sub.add_parser("advance"); p.add_argument("name"); p.add_argument("--ticks", type=int, default=1)
     p = sub.add_parser("tick-time"); p.add_argument("--ticks", type=int, default=1)
     p = sub.add_parser("remove"); p.add_argument("name")
@@ -144,7 +178,8 @@ def main():
 
     m = ThreatClockManager()
     if args.action == "add":
-        out = m.add_clock(args.name, args.segments, advance_on=args.on)
+        out = m.add_clock(args.name, args.segments, advance_on=args.on,
+                          consequence=args.consequence, linked_plot=args.linked_plot)
     elif args.action == "advance":
         out = m.advance(args.name, args.ticks)
     elif args.action == "tick-time":
