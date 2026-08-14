@@ -5,7 +5,7 @@ description: What an NPC carries beyond a description — inner life, canonical 
 sources:
   - { resource: /lib/npc_manager.py }
   - { resource: /lib/npc_stats.py }
-generated: { by: claude-fable-5, at: 2026-08-13T14:46:10Z }
+generated: { by: gk-a8r14q, at: 2026-08-14T18:00:37Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
 ---
 
@@ -43,8 +43,9 @@ The `secret` field is surfaced to the model as **existence only**: the session b
 
 ## Party members carry a second sheet, in a different shape
 
-`promote_to_party_member` sets `is_party_member` and attaches a `character_sheet`, filling
-from `PARTY_MEMBER_DEFAULTS` when the NPC has none. Note what this is **not**: it is a
+Promote copies existing combat stats into the party sheet when the NPC has them
+(the stat-npcs proxy or a monster-manual lookup); defaults apply only to a
+genuinely statless NPC, and the output says which. Note what this is **not**: it is a
 nested sheet on the NPC record, not the flat top-level shape the PC uses
 (see [player character](player-character.md)). The two never converge except in
 `gm-player.sh become`, which copies a party sheet into `character.json` and flattens it.

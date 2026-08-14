@@ -4,6 +4,7 @@ NPC management module for GM tools
 Handles NPC creation, updates, and tagging operations
 """
 
+import copy
 import sys
 from typing import Dict, List, Optional, Any
 from pathlib import Path
@@ -32,6 +33,36 @@ PARTY_MEMBER_DEFAULTS = {
     "conditions": [],
     "xp": 0
 }
+
+
+def _positive_int(value):
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return None
+    return n if n > 0 else None
+
+
+def _party_sheet_for_npc(npc: dict):
+    """First-time party sheet + source label. Copies hp/ac from npc.stats when real."""
+    sheet = copy.deepcopy(PARTY_MEMBER_DEFAULTS)
+    stats = npc.get("stats") if isinstance(npc.get("stats"), dict) else {}
+    hp = _positive_int(stats.get("hp"))
+    ac = _positive_int(stats.get("ac"))
+    if stats.get("statless") or (hp is None and ac is None):
+        return sheet, "defaults (NPC has no stats)"
+    if hp is not None:
+        sheet["hp"] = {"current": hp, "max": hp}
+    if ac is not None:
+        sheet["ac"] = ac
+    difficulty = stats.get("difficulty")
+    if difficulty:
+        source = f"from npc.stats (stat-npcs proxy, difficulty {difficulty})"
+    else:
+        source = "from npc.stats"
+    return sheet, source
 
 
 class NPCManager(EntityManager):
@@ -394,7 +425,9 @@ class NPCManager(EntityManager):
 
     def promote_to_party_member(self, name: str) -> bool:
         """
-        Promote an NPC to party member status with default character sheet.
+        Promote an NPC to party member status with a character sheet.
+        First-time promote copies existing npc.stats HP/AC when present;
+        genuinely statless NPCs get PARTY_MEMBER_DEFAULTS (disclosed in output).
         If NPC was previously a party member (demoted), restores existing stats.
         """
         valid, error = self.validators.validate_name(name)
@@ -428,19 +461,14 @@ class NPCManager(EntityManager):
                 print(f"[SUCCESS] {name} rejoined the party (HP: {hp['current']}/{hp['max']}, AC: {ac})")
                 return True
         else:
-            # Create new character sheet with defaults
-            npcs[name]['character_sheet'] = PARTY_MEMBER_DEFAULTS.copy()
-            # Deep copy nested structures
-            npcs[name]['character_sheet']['hp'] = PARTY_MEMBER_DEFAULTS['hp'].copy()
-            npcs[name]['character_sheet']['stats'] = PARTY_MEMBER_DEFAULTS['stats'].copy()
-            npcs[name]['character_sheet']['saves'] = PARTY_MEMBER_DEFAULTS['saves'].copy()
-            npcs[name]['character_sheet']['skills'] = PARTY_MEMBER_DEFAULTS['skills'].copy()
-            npcs[name]['character_sheet']['equipment'] = PARTY_MEMBER_DEFAULTS['equipment'].copy()
-            npcs[name]['character_sheet']['features'] = PARTY_MEMBER_DEFAULTS['features'].copy()
-            npcs[name]['character_sheet']['conditions'] = PARTY_MEMBER_DEFAULTS['conditions'].copy()
-
+            sheet, source = _party_sheet_for_npc(npcs[name])
+            npcs[name]['character_sheet'] = sheet
             if self._save_entities(self.npcs_file, npcs):
-                print(f"[SUCCESS] {name} is now a party member (HP: 10/10, AC: 10)")
+                hp = sheet['hp']
+                print(
+                    f"[SUCCESS] {name} is now a party member "
+                    f"(HP: {hp['current']}/{hp['max']}, AC: {sheet['ac']}) — {source}"
+                )
                 return True
 
         return False
