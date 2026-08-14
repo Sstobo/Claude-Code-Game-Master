@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T14:01:29Z  done: identity-onboarding-wiring — one question, three doors, wired  [fable-sott1]
 - 2026-08-14T13:54:32Z  done: campaign-path-exact-match — canonical-case resolution  [fable-sott1]
 - 2026-08-14T13:51:38Z  in-review: campaign-path-exact-match — verified, review dispatched  [fable-sott1]
 - 2026-08-14T13:51:05Z  in-review: identity-onboarding-wiring — verified, review dispatched  [fable-sott1]

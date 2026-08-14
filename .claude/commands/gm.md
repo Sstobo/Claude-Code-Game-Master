@@ -177,6 +177,36 @@ Jump directly to scene setting:
 
 ---
 
+## ENTERING A WORLD (identity-first — the default)
+
+A player arrives with an "I love this book" spike. Spending it on ability scores wastes it,
+so entry costs **one question**, not nine steps: *"Who are you in this world?"*
+
+Ask it in your own voice, in the world's tone, and offer three doors — someone from the
+book, someone of their own, or no one yet. Whatever they answer, persist it and start
+playing; mechanics are inferred silently and can be filled in later during play.
+
+```bash
+bash tools/gm-player.sh onboard canon "<NPC name>"                 # a character from the source
+bash tools/gm-player.sh onboard original "<name>" "<one-line concept>"
+bash tools/gm-player.sh onboard nameless                           # a nameless traveler
+```
+
+- **canon** lifts that NPC's sheet and canonical voice from `npcs.json` — offer names that
+  actually exist in this world (scene context and `gm-npc.sh` know who they are).
+- **original** takes a name and a single line ("a thief with a debt"). Don't interrogate.
+- **nameless** is a real answer, not a fallback — the world names them in play.
+
+`onboard` refuses to overwrite a campaign that already has a PC (it names who is sitting
+there). That refusal is a signal you asked the question at the wrong moment — check before
+you offer. If the player really is handing the story to someone new, add `--replace`, which
+archives the outgoing sheet to `fallen/` first.
+
+The full builder is the **opt-in deep dive**: if the player wants to roll stats, pick a
+class, and build a sheet properly, run `/create-character` instead. Offer it, never impose it.
+
+---
+
 ## CONTINUE CAMPAIGN
 
 ### 🔒 MANDATORY STARTUP CHECKLIST
@@ -189,6 +219,10 @@ bash tools/gm-session.sh start
 bash tools/gm-session.sh context
 ```
 This single command gives you: character stats, party members (with recent events), pending consequences, campaign rules, location, and time. Read and internalize ALL of it.
+
+**If there is no character yet** (no `character.json` / the context shows no active PC), don't
+narrate a scene into a void and don't launch the 9-step builder — go to ENTERING A WORLD
+below, ask the one question, then come back and finish the checklist.
 
 **⚠️ Campaign Rules:** If the context output shows campaign-specific rules, enforce them throughout the session just like core rules. Each campaign is different.
 
@@ -430,7 +464,9 @@ bash tools/gm-player.sh show
 ================================================================
 ```
 
-If no active character: "No active character. Create one with /create-character"
+If no active character: don't print a sheet — ask the one question (see ENTERING A WORLD)
+and route to `bash tools/gm-player.sh onboard canon|original|nameless ...`, mentioning
+`/create-character` as the opt-in full builder for players who want the deep dive.
 
 ---
 

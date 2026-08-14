@@ -4,9 +4,10 @@ title: Onboarding and the death hand-off
 description: How a player enters a world in one question, and how the story continues after the PC dies rather than ending.
 sources:
   - { resource: /lib/identity_onboarding.py }
+  - { resource: /tools/gm-player.sh }
   - { resource: /lib/player_manager.py }
   - { resource: /CLAUDE.md }
-generated: { by: claude-fable-5, at: 2026-08-13T14:16:30Z }
+generated: { by: claude-opus-5, at: 2026-08-14T13:57:39Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
@@ -18,23 +19,46 @@ dying costs one choice.
 
 ## Entry: three doors, one question
 
-"Who are you in this world?" dispatches to three builders
-(`lib/identity_onboarding.py:76`):
+"Who are you in this world?" is invoked as **`bash tools/gm-player.sh onboard <mode> [args]`**,
+which runs `IdentityOnboarding.onboard()` — guard, `build()`, save, and the wiring below,
+in one call (`lib/identity_onboarding.py:123`; builders at `:86`, save at `:93`, CLI at `:160`):
 
-| Mode | Player supplies | Where the sheet comes from |
+| Mode | Command | Where the sheet comes from |
 |---|---|---|
-| `canon` | an NPC name | that NPC's `character_sheet` if present, plus their `context` as `voice` |
-| `original` | a name + one-line concept | defaults; attributes left empty and inferred against the kit |
-| `nameless` | nothing | defaults, named "A nameless traveler" |
+| `canon` | `onboard canon "<NPC name>"` | that NPC's `character_sheet` if present, plus their `context` as `voice` |
+| `original` | `onboard original "<name>" "<one-line concept>"` | defaults; attributes left empty and inferred against the kit |
+| `nameless` | `onboard nameless` | defaults, named "A nameless traveler" |
+
+`--json` returns the standard envelope with the saved sheet's summary
+(name/race/class/level/hp/ac/stats/origin/concept/voice); a `canon` name that isn't in
+`npcs.json` is an error, not a silent empty character. The `canon` name is resolved
+**alias-aware** (`_find_entity_name`), so "mordecai" finds "Mordecai" and the canonical key
+becomes the PC's name.
+
+`onboard` wires the new PC in the same places [`become()`](#become-is-the-only-path-that-moves-a-sheet)
+does, and for the same reason — a sheet on disk that nothing else knows about is a
+half-swapped PC:
+
+- it **refuses to overwrite a sitting PC**; `--replace` is the explicit hand-off, and it
+  archives the outgoing sheet to `fallen/` before writing
+- it sets `current_character` on `campaign-overview.json`, which is what session start,
+  status, and world stats read
+- `canon` marks the source NPC `is_player_character` (plus `is_party_member: false` /
+  `became_pc: true`) so scene context stops voicing the PC as an NPC standing nearby, and
+  the lifted sheet is `status: alive` with no death stamp — the allow-list lift can't carry
+  `died_at` / `cause` across
 
 All three produce the **open** shape internally, and `save_character` persists
 `to_flat(char)`. The extra keys the builders add — `voice`, `origin`, `concept` — survive
 the flattening as top-level fields, which is why `origin: "canon"` is still readable on a
 live sheet. See [the player character sheet](../modules/player-character.md).
 
-The full 9-step builder still exists as `/create-character`; this replaces it as the
-*default*, not as the only path. The design bet: a player arrives with an "I love this
-book" spike, and spending it on ability scores wastes it.
+This is the *default* entry path, and the three prompt surfaces that reach it say so:
+`/gm`'s startup checklist and character display, `/import` Step 8, and `/new-game`'s
+Phase F hand-off all route the no-character moment here. The full 9-step builder still
+exists as `/create-character` — an opt-in deep dive, offered and never imposed. The design
+bet: a player arrives with an "I love this book" spike, and spending it on ability scores
+wastes it.
 
 `_default_vitals()` returns a **fresh nested dict every call** — an explicit fix for
 characters aliasing one another's HP, and the reason there's a regression test for it

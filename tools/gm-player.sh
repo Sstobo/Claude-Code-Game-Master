@@ -31,6 +31,20 @@ case "$ACTION" in
         $PYTHON_CMD "$PROJECT_ROOT/features/character-creation/save_character.py" "$CHARACTER_JSON"
         ;;
 
+    "onboard")
+        # Identity-first entry: one question, three doors. Default over /create-character.
+        if [ -z "$1" ]; then
+            echo "Usage: gm-player.sh onboard canon <npc_name>"
+            echo "       gm-player.sh onboard original <name> [\"one-line concept\"]"
+            echo "       gm-player.sh onboard nameless"
+            echo ""
+            echo "Refuses to overwrite an existing PC; add --replace to hand the story to"
+            echo "someone new (the outgoing sheet is archived to the campaign's fallen/)."
+            exit 1
+        fi
+        $PYTHON_CMD "$LIB_DIR/identity_onboarding.py" onboard "$@"
+        ;;
+
     "set")
         if [ -z "$1" ]; then
             echo "Usage: gm-player.sh set <character_name>"
@@ -190,6 +204,7 @@ case "$ACTION" in
         echo "  show [name] [--json]         - Show summary (or full record with --json)"
         echo "  get <name>                   - Get full character JSON"
         echo "  list                         - List all player IDs"
+        echo "  onboard <mode> [args]        - Identity-first entry (canon <npc> | original <name> [concept] | nameless; --replace to swap PCs)"
         echo "  set <name>                   - Set character as current active PC"
         echo "  xp <name> +<amount>          - Award XP to character"
         echo "  award [name] --tier T        - Spectacle XP for a clever/effective/unique/punishing beat (T=minor|major|legendary; --reason \"...\"; co-awards followers)"

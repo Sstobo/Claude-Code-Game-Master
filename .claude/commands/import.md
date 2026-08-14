@@ -677,18 +677,22 @@ feel true to the book.
 
 ---
 
-## Step 8: Transition to Character Creation
+## Step 8: Transition to the Player's Identity
 
-Display:
+The book IS their world now — all the NPCs, locations, items, and quests are ready to play.
+So don't hand them a 9-step character builder; hand them **one question**:
+*"Who are you in this world?"* — asked in the book's tone, with three doors:
 
-```
-The book IS your world - all the NPCs, locations, items, and
-quests from your adventure are now ready to play.
+- **someone from the book** → `bash tools/gm-player.sh onboard canon "<NPC name>"`
+  (name a few real figures the extraction found — the sheet and canonical voice come with them)
+- **someone of their own** → `bash tools/gm-player.sh onboard original "<name>" "<one-line concept>"`
+- **no one yet** → `bash tools/gm-player.sh onboard nameless`
 
-Now let's create your character for this adventure!
-```
+Persist their answer, then go straight into the opening scene. Mechanics are inferred
+silently against the imported World Kit and can be deepened during play.
 
-Then automatically run `/create-character` to guide the user through character creation.
+`/create-character` stays available as the **opt-in** full builder — offer it to a player who
+wants to roll a sheet properly, never impose it as the price of entry.
 
 ---
 

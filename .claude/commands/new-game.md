@@ -238,10 +238,19 @@ the arc's opening location is wrong) and append the world summary to
 opening hook `seed-opening` wrote. Then display a summary box and hand off:
 
 ```
-Your world awaits its hero! Now let's create your character...
+Your world awaits its hero. Who are you in this world?
 ```
 
-Run **`/create-character`**.
+Then ask that **one question** — identity first, mechanics later — and offer three doors:
+
+- **someone from this world** → `bash tools/gm-player.sh onboard canon "<NPC name>"`.
+  An original world's canon door draws from the NPCs the axis authors just wrote, so name a
+  few of them (their sheet and their canonical voice come along).
+- **someone of their own** → `bash tools/gm-player.sh onboard original "<name>" "<one-line concept>"`
+- **no one yet** → `bash tools/gm-player.sh onboard nameless`
+
+Persist the answer and open the scene. `/create-character` remains the **opt-in** full
+builder for a player who wants to roll a sheet properly — offer it, don't impose it.
 
 ---
 
@@ -258,7 +267,7 @@ Run **`/create-character`**.
 - [ ] `/world-check` passes
 - [ ] chronicler locked (`gm-image.sh chronicler`) — both the art **style** (starts "In the style of ...", a creative mashup) AND the art **narrator** (name + persona)
 - [ ] every notable NPC has a `visual_appearance` block (11 keys); PC gets one at `/create-character`
-- [ ] overview + session log set; handed off to `/create-character`
+- [ ] overview + session log set; handed off to the one question (`gm-player.sh onboard ...`)
 
 ## ERROR RECOVERY
 - Campaign exists → switch / rename / recreate.
