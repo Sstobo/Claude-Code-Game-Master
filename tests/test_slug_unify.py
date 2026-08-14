@@ -163,6 +163,19 @@ def test_new_slug_directory_wins_over_a_legacy_sibling(tmp_path):
     assert manager._resolve_name("Baldur's Gate") == "baldur-s-gate"
 
 
+@pytest.mark.parametrize("lookup", ["Keeper", "KEEPER", "keeper/"])
+def test_resolution_returns_the_canonical_on_disk_spelling(lookup, tmp_path):
+    """macOS matches case variants on the filesystem, so a plain is_dir() check
+    echoed "Keeper" back for the on-disk "keeper" — the wrong spelling then
+    reaches env vars and case-sensitive comparisons. A trailing slash echoed the
+    same way."""
+    world_state = tmp_path / "world-state"
+    manager = CampaignManager(str(world_state))
+    manager.create("Keeper", campaign_name="Keeper")
+
+    assert manager._resolve_name(lookup) == "keeper"
+
+
 def test_sanitize_name_does_not_stem_the_campaign_name(tmp_path):
     """A dotted campaign name keeps its suffix — stemming split it into two dirs."""
     extractor = AgentExtractor(str(tmp_path / "world-state"))

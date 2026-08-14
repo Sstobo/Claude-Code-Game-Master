@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T13:54:32Z  done: campaign-path-exact-match — canonical-case resolution  [fable-sott1]
+- 2026-08-14T13:51:38Z  in-review: campaign-path-exact-match — verified, review dispatched  [fable-sott1]
+- 2026-08-14T13:51:05Z  in-review: identity-onboarding-wiring — verified, review dispatched  [fable-sott1]
 - 2026-08-14T13:41:15Z  done: live-state-test-stragglers — fixture-corruption class closed  [fable-sott1]
 - 2026-08-14T13:38:59Z  done: new-game-parity — authored worlds open alive; reconciler advisories ticketed  [fable-sott1]
 - 2026-08-14T13:32:47Z  in-review: new-game-parity — verified, review dispatched  [fable-sott1]

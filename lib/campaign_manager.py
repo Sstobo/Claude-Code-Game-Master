@@ -78,21 +78,28 @@ class CampaignManager:
         caller that joins the result back onto campaigns/ (gm-extract.sh clean
         rm -rf's it) would then delete outside the campaign tree entirely.
         _slugify used to make that impossible by stripping slashes and dots;
-        resolving real folder names has to refuse it explicitly."""
-        candidate = campaigns_dir / name
-        if candidate.is_dir() and candidate.resolve().parent == campaigns_dir.resolve():
+        resolving real folder names has to refuse it explicitly.
+
+        Matching runs against the real directory listing rather than is_dir():
+        on a case-insensitive filesystem (macOS) is_dir() says yes to "Conan"
+        when only "conan" exists, and that wrong spelling then leaks into env
+        vars and case-sensitive comparisons. Case variants fall through to the
+        slug branch, which lowercases, and land on the canonical folder."""
+        name = name.rstrip("/")
+        listing = sorted(p.name for p in campaigns_dir.iterdir() if p.is_dir()) \
+            if campaigns_dir.is_dir() else []
+        if name in listing and (campaigns_dir / name).resolve().parent == campaigns_dir.resolve():
             return name
         slug = cls._slugify(name)
-        if (campaigns_dir / slug).is_dir():
+        if slug in listing:
             return slug
         # Folders created under the OLD slug rule kept apostrophes, dots and
         # underscores ("baldur's-gate"), so the current rule no longer points at
         # them and a real campaign reads as "does not exist". Match by comparing
         # slugified folder names — resolves legacy dirs without renaming on disk.
-        if campaigns_dir.is_dir():
-            for existing in sorted(campaigns_dir.iterdir()):
-                if existing.is_dir() and cls._slugify(existing.name) == slug:
-                    return existing.name
+        for existing in listing:
+            if cls._slugify(existing) == slug:
+                return existing
         return slug
 
     def _resolve_name(self, name: str) -> str:
