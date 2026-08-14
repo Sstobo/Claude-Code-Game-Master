@@ -105,10 +105,15 @@ else
     CHARACTER_FILE=""
 fi
 
-# Helper to check if campaign is active and exit with error if not
+# Helper to check if campaign is active and exit with error if not.
+# Campaigns can exist on disk with none selected, so the failure names both
+# repair paths (activate an existing one / start a fresh adventure).
 require_active_campaign() {
     if [ -z "$WORLD_STATE_DIR" ]; then
-        error "No active campaign. Run /new-game or /import first."
+        error "No active campaign. This command needs one."
+        echo "  Campaigns on disk:  bash tools/gm-campaign.sh list" >&2
+        echo "  Activate one:       bash tools/gm-campaign.sh switch <name>" >&2
+        echo "  Or start fresh:     /gm (new adventure) — /new-game or /import" >&2
         exit 1
     fi
 }

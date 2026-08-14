@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-14T15:43:25Z  done: guard-consolidation — one guard, honest routing  [fable-sott1]
 - 2026-08-14T15:23:49Z  done: prepare-anchor-fallback — two anchors, real pin, clean live tree  [fable-sott1]
 - 2026-08-14T15:22:26Z  in-review: guard-consolidation — verified, review dispatched  [fable-sott1]
 - 2026-08-14T14:59:33Z  in-review: prepare-anchor-fallback — verified, review dispatched  [fable-sott1]

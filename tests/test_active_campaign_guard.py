@@ -56,7 +56,8 @@ def test_state_verb_refuses_without_active_campaign(no_active_campaign, argv):
     result = _run(*argv)
     output = result.stdout + result.stderr
     assert result.returncode != 0, f"{argv} succeeded without a campaign: {output}"
-    assert "No active campaign" in output
+    assert "No active campaign. This command needs one." in output
+    assert "gm-campaign.sh list" in output
     assert "gm-campaign.sh switch" in output
 
 
@@ -89,6 +90,77 @@ def test_worldgen_guards_flag_only_invocation(no_active_campaign):
     assert result.returncode != 0
     assert "No active campaign" in output
     assert "Traceback" not in output
+
+
+def test_worldgen_named_campaign_skips_the_guard(no_active_campaign):
+    """The fan-out names its campaign before activating it — that must still run."""
+    result = _run("tools/gm-worldgen.sh", "consolidate", "some-campaign")
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    assert "No active campaign" not in output
+
+
+def test_worldgen_named_campaign_after_a_flag_skips_the_guard(no_active_campaign):
+    """The escape hatch is flag-order-insensitive: a name anywhere counts."""
+    result = _run("tools/gm-worldgen.sh", "consolidate", "--json", "some-campaign")
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    assert "No active campaign" not in output
+
+
+def test_session_help_needs_no_campaign(no_active_campaign):
+    result = _run("tools/gm-session.sh", "--help")
+    assert result.returncode == 0
+    assert "Usage:" in result.stdout
+
+
+def test_session_typo_reports_the_typo_not_the_campaign(no_active_campaign):
+    """A mistyped verb is a typo first — the guard must not shadow it."""
+    result = _run("tools/gm-session.sh", "contxt")
+    output = result.stdout + result.stderr
+    assert result.returncode != 0
+    assert "Unknown action" in output
+    assert "No active campaign" not in output
+
+
+def test_session_unknown_action_names_every_dispatched_verb(no_active_campaign):
+    """The guard's verb list and the message a typo gets are one variable, and
+    every verb in it has a branch to reach — an omission here is how a real verb
+    starts reporting itself as unknown."""
+    script = (PROJECT_ROOT / "tools" / "gm-session.sh").read_text()
+    declared = script.split('VALID_ACTIONS="', 1)[1].split('"', 1)[0].split()
+    assert declared, "VALID_ACTIONS no longer parses"
+
+    output = _run("tools/gm-session.sh", "contxt").stdout
+    for verb in declared:
+        assert verb in output, f"{verb} missing from the unknown-action message"
+        assert f"\n    {verb})" in script, f"{verb} has no case branch"
+
+
+def test_worldgen_guard_names_the_escape_hatch(no_active_campaign):
+    """Naming a campaign is a fix here, so the failure has to mention it."""
+    result = _run("tools/gm-worldgen.sh", "consolidate")
+    output = result.stdout + result.stderr
+    assert "No active campaign" in output
+    assert "<command> <campaign>" in output
+
+
+def test_no_wrapper_local_guard_copies_remain():
+    """The guard lives in common.sh only — wrapper-local copies drift out of sync
+    with it, which is how the stale "/new-game or /import" wording survived.
+
+    gm-extract.sh is exempt: its require_campaign is a name RESOLVER (it echoes
+    the campaign an explicit argument or the active pointer names), not a copy of
+    this guard.
+    """
+    result = subprocess.run(
+        ["bash", "-c", 'grep -l "^require_campaign()" tools/*.sh || true'],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    offenders = [f for f in result.stdout.split() if f != "tools/gm-extract.sh"]
+    assert offenders == [], f"wrapper-local guard copies left: {offenders}"
 
 
 def test_the_guarded_run_stays_inside_tmp_path(no_active_campaign):

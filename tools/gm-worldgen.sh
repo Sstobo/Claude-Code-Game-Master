@@ -13,16 +13,23 @@
 set -e
 source "$(dirname "$0")/common.sh"
 
-# Loud, actionable failure for verbs that read campaign state. common.sh's
-# require_active_campaign exits before we could append the "how do I fix it"
-# lines, so the guidance lives here.
-require_campaign() {
-    if [ -z "$WORLD_STATE_DIR" ]; then
-        error "No active campaign, and no campaign name given."
-        echo "  Name one explicitly:  $0 <command> <campaign>" >&2
-        echo "  Campaigns on disk:    bash tools/gm-campaign.sh list" >&2
-        echo "  Activate one:         bash tools/gm-campaign.sh switch <name>" >&2
-        echo "  Or run /gm to start a New Adventure." >&2
+# These verbs run during world creation, before the campaign is activated, so an
+# explicitly named campaign is enough — it may sit anywhere among the flags.
+# Only a call with no name at all needs an active campaign.
+require_campaign_unless_named() {
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            ""|--*) ;;
+            *) return 0 ;;
+        esac
+    done
+    # This is the one wrapper where naming a campaign is itself a fix, so the
+    # shared guard's repair list gets a third entry. It runs in a subshell
+    # because require_active_campaign exits — the subshell absorbs that, leaving
+    # the hint under the other two lines instead of dangling above the headline.
+    if ! ( require_active_campaign ); then
+        echo "  Or name it here:    bash tools/gm-worldgen.sh <command> <campaign>" >&2
         exit 1
     fi
 }
@@ -51,13 +58,12 @@ EOF
 case "$1" in
     consolidate)
         shift
-        # An explicit campaign name works pre-activation; otherwise we need an active one.
-        case "${1:-}" in ""|--*) require_campaign ;; esac
+        require_campaign_unless_named "$@"
         $PYTHON_CMD "$LIB_DIR/world_author.py" consolidate "$@"
         ;;
     compile-canon)
         shift
-        case "${1:-}" in ""|--*) require_campaign ;; esac
+        require_campaign_unless_named "$@"
         $PYTHON_CMD "$LIB_DIR/world_author.py" compile-canon "$@"
         ;;
     -h|--help|help|"")

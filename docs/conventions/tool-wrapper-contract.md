@@ -10,7 +10,7 @@ sources:
   - { resource: /lib/agent_extractor.py }
   - { resource: /lib/json_ops.py }
   - { resource: /tests/test_json_wrappers_player.py }
-generated: { by: claude-opus-5, at: 2026-08-14T15:13:46Z }
+generated: { by: claude-fable-5, at: 2026-08-14T15:43:25Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:46Z }
 ---
 
@@ -61,7 +61,15 @@ Every wrapper sources it, and inherits:
   `clock_seed.py`) or a `$CAMPAIGN_DIR` built from it.
 - **`require_active_campaign`** — multi-campaign support is a single file,
   `world-state/active-campaign.txt`. Every tool reads it; nothing takes a campaign
-  argument by default.
+  argument by default. It is the ONLY campaign guard (`gm-extract.sh`'s `require_campaign`
+  is a name *resolver* — explicit-arg-else-active — not a guard copy): wrapper-local copies drift out of
+  sync with it (three once did, and kept telling the player to run `/new-game` when the
+  real fix was `gm-campaign.sh switch`), so the failure text lives in `common.sh` and names
+  both repairs — activate a campaign on disk, or start a fresh adventure. A wrapper adds
+  only its own routing around the call: usage and mistyped verbs answer BEFORE the guard so
+  a typo reports itself as a typo (`gm-session.sh`), and a verb that legitimately runs
+  pre-activation takes an explicit campaign name in any argument position instead
+  (`gm-worldgen.sh`).
 
 ## The `--json` envelope is the machine contract
 

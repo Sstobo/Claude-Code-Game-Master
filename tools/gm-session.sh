@@ -3,20 +3,7 @@
 
 source "$(dirname "$0")/common.sh"
 
-# Loud, actionable failure for verbs that read campaign state. common.sh's
-# require_active_campaign exits before we could append the "how do I fix it"
-# lines, so the guidance lives here.
-require_campaign() {
-    if [ -z "$WORLD_STATE_DIR" ]; then
-        error "No active campaign. This command needs one."
-        echo "  Campaigns on disk:  bash tools/gm-campaign.sh list" >&2
-        echo "  Activate one:       bash tools/gm-campaign.sh switch <name>" >&2
-        echo "  Or run /gm to start a New Adventure." >&2
-        exit 1
-    fi
-}
-
-if [ "$#" -lt 1 ]; then
+show_usage() {
     echo "Usage: gm-session.sh <action> [args]"
     echo ""
     echo "Session Actions:"
@@ -43,14 +30,44 @@ if [ "$#" -lt 1 ]; then
     echo "  gm-session.sh save \"before-boss-fight\""
     echo "  gm-session.sh restore 20250127-before-boss-fight"
     echo "  gm-session.sh context"
+}
+
+if [ "$#" -lt 1 ]; then
+    show_usage
     exit 1
 fi
 
 ACTION="$1"
 shift
 
-# Every action below reads or writes campaign state.
-require_campaign
+# Every action the case below handles, in one place: the guard and the
+# unknown-action message both read this, so they cannot drift apart.
+VALID_ACTIONS="start end status move context choices world-tick world-tick-rollback world-tick-log save restore list-saves delete-save history"
+
+is_valid_action() {
+    local valid
+    for valid in $VALID_ACTIONS; do
+        [ "$valid" = "$ACTION" ] && return 0
+    done
+    return 1
+}
+
+# Usage and a mistyped verb are answered before the guard — a typo should report
+# itself as a typo, not as a missing campaign. Everything else reads state.
+case "$ACTION" in
+    help|--help|-h)
+        show_usage
+        exit 0
+        ;;
+esac
+
+if is_valid_action; then
+    require_active_campaign
+else
+    echo "Unknown action: $ACTION"
+    echo "Valid actions: $VALID_ACTIONS"
+    exit 1
+fi
 
 case "$ACTION" in
     start)
@@ -242,12 +259,6 @@ case "$ACTION" in
 
     choices)
         $PYTHON_CMD "$LIB_DIR/session_manager.py" choices "$@"
-        ;;
-
-    *)
-        echo "Unknown action: $ACTION"
-        echo "Valid actions: start, end, status, move, context, choices, save, restore, list-saves, delete-save, history"
-        exit 1
         ;;
 esac
 

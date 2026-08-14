@@ -4,19 +4,6 @@
 
 source "$(dirname "$0")/common.sh"
 
-# Loud, actionable failure for verbs that read campaign state. common.sh's
-# require_active_campaign exits before we could append the "how do I fix it"
-# lines, so the guidance lives here.
-require_campaign() {
-    if [ -z "$WORLD_STATE_DIR" ]; then
-        error "No active campaign. This command needs one."
-        echo "  Campaigns on disk:  bash tools/gm-campaign.sh list" >&2
-        echo "  Activate one:       bash tools/gm-campaign.sh switch <name>" >&2
-        echo "  Or run /gm to start a New Adventure." >&2
-        exit 1
-    fi
-}
-
 show_usage() {
     echo "Usage: gm-enhance.sh <command> [args]"
     echo ""
@@ -64,7 +51,7 @@ shift
 # Every command below queries campaign state; only help runs without a campaign.
 case "$COMMAND" in
     help|--help|-h) ;;
-    *) require_campaign ;;
+    *) require_active_campaign ;;
 esac
 
 case "$COMMAND" in
