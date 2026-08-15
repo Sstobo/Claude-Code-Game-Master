@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-15T16:03:00Z  done: entity-dedupe-materialize — bidirectional alias merge on materialize; over-merge caught+fixed in review (2 rounds)  [ss-rt14b]
+- 2026-08-15T15:58:30Z  in-review: entity-anchored-memory — facts naming a present NPC surface under them (read-time), 4 tests green, review dispatched  [ss-rt14b]
+- 2026-08-15T15:55:00Z  in-review: entity-dedupe-materialize — bidirectional alias merge on materialize, 53 tests green, review dispatched  [ss-rt14b]
 - 2026-08-15T15:53:30Z  done: world-index-schema-context — chapters→index schema + WORLD INDEX in scene context, review perfect  [ss-rt14b]
 - 2026-08-15T15:52:00Z  done: system-primitives-lib — 4 core signature-system primitives, review perfect  [ss-rt14b]
 - 2026-08-15T15:48:52Z  in-review: system-primitives-lib — 4 core primitives, self-check green, review dispatched  [ss-rt14b]

@@ -10,8 +10,13 @@ parentheticals, drop punctuation, strip leading honorifics). `resolve_entity_nam
 matches a query against a set of entity keys in increasing looseness: exact ->
 case-fold -> explicit aliases -> normalized equality. `reuse_existing_key()` is the
 import-time variant: resolve, then the longest existing key whose normalized name
-is a token-prefix of the query (descriptive phrasings). Used by entity_manager at
-runtime and by the import integrity gate / connection normalizer at extract time.
+is a token-prefix of the query (long descriptive query -> short existing key).
+`resolve_or_merge_key()` is the bidirectional sibling: it matches that same
+direction AND the reverse — a short query whose normalized name is a token-prefix
+of a longer existing key (materializing a proper name onto a descriptive stub) —
+so the play-pack stub and its later materialize collapse to one identity. Used by
+entity_manager at runtime and by the import integrity gate / connection normalizer
+at extract time.
 """
 
 import re
@@ -120,3 +125,56 @@ def reuse_existing_key(query, entities, aliases_key="aliases"):
             if len(k_norm) > best_len:
                 best, best_len = k, len(k_norm)
     return best
+
+
+def resolve_or_merge_key(query, entities, aliases_key="aliases"):
+    """Bidirectional canonical key for a materialize/import reference, or None.
+
+    `resolve_entity_name` first (exact -> case -> aliases -> normalized equality).
+    Failing that, a token-prefix match in EITHER direction:
+
+    - **descriptive query -> short key** (the `reuse_existing_key` direction): an
+      existing key whose normalized name is a token-prefix of the query. The
+      longest such key wins.
+    - **short query -> long descriptive key** (the play-pack materialize
+      direction): the query's normalized name as a token-prefix of an existing
+      key, e.g. "Aratus" attaching to an "Aratus the Kothian (...)" stub. The
+      shortest such key wins.
+
+    When both directions could match, the descriptive->short direction is
+    preferred, so a pair always merges onto one deterministic key. Token
+    boundaries are respected (a trailing space), so "Ara" never prefixes
+    "Aratus". Returns the actual key, or None.
+
+    CAUTION: the short->long (reverse) direction is deliberately permissive — it
+    cannot tell an epithet suffix ("the Kothian") from a surname ("Baksh"), so it
+    will report a longer key that merely shares a first name. Callers that MERGE on
+    the result must gate the reverse case against the entity data (is the longer
+    record a stub / epithet?) before collapsing two records; see
+    `play_pack._merge_is_safe`. This function only proposes a candidate key.
+    """
+    key = resolve_entity_name(query, entities, aliases_key)
+    if key:
+        return key
+    q_norm = normalize_entity_name(query)
+    if not q_norm:
+        return None
+    keys = list(entities.keys()) if isinstance(entities, dict) else list(entities)
+
+    best_desc, best_desc_len = None, 0   # existing key is a prefix of the query
+    short_matches = []                   # query is a prefix of the existing key
+    for k in keys:
+        k_norm = normalize_entity_name(k)
+        if not k_norm:
+            continue
+        if q_norm == k_norm or q_norm.startswith(k_norm + " "):
+            if len(k_norm) > best_desc_len:
+                best_desc, best_desc_len = k, len(k_norm)
+        elif k_norm.startswith(q_norm + " "):
+            short_matches.append((len(k_norm), k))
+    if best_desc:
+        return best_desc
+    if short_matches:
+        short_matches.sort()  # shortest normalized key, then key string — deterministic
+        return short_matches[0][1]
+    return None

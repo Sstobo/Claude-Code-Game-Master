@@ -14,6 +14,12 @@ from typing import Any, Dict, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from entity_aliases import (
+    normalize_entity_name,
+    resolve_entity_name,
+    resolve_or_merge_key,
+)
+
 PACK_KEYS = (
     "whose_story",
     "room",
@@ -157,6 +163,101 @@ def _connect(locations: dict, a: str, b: str, via: str) -> None:
             conns.append({"to": dst, "path": via})
 
 
+def _is_stub_desc(desc: str) -> bool:
+    """True for the placeholder blurbs stage/from-book write when nothing richer exists."""
+    d = (desc or "").strip()
+    return (not d) or d.startswith("Present in ") or d.startswith("Named in the book")
+
+
+# Tokens that, leading the suffix of a longer key, mark it as an epithet phrasing
+# ("Aratus the Kothian", "Conan of Cimmeria") rather than a fuller proper name.
+_EPITHET_CONNECTIVES = {"the", "of", "a", "an"}
+
+
+def _long_key_is_epithet(query: str, long_key: str) -> bool:
+    """The extra tokens of `long_key` beyond `query` read as an EPITHET, not a name.
+
+    True when the longer key carries a parenthetical ("Aratus the Kothian (...)") or
+    its tokens after the shared prefix begin with a connective/title word ("the
+    Kothian", "of Aquilonia"). A plain surname suffix ("Baksh") names a DIFFERENT
+    person, so it is not an epithet.
+    """
+    if "(" in (long_key or ""):
+        return True
+    q_norm = normalize_entity_name(query)
+    k_norm = normalize_entity_name(long_key)
+    if not (q_norm and k_norm.startswith(q_norm + " ")):
+        return False
+    rest = k_norm[len(q_norm) + 1:].split()
+    return bool(rest) and rest[0] in _EPITHET_CONNECTIVES
+
+
+def _merge_is_safe(query: str, merge_key: str, npcs: dict) -> bool:
+    """Whether folding `query` into the existing `merge_key` record may proceed.
+
+    Forward matches (a descriptive query attaching to a shorter existing key) are
+    always safe. A REVERSE match (a short proper name landing on a LONGER existing
+    key) collapses the two only when the longer key's extra tokens read as an
+    EPITHET — the existing record is a play-pack stub, or the key is epithet
+    phrasing. A short name onto a fleshed, DISTINCT longer-named NPC (a surname
+    suffix like "Baksh") is refused, so that record is never deleted, re-keyed,
+    renamed, or demoted — the short name becomes its own new record instead.
+    """
+    q_norm = normalize_entity_name(query)
+    k_norm = normalize_entity_name(merge_key)
+    reverse = bool(q_norm) and k_norm.startswith(q_norm + " ")
+    if not reverse:
+        return True
+    record = npcs.get(merge_key) or {}
+    return _is_stub_desc(record.get("description")) or _long_key_is_epithet(query, merge_key)
+
+
+def _canonical_survivor(key_a: str, key_b: str) -> tuple[str, str]:
+    """(survivor, alias) — the shorter proper name survives, the other becomes an alias.
+
+    "Aratus" beats "Aratus the Kothian (...)": fewer normalized tokens / shorter
+    string is the canonical proper name. Deterministic regardless of argument order.
+    """
+    na, nb = normalize_entity_name(key_a), normalize_entity_name(key_b)
+    if (len(na), len(key_a)) <= (len(nb), len(key_b)):
+        return key_a, key_b
+    return key_b, key_a
+
+
+def _merge_npc(npcs: dict, existing_key: str, incoming_name: str,
+               blurb: str, attitude: str, add_location: str = "") -> str:
+    """Fold a reference into an existing NPC record as ONE identity. Returns the key kept.
+
+    Keeps the shorter proper name as the surviving key, records the other spelling in
+    `aliases`, and preserves the existing record's `tags.locations`, `events`, and a
+    richer `description` (a real description is never clobbered by a stub blurb).
+    """
+    record = dict(npcs.get(existing_key) or {})
+    survivor, _ = _canonical_survivor(existing_key, incoming_name)
+    if existing_key in npcs and existing_key != survivor:
+        del npcs[existing_key]
+    record["name"] = survivor
+
+    aliases = list(record.get("aliases") or [])
+    for form in (existing_key, incoming_name):
+        if form and form != survivor and form not in aliases:
+            aliases.append(form)
+    if aliases:
+        record["aliases"] = aliases
+
+    if _is_stub_desc(record.get("description")) and blurb and not _is_stub_desc(blurb):
+        record["description"] = blurb
+    record.setdefault("attitude", attitude or "neutral")
+
+    tags = record.setdefault("tags", {"locations": [], "quests": []})
+    locs = tags.setdefault("locations", [])
+    if add_location and add_location not in locs:
+        locs.append(add_location)
+
+    npcs[survivor] = record
+    return survivor
+
+
 def apply_stage(campaign_dir, world_state_dir: Optional[str] = None) -> Dict[str, Any]:
     """Persist the pack's room, exits, and present NPCs into the journal."""
     cdir = Path(campaign_dir)
@@ -179,7 +280,8 @@ def apply_stage(campaign_dir, world_state_dir: Optional[str] = None) -> Dict[str
         _connect(locations, pack["room"], exit_name, "visible from here")
 
     for name in pack["present"]:
-        if name not in npcs:
+        existing = resolve_or_merge_key(name, npcs)
+        if existing is None or not _merge_is_safe(name, existing, npcs):
             npcs[name] = {
                 "name": name,
                 "description": f"Present in {pack['room']}.",
@@ -188,10 +290,12 @@ def apply_stage(campaign_dir, world_state_dir: Optional[str] = None) -> Dict[str
             }
             created["npcs"].append(name)
         else:
-            tags = npcs[name].setdefault("tags", {})
-            locs = tags.setdefault("locations", [])
-            if pack["room"] not in locs:
-                locs.append(pack["room"])
+            # An earlier stub or materialize already names this person — attach the
+            # room to that one record (re-keying to the shorter proper name) instead
+            # of minting a descriptive near-duplicate. Guarded so a short present
+            # entry never collapses onto a fleshed, distinct longer-named NPC.
+            _merge_npc(npcs, existing, name, blurb="", attitude="",
+                       add_location=pack["room"])
 
     _save_json(cdir, "locations.json", locations)
     _save_json(cdir, "npcs.json", npcs)
@@ -229,8 +333,19 @@ def from_book(
         return {"ok": True, "kind": "location", "name": name}
 
     npcs = _load_json(cdir, "npcs.json")
-    if name in npcs:
+    # Same identity already on file (exact / case / alias / normalized-equal) → no dup.
+    if resolve_entity_name(name, npcs) is not None:
         return {"ok": False, "error": f"npc '{name}' already exists", "kind": "npc"}
+    # A descriptive stub (or vice-versa) names this same person under a token-prefix
+    # key → merge into that ONE record under the canonical short proper name. The
+    # reverse direction (this short name onto a LONGER existing key) is gated: it
+    # only collapses onto a stub/epithet, never onto a fleshed, distinct NPC that
+    # merely shares a first name ("Aram" must not eat "Aram Baksh").
+    merge_key = resolve_or_merge_key(name, npcs)
+    if merge_key is not None and _merge_is_safe(name, merge_key, npcs):
+        survivor = _merge_npc(npcs, merge_key, name, blurb, attitude)
+        _save_json(cdir, "npcs.json", npcs)
+        return {"ok": True, "kind": "npc", "name": survivor}
     npcs[name] = {
         "name": name,
         "description": blurb,
