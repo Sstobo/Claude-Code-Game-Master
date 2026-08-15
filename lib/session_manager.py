@@ -655,12 +655,21 @@ class SessionManager(EntityManager):
                          "clear beat at a time; don't fast-forward past a choice.")
 
         if self.get_preferences().get("player_rolls", False):
-            lines.append("Dice: PLAYER ROLLS. Never roll for the player. When a check is "
-                         "needed, stop the narration at the decision point, name the check "
-                         "and its DC, then offer exactly: '1. Roll' / '2. Don't roll (accept "
-                         "what comes)'. On 1, the player's roll decides; on 2, the failure "
-                         "cost you already decided lands directly — declining the roll is "
-                         "ACCEPTING the cost, never dodging it. GM still rolls hidden/NPC dice.")
+            lines.append("Dice: PLAYER CHOOSES THE ROLL. When a check is needed, STOP at the "
+                         "decision point and present it as a menu:\n"
+                         "  1. Roll a <Stat> check with <+X stat / +Y other> bonuses. "
+                         "Target of <Z> or higher.\n"
+                         "  Or something else... (a different action — which may itself "
+                         "demand its own roll, and that is fine).\n"
+                         "Spell out the stat, every bonus, and the target DC. The player's "
+                         "choice is to COMMIT to the roll (or pick something else) — do NOT "
+                         "ask them to report a number. Once they commit: (1) narrate the "
+                         "START of the attempt (a sentence or two, no outcome yet), (2) run "
+                         "the dice tool `uv run python lib/dice.py \"1d20+<total bonus>\"` and "
+                         "show the result line CLEARLY, (3) narrate what happens as a result — "
+                         "true to the roll (nat 20 fantastic, nat 1 horrible, meet/beat the "
+                         "target = success, below = failure with a real cost). GM still rolls "
+                         "hidden/NPC dice the same way.")
 
         # Informing, not adjudicating — caps and judgment live in skills / gm-craft.
         lines.append("Failure: failure should cost something; decide the stake before the roll.")

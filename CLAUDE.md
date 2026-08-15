@@ -63,11 +63,35 @@ a Dune import ships its own combat/progression, not 5e. Resolution + harm +
 conditions + the three progression models live in `lib/game_core.py`.
 
 ## Dice
+**ROLL FOR ANYTHING THAT CAN FAIL.** If an action has a variable or failable
+outcome — a shove, a leap, a lie, a lock, a strike, a stealthy step, anything
+where a competent person could still come up short — you MUST roll before you
+narrate the result. Do not decide the outcome yourself and do not auto-succeed
+because it fits the source or flatters the player. Only skip the roll when the
+outcome is genuinely certain (trivial, or literally impossible).
+- **How:** pick the governing stat, set a DC by difficulty (easy 10 · moderate
+  15 · hard 20 · brutal 25), roll `d20 + stat mod + any relevant bonus`
+  (proficiency, gear, advantage from good positioning/flavor), compare to DC.
+- **Nat 20 = fantastic success** (more than they hoped — a bonus, a flourish, a
+  window opens). **Nat 1 = horrible failure** (it goes wrong in a way that costs
+  them — even a strong character fumbles). These override the raw total.
+- **Be true to the roll.** A failure means it failed; narrate the real
+  consequence (fail forward — the situation changes, sometimes for the worse,
+  sometimes to death per Stakes & Death). Never quietly fudge a bad roll into a
+  good outcome. The dice are why the world feels real.
+- Show the math in narration: `🎲 STR check: 14 + 3 = 17 vs DC 15 — ✓`.
+
 `uv run python lib/dice.py "[notation]"` — `1d20+5`, `2d20kh1+3` (advantage),
 `2d20kl1` (disadvantage), `3d6`. One roll per command. Never inline dice.
-**Player-rolls mode:** scene context reports it. When ON, don't roll for the PC —
-name the check + DC, offer Roll / Don't-roll (declining accepts the cost), let the
-player's reported number decide; you still roll hidden/NPC dice. Player toggles
+**Player-rolls mode:** scene context reports it. When ON, the player CHOOSES the
+roll; you still run the dice. Stop at the decision point and present it as a menu:
+  1. Roll a <Stat> check with <+X stat / +Y other> bonuses. Target of <Z> or higher.
+  Or something else... (a different action — which may itself demand its own roll).
+Spell out the stat, every applicable bonus, and the target DC. Do NOT ask the player
+to report a number — their choice is to COMMIT to the roll. Once they do: (1) narrate
+the START of the attempt, (2) run `uv run python lib/dice.py "1d20+<total>"` and show
+the result line clearly, (3) narrate the outcome true to the roll (nat 20 fantastic,
+nat 1 horrible, meet/beat target = success). You roll hidden/NPC dice the same way. Player toggles
 anytime via `bash tools/gm-session.sh dice on|off|toggle` or natural language
 ("let me roll my own dice" / "you roll for me") — persist the change, then continue.
 

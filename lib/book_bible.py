@@ -174,10 +174,14 @@ def draft_bible(campaign_dir, name: str = None, voice: Dict[str, Any] = None,
         raise ConfirmedBibleError(
             f"world-bible.json in {campaign_dir} is confirmed — refusing to redraft it")
 
-    src_path = cdir / "current-document.txt"
+    src_path = cdir / "source" / "current-document.txt"
     if not src_path.exists():
-        raise FileNotFoundError(
-            f"no current-document.txt in {campaign_dir} — run `gm-extract.sh prepare` first")
+        legacy = cdir / "current-document.txt"  # pre-source/ campaigns
+        if legacy.exists():
+            src_path = legacy
+        else:
+            raise FileNotFoundError(
+                f"no source/current-document.txt in {campaign_dir} — run `gm-extract.sh prepare` first")
     source = src_path.read_text(encoding="utf-8", errors="replace")
     log_token_estimate(source, label="draft-bible")
 

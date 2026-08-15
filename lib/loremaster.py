@@ -31,7 +31,7 @@ class Loremaster(EntityManager):
             self.index.build(text)
 
     def _load_book_text(self) -> str:
-        for candidate in ("current-document.txt", "book-text.txt"):
+        for candidate in ("source/current-document.txt", "current-document.txt", "book-text.txt"):
             p = self.campaign_dir / candidate
             if p.exists():
                 try:

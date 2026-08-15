@@ -146,7 +146,9 @@ class AgentExtractor:
         from lib.content_extractor import ContentExtractor
         extractor = ContentExtractor()
         full_text = extractor.extract_text(filepath)
-        (self.extraction_dir / "current-document.txt").write_text(full_text)
+        source_dir = self.extraction_dir / "source"
+        source_dir.mkdir(exist_ok=True)
+        (source_dir / "current-document.txt").write_text(full_text)
 
         # Write chunks to files for extraction agents to read
         chunks = self._rag_extractor._split_into_chunks(full_text)
@@ -626,8 +628,9 @@ class AgentExtractor:
             'extracted',        # Agent output JSON files
             'merged-results.json',  # Pre-save merged data
             # 'vectors' - KEEP for /enhance command
-            # 'current-document.txt' - KEEP: long-context reading + the Book Bible
-            #   need the retained text. (Demoted embeddings to a coarse index.)
+            # 'source/' (current-document.txt) - not listed, so KEPT: long-context
+            #   reading + the Book Bible need the retained text. It lives in the
+            #   persistent source/ subdir, never in this scratch cleanup set.
             'metadata.json',    # Extraction metadata
         ]
 

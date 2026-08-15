@@ -173,7 +173,7 @@ case "$ACTION" in
         # The loremaster cache gates this: revisits are silent, so the deep read
         # fires once per location. (--full is the GM's explicit follow-up.)
         CAMPAIGN_DIR=$(bash "$TOOLS_DIR/gm-campaign.sh" path 2>/dev/null)
-        if [ -f "$CAMPAIGN_DIR/current-document.txt" ] || [ -f "$CAMPAIGN_DIR/book-text.txt" ]; then
+        if [ -f "$CAMPAIGN_DIR/source/current-document.txt" ] || [ -f "$CAMPAIGN_DIR/current-document.txt" ] || [ -f "$CAMPAIGN_DIR/book-text.txt" ]; then
             # ponytail: grep-for-key on the JSON cache, jq-free; a false hit just skips one auto-brief
             if ! grep -qF "\"$1\":" "$CAMPAIGN_DIR/loremaster-cache.json" 2>/dev/null; then
                 echo ""
