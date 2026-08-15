@@ -671,8 +671,9 @@ class SessionManager(EntityManager):
                          "returned passages for a concrete image, phrase, or sensory detail "
                          "from the source. Synthesize — never paste raw passages.")
         if self.get_preferences().get("action_menu", True):
-            lines.append("Play style: action menu ON — end each beat with a few numbered "
-                         "options.")
+            lines.append("Play style: action menu ON — end each beat with exactly THREE "
+                         "numbered options, then a final line \"Or something else...\" to "
+                         "signal the player can always choose their own action.")
         else:
             lines.append("Play style: action menu OFF — end beats with an open prompt; do "
                          "NOT list numbered choices. The player drives freely. "

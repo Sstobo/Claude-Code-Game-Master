@@ -81,6 +81,16 @@ Three doors (same as `/gm` identity-first):
 They came for the fantasy of talking to a favorite character. Spend the spike on
 that, not on ability scores and not on a loading screen.
 
+Then, before you build the stage, ask **one more** question — where/when they want
+to begin:
+
+**Where — or when — do you want to start?** Offer a fitting default (an iconic
+opening scene for this book/character) but make it plain they can name their own:
+a specific location, a particular moment or scene from the source, or a point in
+the character's timeline ("the night Bêlit dies," "before he was king," "the sack
+of such-and-such city"). Persist their answer into the play pack's `room`/`hook`
+and build Step 5's stage around **that** start, not the book's default first page.
+
 ---
 
 ## Step 4: World identity (tone, not inventory)

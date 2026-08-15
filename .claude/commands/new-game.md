@@ -170,6 +170,10 @@ Then ask that **one question** — identity first, mechanics later — and offer
 - **someone of their own** → `bash tools/gm-player.sh onboard original "<name>" "<one-line concept>"`
 - **no one yet** → `bash tools/gm-player.sh onboard nameless`
 
+**After identity, before you open the scene, ask where/when they want to start.**
+Offer a fitting default but let them name their own opening — a specific location,
+scene, or point in the timeline — and build the play pack's `room`/`hook` around it.
+
 Persist the answer with `onboard` and open the scene — the play pack's room and
 hook are the opening; `onboard` leaves them in place. `/create-character`
 remains the **opt-in** full builder for a player who wants to roll a sheet properly

@@ -24,8 +24,9 @@ When user invokes `/gm <subcommand>`, route to the appropriate section:
 
 ## ACTION MENU (PLAY STYLE)
 
-The GM can end each beat with a few numbered action options, or with an open
-prompt and no menu. This is a per-campaign, player-togglable preference
+The GM can end each beat with exactly three numbered action options followed by a
+final "Or something else..." line (so the player always knows they can act freely),
+or with an open prompt and no menu. This is a per-campaign, player-togglable preference
 (`preferences.action_menu`, default ON) surfaced in `gm-session.sh context`.
 Beat shape and pacing live in CLAUDE.md and the session brief — do not duplicate
 them here.
@@ -147,6 +148,11 @@ archives the outgoing sheet to `fallen/` first.
 
 The full builder is the **opt-in deep dive**: if the player wants to roll stats, pick a
 class, and build a sheet properly, run `/create-character` instead. Offer it, never impose it.
+
+**After identity, before you open the scene, ask where/when they want to start.** Offer a
+fitting default (an iconic opening for this world/character) but make it plain they can name
+their own: a specific location, a particular scene, or a point in the timeline. Persist their
+choice into the play pack's `room`/`hook` and build the opening around **that** start.
 
 ---
 
