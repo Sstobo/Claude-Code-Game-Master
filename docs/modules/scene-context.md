@@ -10,7 +10,7 @@ sources:
   - { resource: /lib/entity_manager.py }
   - { resource: /tools/gm-context.sh }
   - { resource: /lib/play_pack.py }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T15:41:00Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:02:00Z }
 verified: { by: claude-fable-5, at: 2026-08-14T12:19:52Z }
 ---
 
@@ -78,7 +78,15 @@ Eight of those blocks carry design decisions that are not obvious from reading t
   under their entry (`_recent_events`, shared with the party block so history looks the
   same wherever a character appears; party members render theirs once, in the party block).
   This is the wire that lets an NPC act like they remember what the player did to them —
-  the write side is `gm-npc.sh update "<name>" "<event>"`.
+  the write side is `gm-npc.sh update "<name>" "<event>"`. On top of that, `_npc_anchored_facts`
+  re-scans the whole global facts log each build and surfaces — as `remembers:` sub-lines under
+  a present, non-party NPC — any fact whose text NAMES them (a `gm-note.sh` fact that only lands
+  in `facts.json` would otherwise never reach them). Matching is on a word boundary against the
+  full NPC key and any explicit `aliases` entry only, so "Ana" does not fire on "Banana" and a
+  common leading token ("Old" in "Old Man Withers") never attaches ordinary lowercase prose;
+  hits already in PREVIOUSLY ON, THE WORLD REMEMBERS, or the NPC's own `events` are
+  dropped so nothing shows twice. It is read-time only — no write-side coupling, so per-NPC
+  memory is not lost to the global log without a duplicate copy in storage.
 - **THE WORLD REMEMBERS is the harness asking recall on the GM's behalf.** `CampaignMemory`
   was a complete long-term memory with no automated reader — recall only ever fired if the
   GM thought to ask, which needs the GM to already suspect there is something to remember.

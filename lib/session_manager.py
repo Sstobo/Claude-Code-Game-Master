@@ -948,6 +948,21 @@ class SessionManager(EntityManager):
                     recent = self._recent_events(inner, full=full)
                     if recent:
                         lines.append(f"  {recent}")
+                    # Global facts that NAME this NPC, re-attached at read time
+                    # (de-duped against PREVIOUSLY ON, world-remembers, and the
+                    # NPC's own events) so per-NPC memory is not lost to the log.
+                    anchored = self._npc_anchored_facts(
+                        npc_name, inner,
+                        already_shown=list(summaries) + list(remembered))
+                    shown_anchored = anchored if full else anchored[:3]
+                    for fact in shown_anchored:
+                        lines.append(f"  remembers: {self._truncate(fact, 180, full)}")
+                    if not full:
+                        rem = self._remainder(
+                            len(anchored) - len(shown_anchored),
+                            "remembered facts", "--full or gm-recall.sh")
+                        if rem:
+                            lines.append(f"  {rem}")
 
         # --- Pending Consequences ---
         lines.append("")
@@ -1198,6 +1213,73 @@ class SessionManager(EntityManager):
             if text:
                 parts.append(f'"{self._truncate(text, 120, full)}"')
         return f"Recent: {' -> '.join(parts)}" if parts else None
+
+    def _npc_anchored_facts(self, npc_name, npc_data, already_shown=()):
+        """Facts from facts.json whose text NAMES this NPC — surfaced under them.
+
+        A fact logged via gm-note.sh lands only in facts.json; if it names an
+        NPC ("the wench's eyes flicked to the back door — she knows more"), that
+        memory never reaches her. Read-time cross-reference fixes this without
+        any write-side coupling: every context build re-scans the global facts
+        log and re-attaches what belongs to whoever is standing here, so there
+        is no duplicate-storm in storage.
+
+        Match is on a WORD BOUNDARY against the full NPC key and any explicit
+        `aliases` entry only — so "Ana" matches "Ana" but not "Banana", and
+        "Old Man Withers" matches only the whole name/alias, never a stray
+        leading token like "old" in "the old rope". Short-name matching is what
+        `aliases` are for (entity-dedupe records them). Excludes anything already
+        in `already_shown` (the PREVIOUSLY ON / world-remembers de-dup set) and
+        anything already carried in the NPC's own `events` (so it is not shown
+        twice). Returns the full matched list (caller caps + discloses the
+        remainder); [] when the NPC is named in no fact, or on any failure.
+        """
+        facts = self.json_ops.load_json("facts.json") or {}
+        if not isinstance(facts, dict):
+            return []
+        all_facts = []
+        for items in facts.values():
+            if not isinstance(items, list):
+                continue
+            for it in items:
+                txt = it.get('fact', it.get('text', it.get('event', ''))) if isinstance(it, dict) else str(it)
+                if txt:
+                    all_facts.append(str(txt))
+        if not all_facts:
+            return []
+
+        # Needles: the full key and any explicit aliases only. No auto-derived
+        # leading-token needle — a common first word ("Old", "Red", "Young")
+        # would match ordinary lowercase prose and attach unrelated facts.
+        needles = [npc_name]
+        aliases = npc_data.get('aliases') if isinstance(npc_data, dict) else None
+        if isinstance(aliases, list):
+            needles.extend(str(a) for a in aliases if a)
+        elif isinstance(aliases, str) and aliases:
+            needles.append(aliases)
+        patterns = [re.compile(r"\b" + re.escape(n) + r"\b", re.IGNORECASE)
+                    for n in needles if n]
+
+        def _norm(s):
+            return " ".join(str(s).split())
+
+        shown = {_norm(s) for s in already_shown if _norm(s)}
+        events = npc_data.get('events', []) if isinstance(npc_data, dict) else []
+        if isinstance(events, list):
+            for ev in events:
+                t = ev.get('event', '') if isinstance(ev, dict) else str(ev)
+                if t:
+                    shown.add(_norm(t))
+
+        matched, seen = [], set()
+        for txt in all_facts:
+            norm = _norm(txt)
+            if not norm or norm in shown or norm in seen:
+                continue
+            if any(p.search(txt) for p in patterns):
+                seen.add(norm)
+                matched.append(txt)
+        return matched
 
     def _present_npcs(self, npcs, location, full=False):
         """NPCs present in the scene, with any canonical voice lines they have.
