@@ -6,7 +6,7 @@ sources:
   - { resource: /lib/game_core.py }
   - { resource: /lib/world_kit.py }
   - { resource: /lib/overview_seed.py }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:25:02Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T15:42:00Z }
 ---
 
 # Game core and World Kit
@@ -111,6 +111,31 @@ Its XP is scaled to the gap to the next level rather than being a flat table, so
 stays meaningful at level 1 and level 12. The `followers` amount is only applied when the
 kit declares a secondary follower currency, which is why the same tier pays differently in
 a Dungeon Crawler Carl campaign than in a swords-and-sorcery one.
+
+## Signature-system primitives are calculators, too
+
+`game_core` ships four more world-agnostic building blocks a world's signature
+systems are assembled from — every name, threshold, and die comes in as an
+argument, none of it is book-specific:
+
+- **`named_track(current, delta, config)`** — a meter with threshold
+  consequences (corruption, doom, heat); applies a clamped delta and reports
+  which thresholds it newly crossed, up or down. The only one that never rolls.
+- **`price_roll(severity, config, rng=None)`** — what a marked action costs the
+  actor; rolls, subtracts severity, and reads the cost off a ladder.
+- **`reaction_roll(track_value, config, rng=None)`** — an NPC's opening
+  disposition, shifted by a track/reputation value onto a tier.
+- **`guarded_payoff(config, rng=None)`** — rolled before a marked treasure is
+  taken; returns `clean` / `guardian_wakes` / `curse_attaches`.
+
+Like `spectacle_award`, all four **compute and return a plain dict — they read no
+files and write none**; persistence is the caller's job. Rolls are seedable via
+`rng` for deterministic tests, and reuse the module dice roller when it is
+omitted. A forthcoming **World Kit layer will instantiate and name these per
+world** (a Warhammer Corruption track, a Warp price, a morale reaction) — that
+wiring does **not** exist yet and is a separate ticket; today they are pure core
+primitives with no kit binding. `uv run python lib/game_core.py` runs their
+edge-case self-check.
 
 ## The kit decides which mechanics Skills are legitimate
 

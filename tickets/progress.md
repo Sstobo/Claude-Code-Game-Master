@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-15T15:52:00Z  done: system-primitives-lib — 4 core signature-system primitives, review perfect  [ss-rt14b]
+- 2026-08-15T15:48:52Z  in-review: system-primitives-lib — 4 core primitives, self-check green, review dispatched  [ss-rt14b]
+- 2026-08-15T15:48:52Z  in-review: world-index-schema-context — chapters→index schema + context wiring, 48 tests green, review dispatched  [ss-rt14b]
 - 2026-08-15T15:33:50Z  prd: world-kit-systems + living-world active (world-index kept); created 14 tickets → ready across 3 PRDs (round-table engine roadmap)  [main]
 - 2026-08-15T12:00:00Z  claimed: play-pack-contract, import-play-pack, new-game-play-pack, materialize-one  [gk-p4ck15]
 - 2026-08-15T11:46:00Z  prd: play-pack active (supersedes trust-the-agent); ready: play-pack-contract, import-play-pack, new-game-play-pack, materialize-one
