@@ -10,6 +10,13 @@ The DCs below are 5e — use them only when the scene-context KIT block says `dn
 ## 1. Load NPC context
 `bash tools/gm-context.sh "[npc]"` + `bash tools/gm-npc.sh status "[name]"`. Surface the NPC's `goal`, `current_mood`, secret-EXISTENCE (never the text), `bonds`, and `voice` (`gm-npc.sh voice`). Check prior interactions + active quests.
 
+## 1b. Flesh a stub on first real contact
+Present NPCs correctly START as one-line stubs (a play-pack "Present in ..." blurb, no `goal`/`secret`/`voice`) — that is the anti-gazetteer rule, not a bug. But the moment the player **meaningfully engages** one (talks to them, presses them, reads them), give them an interior so nobody the player actually talks to stays a "neutral stub": author a **want**, a **secret**, and how they **sound**, and persist it in one call —
+```bash
+bash tools/gm-npc.sh set-inner "[name]" --goal "[what they want]" --secret "[what they hide]" --voice "[how they sound]"
+```
+Only on real contact — do not pre-flesh NPCs the player never engages. Once set, it rides into every future scene they're in (mood/goal/secret-existence + their remembered `events`).
+
 ## 2. Attitude
 Friendly (helpful, warm) · Neutral (professional, cautious) · Hostile (dismissive, cold). Derive from history + bonds.
 
