@@ -109,14 +109,18 @@ voice). Merge authorship:
 bash tools/gm-extract.sh draft-bible --fields-json '{
   "tone": "...",
   "themes": ["..."],
-  "factions": {"nodes": [], "edges": []},
-  "geography": {"nodes": [], "edges": []},
+  "factions": {"nodes": [{"id":"thieves","name":"Thieves of the Maul"},{"id":"yara","name":"Priesthood of Yara"}], "edges": [{"from":"yara","to":"thieves","relation":"preys on / is feared by"}]},
+  "geography": {"nodes": [{"id":"maul","name":"The Maul"},{"id":"tower","name":"Elephant Tower"}], "edges": [{"from":"maul","to":"tower","adjacency":"across the temple quarter"}]},
   "signature_systems": ["..."]
 }'
 uv run python lib/world_bible.py validate
 ```
 
-Keep factions/geography as a **handful of horizon names**, not a gazetteer.
+Keep factions/geography as a **handful of horizon names**, not a gazetteer — but
+**wire 2–4 edges** (a tension between two factions, an adjacency between two
+places). Nodes with no edges are a cast list, not a world; a couple of real
+relationships (the villain's faction vs the player's, the caravan vs the hunt)
+pay off in every scene. Do not build a full relationship map.
 
 Kit — `dnd5e` only when the file is a D&D module. Everything else is `custom`.
 D&D-lean resolution (d20, six abilities) is fine as the table's foundation.

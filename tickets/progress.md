@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-15T16:17:00Z  done: seed-bible-edges — import/new-game wire 2-4 faction/geography edges at creation (fast-lane)  [ss-rt14b]
 - 2026-08-15T16:16:00Z  done: kit-systems-authoring — kit `systems` block + write-systems + ROLL-these context block; import/new-game author them (HEADLINE: primitives now usable)  [ss-rt14b]
 - 2026-08-15T16:12:00Z  done: pc-signature-move — create-character grants a signature move into features (non-5e), fast-lane  [ss-rt14b]
 - 2026-08-15T16:11:00Z  done: world-index-import-swarm — write_index helper + gm-extract write-index + /import Step 5.5 (light roster, 6-cap)  [ss-rt14b]

@@ -80,7 +80,9 @@ in the author's voice at play (surfaced every beat by `get_full_context`):
   imitation, NOT copied from the real author's text) so the GM has a concrete target.
 - `vocab`: a few signature in-world terms.
 Keep geography to the starting street plus a few horizon names. Do not author
-the continent. Signature systems go here — they become the kit.
+the continent. **Wire 2–4 edges** into the `factions`/`geography` graphs (a
+tension between two factions, an adjacency between two places) — nodes with no
+edges are a cast list, not a world. Signature systems go here — they become the kit.
 
 Validate, then present for approval:
 ```bash
