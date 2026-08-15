@@ -32,11 +32,8 @@ class WorldStats:
         self.world_state_dir = self.campaign_mgr.get_active_campaign_dir()
         self.json_ops = JsonOperations(str(self.world_state_dir))
 
-        # Character file (new format: single character.json)
+        # Character file (single character.json per campaign)
         self.character_file = self.world_state_dir / "character.json"
-
-        # Legacy characters dir (for backwards compatibility)
-        self.characters_dir = self.world_state_dir / "characters"
 
     def get_counts(self) -> Dict[str, int]:
         """Get counts of all world entities"""
@@ -90,11 +87,9 @@ class WorldStats:
                     if plot_type in PLOT_TYPES:
                         counts[f"plots_{plot_type}"] += 1
 
-        # Characters (new format: single character.json)
+        # Characters (single character.json per campaign)
         if self.character_file.exists():
             counts["characters"] = 1
-        elif self.characters_dir.exists():
-            counts["characters"] = len(list(self.characters_dir.glob("*.json")))
 
         # Sessions
         session_log = self.world_state_dir / "session-log.md"
@@ -181,7 +176,7 @@ class WorldStats:
             details["active_plots"] = active_plots
             details["plots_total"] = len(plots)
 
-        # Characters (new format: single character.json)
+        # Characters (single character.json per campaign)
         if self.character_file.exists():
             char_data = self.json_ops.load_json("character.json")
             details["characters"] = [{
@@ -190,18 +185,6 @@ class WorldStats:
                 "race": char_data.get("race", "Unknown"),
                 "class": char_data.get("class", "Unknown")
             }]
-        elif self.characters_dir.exists():
-            chars = []
-            for char_file in list(self.characters_dir.glob("*.json"))[:5]:
-                # Use relative path from campaign dir
-                char_data = self.json_ops.load_json(f"characters/{char_file.name}")
-                chars.append({
-                    "name": char_data.get("name", char_file.stem),
-                    "level": char_data.get("level", 1),
-                    "race": char_data.get("race", "Unknown"),
-                    "class": char_data.get("class", "Unknown")
-                })
-            details["characters"] = chars
 
         return details
 

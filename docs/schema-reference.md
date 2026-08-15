@@ -13,7 +13,7 @@ sources:
   - { resource: /lib/world_bible.py }
   - { resource: /lib/session_manager.py }
   - { resource: /lib/play_pack.py }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:26:26Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:56:54Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
 ---
 
@@ -493,7 +493,7 @@ A named point-in-time copy of **live campaign state**, not of derived indexes.
 a same-second collision uniquifies the filename instead of overwriting.
 
 **Versioned (`save_version: 1`).** Snapshot keys are campaign filenames plus the
-`characters` helper (PC sheet / legacy `characters/` dir) and `fallen/<file>.json`.
+`characters` helper (the PC sheet, keyed `character`) and `fallen/<file>.json`.
 JSON values are objects; markdown values are strings. A file that is not on disk
 is omitted — never stubbed as `{}`. Restore writes only keys the snapshot has.
 

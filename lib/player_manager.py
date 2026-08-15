@@ -57,63 +57,24 @@ class PlayerManager(EntityManager):
         self.world_state_dir = self.campaign_dir  # Alias for compatibility
         self.campaign_file = "campaign-overview.json"
 
-        # New: single character file per campaign
+        # Single character file per campaign
         self.character_file = self.campaign_dir / "character.json"
-
-        # Legacy: characters directory (for backwards compatibility)
-        self.characters_dir = self.campaign_dir / "characters"
 
     def _name_to_id(self, name: str) -> str:
         """Convert character name to file ID"""
         return name.lower().replace(' ', '-')
 
-    def _is_using_single_character(self) -> bool:
-        """Check if we're using the new single character.json format"""
-        return self.character_file.exists()
-
-    def _get_character_path(self, name: str) -> Path:
-        """Get path to character JSON file"""
-        # New format: single character.json
-        if self._is_using_single_character():
-            return self.character_file
-
-        # Legacy format: characters/<name>.json
-        char_id = self._name_to_id(name)
-        return self.characters_dir / f"{char_id}.json"
-
     def _load_character(self, name: str = None) -> Optional[Dict]:
-        """
-        Load character data from file
-        In single-character mode, name is optional/ignored
-        """
-        # New format: single character.json
-        if self._is_using_single_character():
-            try:
-                with open(self.character_file, 'r', encoding='utf-8') as f:
-                    raw = json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
-                print(f"[ERROR] Failed to load character: {e}")
-                return None
-            return self._normalize_loaded(raw, "character.json")
-
-        # Legacy format: need name to find file
-        if not name:
-            # Try to get from campaign overview
-            campaign = self.json_ops.load_json(self.campaign_file)
-            name = campaign.get('current_character')
-            if not name:
-                return None
-
-        char_path = self._get_character_path(name)
-        if not char_path.exists():
+        """Load the active PC from character.json (name is ignored)."""
+        if not self.character_file.exists():
             return None
         try:
-            with open(char_path, 'r', encoding='utf-8') as f:
+            with open(self.character_file, 'r', encoding='utf-8') as f:
                 raw = json.load(f)
         except (json.JSONDecodeError, IOError) as e:
             print(f"[ERROR] Failed to load character: {e}")
             return None
-        return self._normalize_loaded(raw, str(char_path))
+        return self._normalize_loaded(raw, "character.json")
 
     def _normalize_loaded(self, raw: Dict, save_path: str) -> Dict:
         """Return the character in canonical FLAT shape, migrating any legacy
@@ -128,14 +89,7 @@ class PlayerManager(EntityManager):
         """Save character data to file using atomic writes via json_ops"""
         # Persist in canonical flat shape (no-op if already flat).
         data = to_flat(data)
-        # New format: single character.json
-        if self._is_using_single_character():
-            return self.json_ops.save_json("character.json", data)
-
-        # Legacy format: characters/<name>.json
-        char_path = self._get_character_path(name)
-        char_path.parent.mkdir(parents=True, exist_ok=True)
-        return self.json_ops.save_json(str(char_path), data)
+        return self.json_ops.save_json("character.json", data)
 
     def world_kit(self):
         """The active campaign's World Kit (cached). The single source of truth for
@@ -215,22 +169,11 @@ class PlayerManager(EntityManager):
         return self._save_character(char.get('name', name), char)
 
     def list_players(self) -> List[str]:
-        """List all player character IDs"""
-        players = []
-
-        # New format: single character.json
-        if self._is_using_single_character():
-            char = self._load_character()
-            if char:
-                # Use the character name or 'character' as ID
-                players.append(char.get('name', 'character').lower().replace(' ', '-'))
-            return players
-
-        # Legacy format: scan characters/ directory
-        if self.characters_dir.exists():
-            for f in self.characters_dir.glob("*.json"):
-                players.append(f.stem)
-        return sorted(players)
+        """List the active PC's ID (single-character campaigns)."""
+        char = self._load_character()
+        if not char:
+            return []
+        return [char.get('name', 'character').lower().replace(' ', '-')]
 
     def show_player(self, name: str) -> Optional[str]:
         """Get formatted player summary"""
@@ -252,35 +195,16 @@ class PlayerManager(EntityManager):
         return summary
 
     def show_all_players(self) -> List[str]:
-        """Get summaries for all players"""
-        summaries = []
-
-        # New format: single character.json
-        if self._is_using_single_character():
-            char = self._load_character()
-            if char:
-                hp = char.get('hp', {})
-                gold = char.get('gold', 0)
-                summaries.append(
-                    f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
-                    + self._vitals_summary(char)
-                )
-            return summaries
-
-        # Legacy format: scan characters/ directory
-        if self.characters_dir.exists():
-            for char_file in self.characters_dir.glob("*.json"):
-                try:
-                    with open(char_file, 'r', encoding='utf-8') as f:
-                        char = json.load(f)
-                    hp = char.get('hp', {})
-                    gold = char.get('gold', 0)
-                    summaries.append(
-                        f"{char.get('name', char_file.stem)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
-                    )
-                except (json.JSONDecodeError, IOError):
-                    continue
-        return summaries
+        """Summary line for the active PC (single-character campaigns)."""
+        char = self._load_character()
+        if not char:
+            return []
+        hp = char.get('hp', {})
+        gold = char.get('gold', 0)
+        return [
+            f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
+            + self._vitals_summary(char)
+        ]
 
     def set_current_player(self, name: str) -> bool:
         """Set character as current active PC in campaign.
@@ -643,8 +567,6 @@ class PlayerManager(EntityManager):
         else:
             char[vital] = new_value
 
-        # Save under the resolved name: `name` is None on every CLI call, and the
-        # legacy characters/<id>.json layout needs a real name to build the path.
         if not self._save_character(char_name, char):
             return {'success': False}
 

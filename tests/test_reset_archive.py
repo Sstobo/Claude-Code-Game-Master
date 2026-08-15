@@ -228,23 +228,6 @@ def test_reset_ends_any_active_combat(fixture_campaign, world, action):
         "initiative and enemy HP leaked into the fresh story"
 
 
-@pytest.mark.parametrize("action", ["archive", "hard"])
-def test_reset_clears_the_legacy_characters_dir(fixture_campaign, world, action):
-    """Pre-character.json campaigns keep sheets in characters/ — still story state."""
-    (fixture_campaign / "character.json").unlink()
-    legacy = fixture_campaign / "characters"
-    legacy.mkdir()
-    (legacy / "testarossa.json").write_text(
-        '{"name": "Testarossa", "level": 4}\n', encoding="utf-8"
-    )
-    assert PlayerManager(str(world)).list_players()
-
-    assert run_reset(action, "--yes").returncode == 0
-
-    assert not PlayerManager(str(world)).list_players(), \
-        "legacy sheets survived the reset"
-
-
 def test_archive_of_an_empty_campaign_dir_fails_without_resetting(world):
     """nullglob makes an empty copy loop look successful — it must not."""
     empty = world / "campaigns" / f"{FIXTURE_NAME}-empty"

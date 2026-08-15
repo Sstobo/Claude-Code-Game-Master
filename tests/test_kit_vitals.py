@@ -180,29 +180,6 @@ def test_every_vital_response_has_the_same_shape(hyborian_world):
     assert hp["current_hp"] == 50 and hp["max_hp"] == 58   # modify_hp's own keys kept
 
 
-def test_vital_on_a_legacy_characters_dir_layout(tmp_path):
-    """No character.json: the PC is resolved via campaign-overview, and the save
-    path needs that resolved name (a None name used to raise in _name_to_id)."""
-    world = _make_world(tmp_path, "hyborian", HYBORIAN_RULESET)
-    campaign = world / "campaigns" / "hyborian"
-    (campaign / "campaign-overview.json").write_text(
-        json.dumps({"current_character": "Conan"}), encoding="utf-8")
-    characters = campaign / "characters"
-    characters.mkdir()
-    (characters / "conan.json").write_text(json.dumps({
-        "name": "Conan", "level": 6, "hp": {"current": 58, "max": 58},
-        "stats": {"might": 18}, "vigor": {"current": 5, "max": 5}, "corruption": 0,
-    }), encoding="utf-8")
-
-    mgr = PlayerManager(str(world))
-    result = mgr.modify_vital(None, "vigor", -2)
-    assert result["success"] and result["current"] == 3
-
-    persisted = json.loads((characters / "conan.json").read_text(encoding="utf-8"))
-    assert persisted["vigor"] == {"current": 3, "max": 5}
-    assert mgr.modify_vital(None, "hp", -8)["current"] == 50
-
-
 def test_dnd5e_still_derives_hp_and_saves(dnd_world):
     r = _save(dnd_world, {
         "name": "Thorin", "race": "Dwarf", "class": "Fighter", "level": 1,

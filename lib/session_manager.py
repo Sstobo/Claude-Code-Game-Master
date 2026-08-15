@@ -38,8 +38,8 @@ class SessionManager(EntityManager):
     AUTOSAVE_KEEP = 3
 
     # Live campaign files snapshotted when present. character.json is captured
-    # via the `characters` helper (PC sheet + legacy characters/ dir), not as a
-    # filename key. combat_state.json is the on-disk combat file (not combats.json).
+    # via the `characters` helper (the PC sheet), not as a filename key.
+    # combat_state.json is the on-disk combat file (not combats.json).
     SNAPSHOT_JSON_FILES = (
         "campaign-overview.json",
         "npcs.json",
@@ -88,9 +88,6 @@ class SessionManager(EntityManager):
 
         # Character file (single character per campaign)
         self.character_file = self.campaign_dir / "character.json"
-
-        # Legacy characters dir (for backwards compatibility)
-        self.characters_dir = self.campaign_dir / "characters"
 
     def get_timestamp(self) -> str:
         """Get formatted timestamp"""
@@ -367,22 +364,11 @@ class SessionManager(EntityManager):
 
         self.json_ops.save_json(self.campaign_file, campaign)
 
-        # Update character's location if exists
-        # Try new single character.json first, fall back to legacy characters/ dir
+        # Update the active character's location if a sheet exists
         if self.character_file.exists():
             char_data = to_flat(self.json_ops.load_json("character.json"))
             char_data['current_location'] = location
             self.json_ops.save_json("character.json", char_data)
-        else:
-            # Legacy: check characters/ directory
-            active_char = campaign.get('current_character', '')
-            if active_char:
-                char_id = active_char.lower().replace(' ', '-')
-                char_file = self.characters_dir / f"{char_id}.json"
-                if char_file.exists():
-                    char_data = to_flat(self.json_ops.load_json(str(char_file)))
-                    char_data['current_location'] = location
-                    self.json_ops.save_json(str(char_file), char_data)
 
         result = {
             "previous_location": old_location,
@@ -1264,38 +1250,18 @@ class SessionManager(EntityManager):
         return history[-count:] if history else []
 
     def _load_all_characters(self) -> Dict[str, Any]:
-        """Load character data for snapshot"""
-        characters = {}
-
-        # Try new single character.json first
+        """Load the active PC for a snapshot, keyed 'character'."""
         if self.character_file.exists():
-            char_data = self.json_ops.load_json("character.json")
-            # Use 'character' as the key for the single character
-            characters['character'] = char_data
-        elif self.characters_dir.exists():
-            # Legacy: load from characters/ directory
-            for char_file in self.characters_dir.glob("*.json"):
-                # Use relative path from campaign dir
-                char_data = self.json_ops.load_json(f"characters/{char_file.name}")
-                characters[char_file.stem] = char_data
-
-        return characters
+            return {"character": self.json_ops.load_json("character.json")}
+        return {}
 
     def _restore_characters(self, characters: Dict[str, Any]) -> None:
-        """Restore character data from snapshot"""
+        """Restore the active PC from a snapshot."""
         import json
 
-        # Check if this is new format (single 'character' key) or legacy
-        if 'character' in characters and len(characters) == 1:
-            # New format: restore to character.json
+        if 'character' in characters:
             with open(self.character_file, 'w', encoding='utf-8') as f:
                 json.dump(characters['character'], f, indent=2)
-        else:
-            # Legacy format: restore to characters/ directory
-            self.characters_dir.mkdir(parents=True, exist_ok=True)
-            for name, data in characters.items():
-                char_file = self.characters_dir / f"{name}.json"
-                self.json_ops.save_json(str(char_file), data)
 
     def _find_save(self, name: str) -> Optional[Path]:
         """Find a save file by name or partial match.
