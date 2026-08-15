@@ -216,9 +216,39 @@ bash tools/gm-enhance.sh query "<Name>"
 bash tools/gm-enhance.sh apply "<Name>"
 ```
 
-Do **not** run `gm-enhance.sh batch`. Do **not** run the four extractors.
-Do **not** run `cap` / `reconcile` / `stub-npcs` / `integrity` as a reason to invent
-walk-ons. An unresolved name means not on stage yet.
+Do **not** run `gm-enhance.sh batch`. Do **not** run the four extractors **as a
+census** (full records + `cap` / `reconcile` / `stub-npcs` / `integrity`). The
+one sanctioned extractor use is the light World Index below — pointers, not a
+gazetteer. An unresolved name means not on stage yet.
+
+---
+
+## Step 5.5: Build the World Index (a light roster — NOT a census)
+
+The index is a scannable menu of the named things that actually exist in this
+book — **one sentence each** — so the GM reaches for real names (Yara, the
+Elephant Tower, Yag-kosha) instead of inventing generic ones. It is NOT the
+census: no full records, no stats, no `cap`/`reconcile`/`stub-npcs`/`integrity`.
+
+Spawn the extractor agents over the campaign's chunks — **hard cap 6 agents, and
+state that 6-agent cap INSIDE each subagent prompt** (subagents self-fan-out).
+Ask each for **named entities only** (drop nameless walk-ons), each reduced to
+`{name, note}` where the note is ONE sentence:
+
+- `extractor-npcs` → `index.npcs`
+- `extractor-locations` → `index.locations`
+- `extractor-items` → `index.items`
+- `extractor-monsters` (or the monster pass) → `index.monsters`
+
+Dedup by name, then persist in a single call:
+
+```bash
+bash tools/gm-extract.sh write-index --index-json '{"npcs":[{"name":"Yara","note":"The dread priest of the Elephant Tower."}],"locations":[...],"items":[...],"monsters":[...]}'
+```
+
+The index rides into scene context every session (the WORLD INDEX block). You
+still build **no** full records here — a face becomes real only when play walks
+toward it (`gm-playpack.sh from-book`, then RAG).
 
 ---
 
@@ -235,10 +265,12 @@ The campaign JSON is a journal of where you've been. Grow it from the table.
 ## Leftover machinery (do not use on a new import)
 
 `gm-extract.sh` still has `normalize`, `cap`, `reconcile`, `stub-npcs`, `integrity`,
-and the four extractor agents. Those are the old **census** path — they
-front-load a gazetteer so a graph looks complete. That is the opposite of this
-command. Leave them. If an operator is repairing a legacy import, see
-`docs/import-guide.md`.
+and the four extractor agents. Using them to build **full records** is the old
+**census** path — it front-loads a gazetteer so a graph looks complete. That is
+the opposite of this command. Leave the census machinery. (The extractor agents
+have exactly one sanctioned use here: the light one-sentence World Index in
+Step 5.5 — pointers, never records.) If an operator is repairing a legacy import,
+see `docs/import-guide.md`.
 
 ---
 

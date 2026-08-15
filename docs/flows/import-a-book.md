@@ -13,7 +13,7 @@ sources:
   - { resource: /lib/session_manager.py }
   - { resource: /lib/play_pack.py }
   - { resource: /tools/gm-playpack.sh }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:45:56Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:10:00Z }
 ---
 
 # Importing a book
@@ -30,7 +30,8 @@ the campaign file is a journal; the book is the world.
    the *active* store. Assert the switch (`gm-campaign.sh active` matches the
    slug). A silent mismatch here grounds the opening in the wrong book — or none.
 2. **The door.** Ask who they are, or who they came to meet. Do not preview
-   entity counts. Do not launch the four extractor agents.
+   entity counts. Do not run the extractors *as a census* (full records) — their
+   one sanctioned use is the light one-sentence World Index (Step 5.5).
 3. **World identity.** Bible → kit → campaign_rules → voice → chronicler. Tone
    and how the holodeck *sounds*. Horizon names, not a gazetteer. The player
    confirms the bible; `/import` never confirms on their behalf.
@@ -57,9 +58,10 @@ protagonist picks the page; the stage is built from that page.
 
 ## World identity is not inventory
 
-`draft-bible` writes what the source can prove (chapter map, verbatim voice
-filter, skeleton keys). The model authors tone / themes / a *handful* of
-factions and places. `draft-ruleset` takes attributes, progression, and `kit`
+`draft-bible` writes what the source can prove (the empty World Index scaffold,
+verbatim voice filter, skeleton keys — as of 2026-08-15 it no longer persists a
+chapter map; `segment_into_chapters` now feeds only the RAG coarse index). The
+model authors tone / themes / a *handful* of factions and places. `draft-ruleset` takes attributes, progression, and `kit`
 from the importer — `dnd5e` only when the file is a D&D module. Signature
 systems live in the bible and map into `campaign_rules`. A missing
 `current-document.txt` means `prepare` did not finish; an already-confirmed
@@ -68,10 +70,12 @@ bible refuses a silent overwrite.
 ## Leftover census machinery
 
 `gm-extract.sh` still exposes `normalize`, `cap`, `reconcile`, `stub-npcs`,
-`integrity`, and the four extractor agents. Those verbs
-exist. They front-load a closed graph so integrity can pass — including stubs
-for `the desert` and walk-ons a plot string named. **`/import` must not run
-them.** They are the old path. Operators repairing a legacy gazetteer import
+`integrity`, and the four extractor agents. Using them to build **full records**
+front-loads a closed graph so integrity can pass — including stubs for `the
+desert` and walk-ons a plot string named. **`/import` must not run the census.**
+The extractor agents do have one sanctioned use: the light one-sentence **World
+Index** (`gm-extract.sh write-index`, capped at 6 agents) — a scannable roster of
+what exists, pointers not records. Operators repairing a legacy gazetteer import
 use [the operations guide](../import-guide.md).
 
 `integrity` failing strict on unresolved names is the old product saying the

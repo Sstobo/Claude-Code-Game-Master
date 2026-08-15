@@ -230,6 +230,42 @@ def write_campaign_rules(campaign_dir) -> Dict[str, Any]:
     return rules
 
 
+INDEX_BUCKETS = ("npcs", "locations", "items", "monsters")
+
+
+def write_index(campaign_dir, index: Dict[str, Any]) -> Dict[str, Any]:
+    """Persist a WORLD INDEX into the bible (the light import pass, not the census).
+
+    Merges `index` into the bible's existing `index`, keyed by four buckets
+    (npcs/locations/items/monsters). Each entry is reduced to `{name, note}`;
+    nameless entries are DROPPED and names are deduped case-insensitively (first
+    note wins, a later note fills a blank one). Writes back to world-bible.json
+    without touching any other field or the confirm flag.
+    """
+    bible = load_bible(campaign_dir)
+    existing = bible.get("index") or {}
+    out: Dict[str, Any] = {}
+    for bucket in INDEX_BUCKETS:
+        seen: Dict[str, Dict[str, str]] = {}
+        for entry in list(existing.get(bucket, []) or []) + list((index or {}).get(bucket, []) or []):
+            if not isinstance(entry, dict):
+                continue
+            name = (entry.get("name") or "").strip()
+            if not name:
+                continue  # drop nameless typed extras
+            note = (entry.get("note") or "").strip()
+            key = name.lower()
+            if key not in seen:
+                seen[key] = {"name": name, "note": note}
+            elif note and not seen[key]["note"]:
+                seen[key]["note"] = note
+        out[bucket] = list(seen.values())
+    bible["index"] = out
+    _bible_path(campaign_dir).write_text(
+        json.dumps(bible, indent=2, ensure_ascii=False), encoding="utf-8")
+    return out
+
+
 def main():
     import argparse
 
@@ -253,6 +289,12 @@ def main():
 
     p_rules = sub.add_parser("campaign-rules", help="write campaign_rules into campaign-overview.json")
     p_rules.add_argument("campaign_dir")
+
+    p_index = sub.add_parser("write-index",
+                             help="persist a WORLD INDEX into the bible (the light import pass)")
+    p_index.add_argument("campaign_dir")
+    p_index.add_argument("--index-json", required=True,
+                         help='{"npcs":[{"name":..,"note":..}],"locations":[...],"items":[...],"monsters":[...]}')
 
     args = parser.parse_args()
 
@@ -283,6 +325,10 @@ def main():
             print(f"ruleset.json drafted: {ruleset['name']} | kit: {ruleset['kit']} "
                   f"| attrs: {ruleset['stat_schema']['attributes']} "
                   f"| agents: {ruleset['active_agents']}")
+        elif args.action == "write-index":
+            idx = write_index(args.campaign_dir, json.loads(args.index_json))
+            counts = ", ".join(f"{len(idx.get(b, []))} {b}" for b in INDEX_BUCKETS)
+            print(f"world index written: {counts}")
         else:
             rules = write_campaign_rules(args.campaign_dir)
             print(f"campaign_rules written: {len(rules['signature_systems'])} signature systems")
