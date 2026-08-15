@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-15T16:22:00Z  done: kit-grit-dial (re-scoped) — game_core.classify_harm + WorldKit.lethality (death-saves default, gritty dial)  [ss-rt14b]
 - 2026-08-15T16:20:00Z  done: lazy-npc-enrichment — gm-social step 1b flesh a stub on first contact (fast-lane, hitl auto-run)  [ss-rt14b]
 - 2026-08-15T16:19:00Z  done: world-index-newgame-authored — new-game authors the index for bookless worlds (fast-lane, hitl auto-run)  [ss-rt14b]
 - 2026-08-15T16:18:00Z  done: seed-antagonist-clock — import/new-game seed >=1 off-screen antagonist clock at creation (fast-lane)  [ss-rt14b]

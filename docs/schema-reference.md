@@ -13,7 +13,7 @@ sources:
   - { resource: /lib/world_bible.py }
   - { resource: /lib/session_manager.py }
   - { resource: /lib/play_pack.py }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T15:41:00Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:22:00Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
 ---
 
@@ -563,10 +563,19 @@ how a world plays without baking in D&D 5e.
   "stat_schema": { "attributes": ["str","con","dex","int"], "vitals": ["hp"] },
   "progression": { "model": "milestone | xp-levels | resource-axis", "...": "model config (thresholds/tiers/resource)" },
   "resolution": { "model": "d20-vs-dc" },
+  "lethality": { "model": "death-saves | gritty | none", "massive_damage_at": 20 },
+  "systems": [ {"primitive": "named_track|price_roll|reaction_roll|guarded_payoff", "name": "Menace", "config": {}} ],
   "active_agents": ["monster-manual", "loot-dropper"],
   "rules_doc": "rules.md"
 }
 ```
+
+- `lethality` (optional; absent = `death-saves`, the 5e default) tunes
+  `game_core.classify_harm` via `WorldKit.lethality()`: `gritty` makes 0 HP death
+  (no saves), `massive_damage_at` lowers the instant-death overkill bar.
+- `systems` (optional) instantiates the `game_core` signature-system primitives
+  (`WorldKit.systems()`); each rides scene context as an executable ROLL-these
+  block. Written by `book_bible.write_systems` (`gm-extract.sh write-systems`).
 
 - `stat_schema.attributes` is open and kit-defined (no fixed six abilities).
 - `progression.model` selects one of the core's three models; its config

@@ -157,6 +157,19 @@ class WorldKit:
         """
         return _normalize_signature_systems(self.ruleset.get("signature_systems"))
 
+    def lethality(self) -> Dict[str, Any]:
+        """The kit's lethality model for `game_core.classify_harm`.
+
+        `{"model": "death-saves" | "gritty" | "none", "massive_damage_at": int?}`.
+        Absent → death-saves (the 5e default), so existing campaigns are
+        unchanged. A grim world sets `gritty` (0 HP is death) or lowers
+        `massive_damage_at` to make single blows lethal sooner.
+        """
+        raw = self.ruleset.get("lethality")
+        if isinstance(raw, str):
+            return {"model": raw}
+        return raw if isinstance(raw, dict) else {"model": "death-saves"}
+
     def systems(self) -> List[Dict[str, Any]]:
         """Executable signature-system primitives instantiated by this kit.
 

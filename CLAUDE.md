@@ -29,7 +29,7 @@ Every interaction: **CONTEXT → DECIDE → EXECUTE → PERSIST → NARRATE.**
 The PC CAN die. This is not a guaranteed power-fantasy. Fail-forward does NOT mean immortal — it means failure changes the situation, and sometimes the change is death.
 - **Some plot armor is fine, lethal stakes are mandatory.** Never kill on one unlucky roll in a trivial moment. DO let death land from: reckless play against over-leveled threats, ignored warnings, or a string of bad outcomes that has visibly tightened.
 - **Telegraph lethality.** Before a beat can kill, the danger must be readable — name the threat's weight ("this is far beyond you"), let bad odds show, give an out. Death is earned, never ambush-by-GM-fiat.
-- **0 HP is the dying gate, not auto-death.** On 0 HP run the active kit's dying rules (D&D: death saves — `gm-combat`). Instant death only on the kit's stated trigger (D&D: damage ≥ max HP) or when the fiction makes survival absurd (fall into lava, executed while helpless).
+- **0 HP is the dying gate, not auto-death.** On 0 HP run the active kit's dying rules (D&D: death saves — `gm-combat`). Instant death only on the kit's stated trigger (D&D: damage ≥ max HP) or when the fiction makes survival absurd (fall into lava, executed while helpless). The kit's lethality is machine-readable: `game_core.classify_harm(hp, max, dmg, WorldKit.lethality())` returns `ok`/`dying`/`dead` — the default `death-saves` model is 5e-faithful; a grim kit sets `lethality: "gritty"` (0 HP is death) or a lower `massive_damage_at` so single blows kill sooner.
 - **When the PC dies → run the Death Protocol** (below). Do not just end the session.
 
 ## Death Protocol (PC hits 0 and dies)

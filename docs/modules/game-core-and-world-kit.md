@@ -6,7 +6,7 @@ sources:
   - { resource: /lib/game_core.py }
   - { resource: /lib/world_kit.py }
   - { resource: /lib/overview_seed.py }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:15:00Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:22:00Z }
 ---
 
 # Game core and World Kit
@@ -132,6 +132,13 @@ Like `spectacle_award`, all four **compute and return a plain dict — they read
 files and write none**; persistence is the caller's job. Rolls are seedable via
 `rng` for deterministic tests, and reuse the module dice roller when it is
 omitted. `uv run python lib/game_core.py` runs their edge-case self-check.
+
+`classify_harm(current_hp, max_hp, amount, lethality)` is the same shape — a pure
+classifier returning `{new_hp, outcome}` (`ok`/`dying`/`dead`) under the kit's
+`WorldKit.lethality()` model. Default `death-saves` is 5e-faithful (0 HP → dying,
+massive overkill → dead); `gritty` makes 0 HP death; `massive_damage_at` lowers the
+instant-death bar. The death-save ceremony itself stays in `gm-combat` / the Death
+Protocol — the core only says whether a hit is survivable, dying, or fatal.
 
 **The World Kit binds them per world** (as of 2026-08-15). `ruleset.json` may carry
 a `systems` list of `{primitive, name, config}` instantiations — a Conan **Menace**

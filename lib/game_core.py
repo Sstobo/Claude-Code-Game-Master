@@ -141,6 +141,34 @@ def apply_harm(current_hp: int, amount: int) -> int:
     return max(0, current_hp - max(0, amount))
 
 
+def classify_harm(current_hp: int, max_hp: int, amount: int,
+                  lethality: Dict[str, Any] = None) -> Dict[str, Any]:
+    """Apply harm and classify the outcome under the kit's lethality model.
+
+    Returns ``{new_hp, outcome}`` with outcome ``'ok' | 'dying' | 'dead'``. The
+    default ``death-saves`` model matches 5e: dropping to 0 opens the *dying*
+    gate, and only massive overkill (damage past 0 >= max HP) or an explicit
+    lower ``massive_damage_at`` kills outright. A grittier kit sets model
+    ``'gritty'`` — 0 HP is *dead*, no saves — and any kit can lower
+    ``massive_damage_at`` to make single hits lethal sooner. Model ``'none'``
+    never instant-kills (pure damage floor).
+
+    This is a pure calculator; persistence + the death-save ceremony are the
+    caller's (gm-combat / the Death Protocol) job.
+    """
+    lethality = lethality or {}
+    model = lethality.get("model", "death-saves")
+    amount = max(0, amount)
+    new_hp = max(0, current_hp - amount)
+    overkill = max(0, amount - current_hp)  # damage dealt past 0
+    threshold = lethality.get("massive_damage_at", max_hp)
+    if model != "none" and overkill >= threshold:
+        return {"new_hp": 0, "outcome": "dead"}
+    if new_hp == 0:
+        return {"new_hp": 0, "outcome": "dead" if model == "gritty" else "dying"}
+    return {"new_hp": new_hp, "outcome": "ok"}
+
+
 def heal(current_hp: int, max_hp: int, amount: int) -> int:
     """Increase HP by amount, capped at max_hp."""
     return min(max_hp, current_hp + max(0, amount))
