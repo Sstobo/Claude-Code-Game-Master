@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-15T15:53:30Z  done: world-index-schema-context — chapters→index schema + WORLD INDEX in scene context, review perfect  [ss-rt14b]
 - 2026-08-15T15:52:00Z  done: system-primitives-lib — 4 core signature-system primitives, review perfect  [ss-rt14b]
 - 2026-08-15T15:48:52Z  in-review: system-primitives-lib — 4 core primitives, self-check green, review dispatched  [ss-rt14b]
 - 2026-08-15T15:48:52Z  in-review: world-index-schema-context — chapters→index schema + context wiring, 48 tests green, review dispatched  [ss-rt14b]

@@ -6,7 +6,7 @@ sources:
   - { resource: /lib/world_bible.py }
   - { resource: /lib/book_bible.py }
   - { resource: /tools/gm-extract.sh }
-generated: { by: claude-opus-5, at: 2026-08-14T12:21:54Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T15:41:00Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
@@ -20,11 +20,18 @@ rules the GM is told to follow exactly.
 
 ## Half deterministic, half authored — and the seam is the point
 
-`draft_bible` (`lib/book_bible.py:160`) writes only what the source can prove: the
-chapter map, the verbatim-filtered voice block, and the skeleton keys `validate_bible`
-demands. `tone`, `themes`, `factions`, `geography` and `signature_systems` are the
-**model's** authorship, merged in by re-running the same verb with `--fields-json`. That
-is why the verb is idempotent: scaffold, read the book, merge, merge again.
+`draft_bible` (`lib/book_bible.py:163`) writes only what the source can prove: the
+verbatim-filtered voice block and the skeleton keys `validate_bible` demands. It also
+scaffolds an empty `index` — the named-thing roster, four buckets (`npcs`, `locations`,
+`items`, `monsters`), each entry a `{"name","note"}` pair with a one-sentence note (a
+later ticket populates it; the drafter only lays the empty structure). `tone`, `themes`,
+`factions`, `geography` and `signature_systems` are the **model's** authorship, merged in
+by re-running the same verb with `--fields-json`. That is why the verb is idempotent:
+scaffold, read the book, merge, merge again.
+
+As of 2026-08-15 the bible no longer persists a `chapters` array. `draft_bible` used to
+write one derived from `segment_into_chapters`; it stopped, in favor of the `index`. The
+splitter itself is untouched — see "Chapter segmentation is shared" below.
 
 It refuses to touch a bible whose `confirmed` flag is absent or true
 (`lib/book_bible.py:173`) — the same rule `WorldBible.is_confirmed` reads, so a
@@ -86,12 +93,13 @@ validation but do **not** block play; only the confirm flag does.
 
 ## Chapter segmentation is shared, and prefers real markers
 
-`segment_into_chapters` is the bible's own splitter and is also what
-[the coarse index](rag-stack.md) builds on. It needs **two or more** chapter markers
-before it will split on them (`lib/book_bible.py:41`); with fewer, the entire book becomes
-one span, then gets cut into 20,000-character windows. A PDF whose chapter headings didn't
-survive extraction therefore yields arbitrary windows with first-line titles — still
-usable for retrieval, useless for citing "chapter 4".
+`segment_into_chapters` still lives in `lib/book_bible.py`, but as of 2026-08-15 it feeds
+only [the coarse index](rag-stack.md) (`lib/rag/coarse_index.py:47`) — it no longer
+populates the bible. It needs **two or more** chapter markers before it will split on them
+(`lib/book_bible.py:41`); with fewer, the entire book becomes one span, then gets cut into
+20,000-character windows. A PDF whose chapter headings didn't survive extraction therefore
+yields arbitrary windows with first-line titles — still usable for retrieval, useless for
+citing "chapter 4".
 
 ## Related
 

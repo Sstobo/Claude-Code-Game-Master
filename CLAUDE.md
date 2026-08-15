@@ -132,6 +132,7 @@ grounded source passages.
 All tools take `--json` for structured returns. **Always prefix with `bash tools/`.**
 
 ## Search Guide (which tool)
+- **Naming a new thing? Scan the WORLD INDEX first.** Scene context carries a WORLD INDEX (named NPCs/locations/items/monsters that already exist) — check it for an established name before inventing a new one.
 - **Narrating a scene? Use the one front door:** `bash tools/gm-context.sh ["loc"] [--entity "Name"]` — world-state + grounded source passages, internally routed. A new face or place that is not in the journal yet: `bash tools/gm-playpack.sh from-book "<name>"` then RAG. Do not census ahead.
 - Source material (free text): `gm-search.sh "q" --rag-only`. World state: `gm-search.sh "q" --world-only`. Both: `gm-search.sh "q"`. NPCs by tag: `gm-search.sh --tag-location "Place"`.
 - **WRONG**: `gm-enhance.sh query "free text"` (entity NAME lookup, not search). **RIGHT**: `gm-search.sh "free text" --rag-only`.

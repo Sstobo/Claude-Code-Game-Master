@@ -55,8 +55,10 @@ def test_draft_bible_writes_an_unconfirmed_grounded_draft(campaign):
     assert bible["name"] == "The Iron Tangle"
     # Verbatim filter: the real excerpt survives, the invented one does not.
     assert bible["voice"]["sample_passages"] == [VERBATIM]
-    # Chapter map from the source's own markers.
-    assert [c["title"] for c in bible["chapters"]] == ["Chapter One", "Chapter Two"]
+    # Chapters are no longer persisted to the bible (2026-08-15: replaced by the
+    # world index). segment_into_chapters still feeds the RAG coarse index only.
+    assert "chapters" not in bible
+    assert bible["index"] == {"npcs": [], "locations": [], "items": [], "monsters": []}
     # Skeleton keys are present, so the bible validates before the model fills them.
     assert validate_bible(bible) == (True, [])
 

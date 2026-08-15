@@ -10,7 +10,7 @@ sources:
   - { resource: /lib/entity_manager.py }
   - { resource: /tools/gm-context.sh }
   - { resource: /lib/play_pack.py }
-generated: { by: cursor-grok-4.6, at: 2026-08-15T11:52:48Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T15:41:00Z }
 verified: { by: claude-fable-5, at: 2026-08-14T12:19:52Z }
 ---
 
@@ -23,7 +23,7 @@ most common way a beat comes out flat.
 
 | Command | Code | Returns |
 |---|---|---|
-| `gm-session.sh context` | `SessionManager.get_full_context` (`lib/session_manager.py:526`) | The **session brief** — everything below, as formatted prose for the model |
+| `gm-session.sh context` | `SessionManager.get_full_context` (`lib/session_manager.py:592`) | The **session brief** — everything below, as formatted prose for the model |
 | `gm-context.sh ["loc"]` | `SceneContext.build` (`lib/scene_context.py:37`) | The **place brief** — this location, NPCs present, named entities, plus grounded source passages |
 
 Neither contains the other. The session brief has no source passages; the place brief has
@@ -31,8 +31,8 @@ no history, threads, clocks, voice, or rules. Narrating a scene generally wants 
 
 ## What the session brief carries, and why each block exists
 
-`get_full_context` (`lib/session_manager.py:526`) assembles, in order: header (campaign, session #, location, time) ·
-**KIT** · **PRIMER** (play pack, when set) · play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** ·
+`get_full_context` (`lib/session_manager.py:592`) assembles, in order: header (campaign, session #, location, time) ·
+**KIT** · **PRIMER** (play pack, when set) · play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** · **world index** ·
 **previously on** + where-we-paused + open threads · **the world remembers** · story threads · key facts · threat
 clocks · character · party members · **NPC voices** · pending consequences · **your
 world's rules**.
@@ -63,7 +63,11 @@ Eight of those blocks carry design decisions that are not obvious from reading t
 - **Narrative voice is a prose target, not lore.** The block is labelled that way in the
   output for a reason — the sample passages are style exemplars to imitate, and a model
   that treats them as world facts will narrate someone else's scene.
-- **NPC secrets are surfaced by existence only.** `lib/session_manager.py:826` prints
+- **WORLD INDEX is the roster the GM scans before inventing a name.** Built from the
+  bible's `index` (`npcs`/`locations`/`items`/`monsters`), it lists `name — note` lines
+  grouped by non-empty bucket. It is emitted only when at least one bucket has an entry;
+  an absent or all-empty `index` prints no header at all.
+- **NPC secrets are surfaced by existence only.** `lib/session_manager.py:932` prints
   `"has a secret"` and never the secret text, so a secret can sit in `npcs.json` without
   leaking into narration the moment its owner walks on stage.
 - **Presence does not require a voice, and present NPCs carry their memory.** Who is here
@@ -91,7 +95,7 @@ Eight of those blocks carry design decisions that are not obvious from reading t
   pointer.
 - **World rules prefer kit `signature_systems`, then `campaign_rules`, and are never
   truncated.** Every other block is bounded — by item count, not by chopping an entry
-  mid-sentence — but YOUR WORLD'S RULES is printed whole (`lib/session_manager.py:891`).
+  mid-sentence — but YOUR WORLD'S RULES is printed whole (`lib/session_manager.py:997`).
   A kit that declares `signature_systems` (list or the Conan dict form) is the live
   surface; a legacy campaign with none still gets `campaign_rules`. Those rules *are*
   the magic that makes each book distinct, and the GM is told to follow them exactly, so

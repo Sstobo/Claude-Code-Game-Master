@@ -26,6 +26,29 @@ def _is_graph(g: Any) -> bool:
     return isinstance(g, dict) and isinstance(g.get('nodes'), list) and isinstance(g.get('edges'), list)
 
 
+_INDEX_BUCKETS = ('npcs', 'locations', 'items', 'monsters')
+
+
+def _index_errors(index: Any) -> List[str]:
+    """Validate the optional `index` roster: a dict of four buckets, each a list
+    of {"name","note"} objects. Absent is valid (legacy bibles); malformed fails.
+    """
+    if not isinstance(index, dict):
+        return ['index must be an object {npcs:[], locations:[], items:[], monsters:[]}']
+    errors: List[str] = []
+    for bucket in _INDEX_BUCKETS:
+        entries = index.get(bucket, [])
+        if not isinstance(entries, list):
+            errors.append(f'index.{bucket} must be a list')
+            continue
+        for entry in entries:
+            if not (isinstance(entry, dict) and isinstance(entry.get('name'), str)
+                    and isinstance(entry.get('note'), str)):
+                errors.append(f'index.{bucket} entries must be {{"name","note"}} objects')
+                break
+    return errors
+
+
 def validate_bible(bible: Dict[str, Any]) -> Tuple[bool, List[str]]:
     errors: List[str] = []
     if not isinstance(bible, dict):
@@ -44,6 +67,8 @@ def validate_bible(bible: Dict[str, Any]) -> Tuple[bool, List[str]]:
     voice = bible.get('voice')
     if voice is not None and not isinstance(voice, dict):
         errors.append('voice must be an object (style/vocab/sample_passages)')
+    if 'index' in bible:
+        errors.extend(_index_errors(bible['index']))
     return (len(errors) == 0), errors
 
 

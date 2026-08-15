@@ -746,6 +746,26 @@ class SessionManager(EntityManager):
             if rem:
                 lines.append(rem)
 
+        # --- World Index (named things that exist; scan before inventing a name) ---
+        index = bible.get("index") or {}
+        index_labels = (
+            ("npcs", "NPCs"), ("locations", "Locations"),
+            ("items", "Items"), ("monsters", "Monsters"),
+        )
+        index_lines: List[str] = []
+        for bucket, label in index_labels:
+            entries = [e for e in (index.get(bucket) or []) if isinstance(e, dict) and e.get("name")]
+            if not entries:
+                continue
+            index_lines.append(f"{label}:")
+            for e in entries:
+                note = str(e.get("note") or "").strip()
+                index_lines.append(f"  {e['name']}" + (f" — {note}" if note else ""))
+        if index_lines:
+            lines.append("")
+            lines.append("--- WORLD INDEX (named things that exist; scan before inventing a name) ---")
+            lines.extend(index_lines)
+
         # --- Previously On (story spine: resume story-aware, not stat-amnesiac) ---
         # Bounded by item COUNT, never by chopping a single entry. --full shows all.
         all_summaries = self._recent_session_summaries(n=None)

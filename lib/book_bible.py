@@ -141,6 +141,9 @@ _SKELETON = (
     ("factions", {"nodes": [], "edges": []}),
     ("geography", {"nodes": [], "edges": []}),
     ("signature_systems", []),
+    # Named-thing roster the GM scans before inventing a name. Populated by a
+    # later ticket; each entry is {"name": str, "note": str}.
+    ("index", {"npcs": [], "locations": [], "items": [], "monsters": []}),
 )
 
 
@@ -158,12 +161,13 @@ def load_bible(campaign_dir) -> Dict[str, Any]:
 
 
 def draft_bible(campaign_dir, name: str = None, voice: Dict[str, Any] = None,
-                fields: Dict[str, Any] = None, max_chars: int = 20000) -> Dict[str, Any]:
+                fields: Dict[str, Any] = None) -> Dict[str, Any]:
     """Draft (or refresh) an unconfirmed world-bible.json from the campaign's source text.
 
     Idempotent: re-running merges `name` / `voice` / `fields` into the existing
-    draft and re-derives the chapter map, preserving anything already authored.
-    Refuses to touch a bible a human has confirmed (ConfirmedBibleError).
+    draft, preserving anything already authored, and scaffolds an empty `index`
+    (npcs/locations/items/monsters) for the named-thing roster. Refuses to touch
+    a bible a human has confirmed (ConfirmedBibleError).
     """
     cdir = Path(campaign_dir)
     path = _bible_path(cdir)
@@ -200,8 +204,6 @@ def draft_bible(campaign_dir, name: str = None, voice: Dict[str, Any] = None,
         )
     else:
         bible.setdefault("voice", draft_voice("", [], source))
-    bible["chapters"] = [{"index": c["index"], "title": c["title"]}
-                         for c in segment_into_chapters(source, max_chars=max_chars)]
     bible["confirmed"] = False
 
     path.write_text(json.dumps(bible, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -262,8 +264,11 @@ def main():
                 voice=json.loads(args.voice_json) if args.voice_json else None,
                 fields=json.loads(args.fields_json) if args.fields_json else None,
             )
+            idx = bible.get("index", {})
+            idx_counts = ", ".join(f"{len(idx.get(b, []))} {b}"
+                                   for b in ("npcs", "locations", "items", "monsters"))
             print(f"world-bible.json drafted: {bible['name']} "
-                  f"({len(bible['chapters'])} chapters, "
+                  f"(index: {idx_counts}; "
                   f"{len(bible['voice']['sample_passages'])} verbatim passages, confirmed=False)")
         elif args.action == "draft-ruleset":
             ruleset = write_ruleset(

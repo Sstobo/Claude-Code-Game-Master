@@ -13,7 +13,7 @@ sources:
   - { resource: /lib/world_bible.py }
   - { resource: /lib/session_manager.py }
   - { resource: /lib/play_pack.py }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:56:54Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T15:41:00Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
 ---
 
@@ -588,12 +588,22 @@ import; captures what makes a book feel like itself.
   "geography": { "nodes": [{"id","name"}], "edges": [{"from","to","adjacency"}] },
   "timeline": ["..."],
   "signature_systems": ["..."],
-  "chapters": [{"title": "string", "start": 0, "end": 0}]
+  "index": {
+    "npcs":      [{"name": "string", "note": "one sentence"}],
+    "locations": [{"name": "string", "note": "one sentence"}],
+    "items":     [{"name": "string", "note": "one sentence"}],
+    "monsters":  [{"name": "string", "note": "one sentence"}]
+  }
 }
 ```
 
-`chapters` is the persisted chapter map `draft-bible` writes from
-`segment_into_chapters` (character offsets into `current-document.txt`).
+`index` is the named-entity roster — the things the book already named, one sentence each
+— scaffolded empty by `draft-bible` and surfaced as the scene-context WORLD INDEX block so
+the GM reuses an established name before inventing one. It is optional (absent on legacy
+bibles); when present, `validate_bible` requires the four buckets to be lists of
+`{"name","note"}` objects. `segment_into_chapters` still splits the source, but now only
+feeds the RAG coarse index (`lib/rag/coarse_index.py`) — it no longer writes into the
+bible.
 
 Required: name, voice, tone, themes, factions (graph), geography (graph),
 signature_systems. The bible auto-generates the World Kit ruleset + campaign_rules.
