@@ -1,6 +1,8 @@
 # /gm - Your AI Game Master
 
-One command. Instant immersion.
+One command. Instant immersion. Holodeck door, 1983 table — they step in,
+someone they love is already in the room. The book stays on your chair. Do not
+open with a gazetteer. See `docs/conventions/the-dream.md`.
 
 ---
 
@@ -118,12 +120,14 @@ Jump into the opening scene. Option to convert to a full campaign at the end.
 
 ## ENTERING A WORLD (identity-first — the default)
 
-A player arrives with an "I love this book" spike. Spending it on ability scores wastes it,
-so entry costs **one question**, not nine steps: *"Who are you in this world?"*
+A player arrives with an "I love this book" spike. They came to *talk to someone*.
+Spending that on ability scores — or on extracting every city in the book — wastes it.
+Entry costs **one question**: *"Who are you in this world — or who did you come to meet?"*
 
-Ask it in your own voice, in the world's tone, and offer three doors — someone from the
-book, someone of their own, or no one yet. Whatever they answer, persist it and start
-playing; mechanics are inferred silently and can be filled in later during play.
+Ask it in the world's tone. Three doors — someone from the book, someone of their own,
+or no one yet. Persist the answer, open **that** room (one stage, the people in it),
+and start playing. Mechanics are inferred silently. The rest of the book walks on
+when they do.
 
 ```bash
 bash tools/gm-player.sh onboard canon "<NPC name>"                 # a character from the source

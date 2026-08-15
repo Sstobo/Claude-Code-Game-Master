@@ -22,13 +22,11 @@ PROJECT_ROOT = Path(__file__).parent.parent
 STATE_VERBS = [
     ("tools/gm-session.sh", "context"),
     ("tools/gm-enhance.sh", "find", "Anyone"),
-    ("tools/gm-worldgen.sh", "consolidate"),
 ]
 
 USAGE_ONLY = [
     ("tools/gm-session.sh",),
     ("tools/gm-enhance.sh",),
-    ("tools/gm-worldgen.sh",),
 ]
 
 
@@ -83,31 +81,6 @@ def test_enhance_help_needs_no_campaign(no_active_campaign):
     assert "Usage:" in result.stdout
 
 
-def test_worldgen_guards_flag_only_invocation(no_active_campaign):
-    """A leading flag is not a campaign name — the guard must still fire."""
-    result = _run("tools/gm-worldgen.sh", "consolidate", "--json")
-    output = result.stdout + result.stderr
-    assert result.returncode != 0
-    assert "No active campaign" in output
-    assert "Traceback" not in output
-
-
-def test_worldgen_named_campaign_skips_the_guard(no_active_campaign):
-    """The fan-out names its campaign before activating it — that must still run."""
-    result = _run("tools/gm-worldgen.sh", "consolidate", "some-campaign")
-    output = result.stdout + result.stderr
-    assert result.returncode == 0, output
-    assert "No active campaign" not in output
-
-
-def test_worldgen_named_campaign_after_a_flag_skips_the_guard(no_active_campaign):
-    """The escape hatch is flag-order-insensitive: a name anywhere counts."""
-    result = _run("tools/gm-worldgen.sh", "consolidate", "--json", "some-campaign")
-    output = result.stdout + result.stderr
-    assert result.returncode == 0, output
-    assert "No active campaign" not in output
-
-
 def test_session_help_needs_no_campaign(no_active_campaign):
     result = _run("tools/gm-session.sh", "--help")
     assert result.returncode == 0
@@ -135,14 +108,6 @@ def test_session_unknown_action_names_every_dispatched_verb(no_active_campaign):
     for verb in declared:
         assert verb in output, f"{verb} missing from the unknown-action message"
         assert f"\n    {verb})" in script, f"{verb} has no case branch"
-
-
-def test_worldgen_guard_names_the_escape_hatch(no_active_campaign):
-    """Naming a campaign is a fix here, so the failure has to mention it."""
-    result = _run("tools/gm-worldgen.sh", "consolidate")
-    output = result.stdout + result.stderr
-    assert "No active campaign" in output
-    assert "<command> <campaign>" in output
 
 
 def test_no_wrapper_local_guard_copies_remain():

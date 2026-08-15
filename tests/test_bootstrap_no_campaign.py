@@ -2,7 +2,7 @@
 
 `get_campaign_dir` (tools/common.sh) returns 1 when no campaign is active. Every
 wrapper sources common.sh, so `WORLD_STATE_DIR=$(get_campaign_dir)` inherits that
-status — and in a `set -e` wrapper (gm-extract.sh, gm-worldgen.sh) the script died
+status — and in a `set -e` wrapper (gm-extract.sh) the script died
 at the source line, before printing anything. First-run bootstrap is exactly the
 no-campaign case, so the guard is what makes import/create reachable at all.
 
@@ -78,7 +78,6 @@ def test_common_sh_falls_back_to_the_repo_when_unset(no_active_campaign):
     [
         ("tools/gm-extract.sh",),
         ("tools/gm-extract.sh", "list"),
-        ("tools/gm-worldgen.sh",),
         ("tools/gm-campaign.sh", "list"),
         ("tools/gm-session.sh", "context"),
     ],
@@ -90,7 +89,7 @@ def test_no_tool_dies_silently(no_active_campaign, argv):
     assert output.strip(), f"{argv} produced no output (exit {result.returncode})"
 
 
-@pytest.mark.parametrize("verb", ["validate", "normalize", "cap", "spine", "archive"])
+@pytest.mark.parametrize("verb", ["validate", "normalize", "cap", "archive"])
 def test_extract_verbs_needing_a_campaign_fail_loudly(no_active_campaign, verb):
     """The raw-cat sites: each of these verbs needs a campaign and had none, so it
     must name the problem and the fix — not exit 1 with an empty terminal."""

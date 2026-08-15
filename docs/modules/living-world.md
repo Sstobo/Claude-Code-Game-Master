@@ -11,7 +11,7 @@ sources:
   - { resource: /tools/gm-time.sh }
   - { resource: /tools/gm-session.sh }
   - { resource: /tools/gm-clock.sh }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T20:20:11Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:26:26Z }
 verified: { by: cursor-grok-4.6, at: 2026-08-14T19:13:47Z }
 ---
 
@@ -38,8 +38,8 @@ ever move by hand.
 `_fire_if_filled` writes the clock's stored `consequence` into the consequence engine as
 `[Clock — <name>] <text>`, the same bridge `record_choice` uses. Before this the text was
 only echoed in a print, so a countdown running out was a line the GM might notice rather
-than a beat that arrived — while `clock_seed` had been seeding that field from the plot's
-own stated consequence on every import.
+than a beat that arrived. The clock's `consequence` field is authored when the clock is
+created (`gm-clock.sh`), from the pressure the beat is meant to apply.
 
 Firing is the **transition into full**, not a state check: a clock that was already full
 fires nothing, and one reset or extended back below full fires again the next time it

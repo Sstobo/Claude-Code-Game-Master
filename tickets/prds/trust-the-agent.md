@@ -1,7 +1,7 @@
 ---
 slug: trust-the-agent
 title: Trust the Agent — context is state, craft is a skill, caps become disclosures
-status: active
+status: superseded
 version: 1
 supersedes: state-of-the-table
 createdAt: 2026-08-14T18:52:00Z

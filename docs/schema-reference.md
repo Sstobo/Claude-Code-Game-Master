@@ -12,7 +12,8 @@ sources:
   - { resource: /lib/world_kit.py }
   - { resource: /lib/world_bible.py }
   - { resource: /lib/session_manager.py }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:39:36Z }
+  - { resource: /lib/play_pack.py }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:26:26Z }
 verified: { by: claude-fable-5, at: 2026-08-13T14:27:33Z }
 ---
 
@@ -54,7 +55,7 @@ is named in `world-state/active-campaign.txt`.
 ├── fallen/                  # Archived sheets of dead PCs
 ├── images/                  # Generated scene images + _gen-log.jsonl
 ├── chunks/ · vectors/       # RAG source chunks and the ChromaDB index
-└── extracted/ · canon/ · authored/   # Import / world-authoring staging
+└── extracted/               # Legacy census-import staging
 ```
 
 Most of these are created lazily — a campaign that has never been illustrated has no
@@ -89,7 +90,17 @@ Most of these are created lazily — a campaign that has never been illustrated 
     "tone": "string"
   },
   "story_spine": {"arc": ["ordered plot names"], "through_line": "string"},
-  "preferences": {"action_menu": true}
+  "preferences": {"action_menu": true, "rag_inspiration": true},
+  "play_pack": {
+    "whose_story": "string",
+    "room": "this room, not a kingdom",
+    "present": ["names in the room"],
+    "exits": ["what you can see from here"],
+    "hook": "the problem that will not wait",
+    "offstage": ["horizon names — do not build"],
+    "primer": "one short GM paragraph"
+  },
+  "opening_hook": {"location": "string", "hook": "string"}
 }
 ```
 
@@ -99,6 +110,12 @@ in `ruleset.json` instead is a silent no-op for narration. See
 [game core and World Kit](modules/game-core-and-world-kit.md). Worlds are free to add
 their own keys here (the shipped DCC fixture carries `viewer_stats`, `pending_boxes`, and
 `pending_interview_topics`).
+
+**`play_pack` is tonight's table**, not a gazetteer. `lib/play_pack.py` writes it;
+`get_full_context` renders a `--- PRIMER ---` block when any field is set. `stage`
+persists the room, present NPCs, and exit stubs into the journal. `from-book` writes
+exactly one name when play walks toward it. Setting a pack must not fabricate a
+session (`### Session Ended`). See [the dream](conventions/the-dream.md).
 
 ---
 

@@ -9,7 +9,8 @@ sources:
   - { resource: /lib/search.py }
   - { resource: /lib/entity_manager.py }
   - { resource: /tools/gm-context.sh }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T20:20:11Z }
+  - { resource: /lib/play_pack.py }
+generated: { by: cursor-grok-4.6, at: 2026-08-15T11:52:48Z }
 verified: { by: claude-fable-5, at: 2026-08-14T12:19:52Z }
 ---
 
@@ -31,7 +32,7 @@ no history, threads, clocks, voice, or rules. Narrating a scene generally wants 
 ## What the session brief carries, and why each block exists
 
 `get_full_context` (`lib/session_manager.py:526`) assembles, in order: header (campaign, session #, location, time) ·
-**KIT** · play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** ·
+**KIT** · **PRIMER** (play pack, when set) · play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** ·
 **previously on** + where-we-paused + open threads · **the world remembers** · story threads · key facts · threat
 clocks · character · party members · **NPC voices** · pending consequences · **your
 world's rules**.
@@ -44,6 +45,12 @@ Eight of those blocks carry design decisions that are not obvious from reading t
   fixture is that case. If `WorldKit` cannot load (no active campaign, a throw), the
   block is skipped rather than crashing the brief. `gm-combat` / `gm-levelup` /
   `gm-spellcasting` defer to this block instead of calling `world_kit.py info`.
+
+- **PRIMER is tonight's table.** When `campaign-overview.json.play_pack` has any
+  field set, `render_primer` appends `--- PRIMER ---` (whose story, this room,
+  who is here, the hook, what is offstage). An empty pack adds nothing. Setting
+  a pack does not fabricate a session. New names walk on via
+  `gm-playpack.sh from-book`.
 
 - **Play-style flags stay; failure is one informing sentence.** Pacing, dice, action
   menu and inspiration still read `preferences` and surface when set. Failure is

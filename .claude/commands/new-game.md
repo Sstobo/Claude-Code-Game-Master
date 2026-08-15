@@ -1,13 +1,13 @@
 # /new-game - Create Your World
 
-Author an original world that plays as *its own game* — grounded by the same
-spine an imported book gets: a `world-bible.json`, a `ruleset.json` World Kit, and
-an embedded source corpus. The pipeline is **seed → skeleton → fan-out →
-reconcile → ground**, so the world does not drift to generic D&D.
+Author tonight's table, not a planet. Same dream as `/import`: kit, voice, a
+primer, one street. The campaign file is a **journal of where the table has
+been**. The world grows AS YOU PLAY — seed a clock, a thread, or a plot when you
+see a long-game opportunity, materialize the next face or place when play walks
+toward it. Do not pre-build the universe: author tonight's one stage, then let the
+living-world tools grow it from the table.
 
-> Architecture: original creation *authors* a book's worth of canon, then runs it
-> through the SAME grounding machinery import uses. Specialist authors run in
-> parallel; each writes ONLY its own files; a serial consolidate folds them in.
+See `docs/conventions/the-dream.md`.
 
 ---
 
@@ -43,13 +43,8 @@ Genre bend options:
   politics.
 - *Folk / cosmic horror:* fragile sanity; small community; a wrongness beneath.
 
-From the answers, **derive an ADAPTIVE axis list** — do NOT use a fixed set. Pick
-the axes that are load-bearing for THIS genre and mark each `deep` or `stub`:
-- always: `geography`, `factions`, `history`.
-- sword-and-sorcery → `magic-lore` (deep, blood/curse), `culture` (oaths/idiom); skip heavy tech.
-- tech → `technology` (deep, infrastructure), `factions` (deep, corporate/clan).
-- high fantasy → `culture`/`language` (deep, lineage + pantheon), `bestiary`.
-- horror → `culture` (the community), `bestiary`/`magic-lore` (the wrongness).
+Capture the genre bend as a sentence or two of distinct commitments. You do NOT
+need a full axis list to sit down — the world's shape emerges at the table.
 
 Write `world-seed.json` to the campaign dir:
 
@@ -60,10 +55,7 @@ Write `world-seed.json` to the campaign dir:
   "voice_exemplar": "<author/work to channel, e.g. 'Robert E. Howard'>",
   "art_style": "In the style of <a distinctive, fully-specified look> — a mashup of two unexpected references often lands ('In the style of Frank Miller's Batman but rendered in smudged charcoal', 'In the style of a gilded medieval illuminated manuscript but depicting cyberpunk megacities'), or commit hard to one strong style the world already implies. Either way it must be specific enough that two images read as one artist's hand. This is the campaign's locked gallery signature, set ONCE here.",
   "chronicler_name": "<the in-world artist who 'makes' every image, fits the tone>",
-  "chronicler_persona": "<their voice/bias — grim, sarcastic, reverent, unreliable>",
-  "axes": [ { "axis": "geography", "depth": "deep", "bend": "..." },
-            { "axis": "magic-lore", "depth": "deep", "bend": "blood-priced curses" },
-            { "axis": "bestiary", "depth": "stub", "bend": "..." } ]
+  "chronicler_persona": "<their voice/bias — grim, sarcastic, reverent, unreliable>"
 }
 ```
 
@@ -72,8 +64,8 @@ Write `world-seed.json` to the campaign dir:
 ## PHASE B — SKELETON (one pass, while the seed is fresh)
 
 YOU (the main GM agent) author the full creative skeleton NOW, in one pass, while
-all the seed context is fresh in mind. This is the coherence anchor every parallel
-author will carry — get the world's identity right here.
+all the seed context is fresh in mind. This is the world's identity — get it right
+here; everything else grows from the table.
 
 Write `world-bible.json` to the campaign dir with `confirmed: false` and ALL
 required keys (validated by `lib/world_bible.py`): `name`, `voice`
@@ -87,13 +79,8 @@ in the author's voice at play (surfaced every beat by `get_full_context`):
 - `sample_passages`: 2-3 SHORT passages YOU write *in that author's voice* (original
   imitation, NOT copied from the real author's text) so the GM has a concrete target.
 - `vocab`: a few signature in-world terms.
-The `culture` axis (Phase C) may deepen `vocab` + add passages.
-
-Other required keys: `factions`
-(`{nodes:[],edges:[]}` — seed the major ones), `geography` (`{nodes,edges}` — the
-starting region + a few named places beyond the village), `signature_systems` (the
-distinctive magic/tech, named), and a short `timeline`. Make it specific and
-distinct — this is the spine, not a stub.
+Keep geography to the starting street plus a few horizon names. Do not author
+the continent. Signature systems go here — they become the kit.
 
 Validate, then present for approval:
 ```bash
@@ -102,110 +89,40 @@ uv run python lib/world_bible.py show
 ```
 
 Show the user the `name`, voice style, themes, factions, and signature systems.
-**Gate the fan-out on their approval** — let them edit or accept. Do not proceed
-until they accept. (The bible stays `confirmed: false` until Phase E.)
+**Gate play on their approval** — let them edit or accept. Then write the kit
+and the play pack (Phase C). The bible stays `confirmed: false` until they accept.
 
 ---
 
-## PHASE C — FAN-OUT (parallel authors + the kit owner)
+## PHASE C — PLAY PACK (the default — build the one stage)
 
-Launch ALL of these **simultaneously** as parallel Task calls (like /import's
-extractors). One `world-author` per axis in `world-seed.json`, plus one
-`world-kit-author`:
+Write only what tonight needs:
 
-```
-Task: subagent_type=world-author
-prompt: "Author the '<AXIS>' axis (DEPTH=<deep|stub>) for the active campaign.
-         Read world-seed.json + world-bible.json (canon). Write ONLY
-         canon/<AXIS>.md and authored/<AXIS>.json per your contract. bend: <bend>."
-   ... (repeat for every axis) ...
-
-Task: subagent_type=world-kit-author
-prompt: "Author ruleset.json for the active campaign from world-seed.json +
-         world-bible.json. Derive mechanics from the world; do not default to 5e."
-```
-
-Wait for ALL to complete. Each writes its own files only → no collisions.
-
----
-
-## PHASE D — RECONCILE (anti-drift)
-
-```
-Task: subagent_type=world-reconciler
-prompt: "Reconcile the active campaign: read world-seed.json, world-bible.json,
-         all authored/*.json, canon/*.md, ruleset.json. Run the genericness
-         critic, kit↔flavor agreement, and graph cross-link. Write
-         reconcile-report.json and apply low-risk cross-link edits."
-```
-
-Read `reconcile-report.json`. If `verdict: needs-changes`, apply the rewrites /
-kit patches (re-run the relevant `world-author` / `world-kit-author`, or edit the
-authored files), then re-reconcile. Surface generic flags + kit disagreements to
-the user if judgment is needed.
-
----
-
-## PHASE E — GROUND (consolidate → embed → confirm → open it alive → validate)
+1. Draft the kit (`gm-extract.sh draft-ruleset`) — derive it from the world, not a 5e default.
+2. Write a short `rules.md` if the world has signature systems.
+3. Set the play pack and stage:
 
 ```bash
-# 1. Fold authored contributions into runtime state + the bible (serial, race-free)
-#    — locations, npcs, PLOTS, facts. Check the report's plot count is non-zero:
-#      everything in step 5 reads plots.json.
-bash tools/gm-worldgen.sh consolidate
-
-# 2. Compile authored canon into one document
-CANON=$(bash tools/gm-worldgen.sh compile-canon --json | uv run python -c "import sys,json;print(json.load(sys.stdin)['data']['path'])")
-
-# 3. Embed it for RAG — same path imports use (writes current-document.txt + chunks + vectors)
-bash tools/gm-extract.sh prepare "$CANON" "<CAMPAIGN_NAME>"
-
-# 4. Confirm the bible (the human approved it in Phase B; world is now grounded)
-uv run python -c "import sys; sys.path.insert(0,'lib'); from world_bible import WorldBible; WorldBible().confirm()"
+bash tools/gm-playpack.sh set --json '{
+  "whose_story": "<who they are or came to meet>",
+  "room": "<one street / room / deck>",
+  "present": ["<2-4 people here>"],
+  "exits": ["<what you can see>"],
+  "hook": "<the problem that will not wait>",
+  "offstage": ["<horizon names>"],
+  "primer": "<GM paragraph: where the plot starts>"
+}'
+bash tools/gm-playpack.sh stage
 ```
 
-**5. Open the world ALIVE** — the same four passes an import runs, so the first
-`/gm` beat has story threads, a spine, live pressure and a place to stand instead of
-an empty context and a null location:
+4. Optional thin binder: a short `authored-canon.md` of *this street only*, then
+   `gm-extract.sh prepare` so RAG has something to pull. Do not author the continent.
 
-```bash
-set -e   # each pass feeds the next; a failure must stop the chain here
-
-# Derive campaign_rules from the bible's signature_systems (the kit itself was
-# authored by world-kit-author in Phase C — this is the systems block
-# WorldKit.campaign_rules() reads into every scene context).
-bash tools/gm-extract.sh campaign-rules
-
-# Order matters: spine FIRST. seed-clocks and seed-opening both read the arc it
-# writes (overview.story_spine + the plots it sequenced).
-bash tools/gm-extract.sh spine "<CAMPAIGN_NAME>"          # arc order + through-line
-bash tools/gm-extract.sh seed-clocks "<CAMPAIGN_NAME>"    # threat clocks from countdown plots
-# Provisional: the world has to open somewhere before a PC exists. The opening
-# play uses is re-chosen when the PC first exists — `gm-player.sh onboard`
-# (the three-door handoff), or the first `gm-player.sh set` if they rolled a
-# sheet via `/create-character` `save-json` — so it matches the protagonist
-# (location + active plot + session-log hook, together).
-bash tools/gm-extract.sh seed-opening "<CAMPAIGN_NAME>"   # starting location + opening beat + log hook
-```
-
-**If a pass fails, STOP** and fix it before play — do not carry on to Phase F.
-The two real failures, both upstream in the authored world:
-- `spine` prints an empty arc, or `seed-opening` reports "no main/spine plot to
-  open on" → no axis authored a `main` plot. Add one to the relevant
-  `authored/<axis>.json` and re-run `consolidate` + this whole block.
-- `campaign-rules` writes a thin block → the bible's `signature_systems` are thin.
-  Fix them in `world-bible.json` (the bible stays the single source) and re-run.
-
-`seed-clocks` seeding zero clocks is NOT a failure — it means no plot named an
-explicit countdown. Add one to a `threat` plot's description if the world should
-have a ticking clock.
-
-Then run **`/world-check`** (or `uv run python lib/schemas.py`) to validate the
-generated world. Fix anything it flags before play.
+When a new name walks on: `gm-playpack.sh from-book "<name>"` then RAG.
 
 ---
 
-## PHASE F — OVERVIEW, SESSION LOG, HANDOFF
+## PHASE D — HANDOFF (play tonight)
 
 **Lock the chronicler + art style NOW** (the gallery signature is a world-creation
 decision, not an in-play improvisation) from the seed's `art_style` /
@@ -225,25 +142,20 @@ chronicler record carries BOTH halves of the image identity — the **art style*
 (`--style`) and the **art narrator** (`--name` / `--persona`, the in-world entity
 who "makes" every picture). Lock both now; they never change in play.
 
-**Author a `visual_appearance` block for every notable NPC** (and the PC at
-`/create-character`). It is the locked look every future image renders, with
+**Author a `visual_appearance` block for every NPC in the play pack** (and the PC
+at `/create-character`). It is the locked look every future image renders, with
 EXACTLY these 11 keys: `sex, age, race, species, hair, face, eyes, clothing,
-gear, demeanor, size`. Ground each field in the source/bible; leave unknowns "".
-Set them in batch as the world consolidates:
+gear, demeanor, size`. Ground each field in the bible; leave unknowns "". Author
+only the people on this stage — the rest get a block when they walk on:
 ```bash
 bash tools/gm-npc.sh set-appearance "<NPC name>" \
   --sex "..." --age "..." --race "..." --species "..." --hair "..." \
   --face "..." --eyes "..." --clothing "..." --gear "..." --demeanor "..." --size "..."
 ```
-(Extracted/imported NPCs already carry the empty block from `NPC_SCHEMA` — fill it.)
 
-Update `campaign-overview.json` (date/time, `session_count: 0` — Phase E's
-`seed-opening` already set a *provisional* `player_position.current_location`;
-only override it if the arc's opening location is wrong) and append the world
-summary to `session-log.md` (starting location, key NPCs, the three plot tiers)
-alongside the opening hook `seed-opening` wrote. Do not treat the Phase E
-location as final: `onboard` re-seeds it to match the protagonist, and so does
-the first `gm-player.sh set` if they used `/create-character` `save-json`.
+Update `campaign-overview.json` (date/time, `session_count: 0`, and
+`player_position.current_location` = the play pack's `room`) and append the world
+summary to `session-log.md` (starting location, the people on stage, the hook).
 Then display a summary box and hand off:
 
 ```
@@ -253,37 +165,38 @@ Your world awaits its hero. Who are you in this world?
 Then ask that **one question** — identity first, mechanics later — and offer three doors:
 
 - **someone from this world** → `bash tools/gm-player.sh onboard canon "<NPC name>"`.
-  An original world's canon door draws from the NPCs the axis authors just wrote, so name a
-  few of them (their sheet and their canonical voice come along).
+  The canon door draws from the NPCs in the play pack, so name a few of them (their
+  sheet and their canonical voice come along).
 - **someone of their own** → `bash tools/gm-player.sh onboard original "<name>" "<one-line concept>"`
 - **no one yet** → `bash tools/gm-player.sh onboard nameless`
 
-Persist the answer with `onboard` and open the scene — `onboard` re-seeds the
-opening to match that PC. `/create-character` remains the **opt-in** full
-builder for a player who wants to roll a sheet properly — offer it, don't impose it.
-If they used `/create-character` (`save-json`), the first `gm-player.sh set`
-re-seeds (the opening has never been PC-matched). A later `set` after a matched
-opening leaves it.
+Persist the answer with `onboard` and open the scene — the play pack's room and
+hook are the opening; `onboard` leaves them in place. `/create-character`
+remains the **opt-in** full builder for a player who wants to roll a sheet properly
+— offer it, don't impose it. If they used `/create-character` (`save-json`), the
+first `gm-player.sh set` re-seeds the opening.
 
 ---
 
-## COMPLETION CHECKLIST
-- [ ] `world-seed.json` with an adaptive axis list
-- [ ] `world-bible.json` authored in one pass, approved, `confirmed: true` after grounding
-- [ ] `ruleset.json` World Kit (non-5e-default, derived from the world)
-- [ ] every axis produced `canon/<axis>.md` + `authored/<axis>.json`
-- [ ] `reconcile-report.json` verdict handled
-- [ ] consolidated `locations/npcs/plots/facts.json` + merged bible graphs
-- [ ] `current-document.txt` embedded (RAG returns hits)
-- [ ] world opens alive: `campaign_rules` on the overview, a non-empty `story_spine`,
-      threat clocks seeded (or knowingly none), `player_position.current_location` set
-- [ ] `/world-check` passes
-- [ ] chronicler locked (`gm-image.sh chronicler`) — both the art **style** (starts "In the style of ...", distinctive and fully specified) AND the art **narrator** (name + persona)
-- [ ] every notable NPC has a `visual_appearance` block (11 keys); PC gets one at `/create-character`
-- [ ] overview + session log set; handed off to the one question (`gm-player.sh onboard ...`)
+## COMPLETION CHECKLIST (play tonight)
+- [ ] `world-seed.json` (premise, voice, art style)
+- [ ] `world-bible.json` approved and confirmed (voice + signature systems, not a planet)
+- [ ] `ruleset.json` World Kit derived from this world (not a silent 5e default)
+- [ ] `play_pack` set + `gm-playpack.sh stage` (one room, present NPCs, exits, hook)
+- [ ] chronicler locked (`gm-image.sh chronicler`)
+- [ ] handed off to the one question (`gm-player.sh onboard ...`)
+
+## Growing the world AT THE TABLE (the real "long-term planning")
+You do not pre-plan the campaign — you plan it as you run it. When you see a
+long-game opportunity, seed it with the living-world tools and let it tick:
+- **Threat clocks** (`gm-clock.sh`) — named pressure that advances on its own.
+- **Story threads** (`gm-session.sh end --open-thread`) — questions left hanging.
+- **Plots** (`plots.json`) — a spine you extend when the story earns a next beat.
+- **Consequences** (`gm-consequence.sh add`) — a seed that fires on the right trigger.
+These are how the world develops mid- to long-term — reactively, from play, not
+from a gazetteer built before anyone sat down.
 
 ## ERROR RECOVERY
 - Campaign exists → switch / rename / recreate.
-- An author returns empty/invalid → re-launch just that axis.
-- Bible fails validation → fix the missing required key, re-validate before fan-out.
-- `prepare` finds no text → confirm `compile-canon` wrote a non-empty file.
+- Bible fails validation → fix the missing required key, re-validate before play.
+- `prepare` finds no text → confirm the `authored-canon.md` binder is non-empty.

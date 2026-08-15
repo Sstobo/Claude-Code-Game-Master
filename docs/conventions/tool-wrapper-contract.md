@@ -10,7 +10,7 @@ sources:
   - { resource: /lib/agent_extractor.py }
   - { resource: /lib/json_ops.py }
   - { resource: /tests/test_json_wrappers_player.py }
-generated: { by: claude-fable-5, at: 2026-08-14T15:43:25Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:24:29Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:46Z }
 ---
 
@@ -42,10 +42,10 @@ Every wrapper sources it, and inherits:
   `CALLER_PWD` first, then `PROJECT_ROOT` — and only then report it missing, naming both
   places it looked. Both anchors are real: a human types a path relative to their own
   directory, while a *tool* emits one relative to the project root every wrapper now
-  stands in. `/new-game` pipes `gm-worldgen.sh compile-canon`'s
-  `world-state/campaigns/<name>/authored-canon.md` straight into `gm-extract.sh prepare
-  <document>` (today's only such verb), and with `CALLER_PWD` as the sole anchor that pipe
-  failed from every directory but the repo root.
+  stands in. A tool that emits a `world-state/campaigns/<name>/authored-canon.md`
+  binder and pipes it straight into `gm-extract.sh prepare <document>` (today's only
+  such verb) would, with `CALLER_PWD` as the sole anchor, fail from every directory but
+  the repo root.
 - **`WORLD_STATE_BASE`** — `$PROJECT_ROOT/world-state`, unless `GM_WORLD_STATE_BASE` is
   set in the environment, which wins. That env var is the isolation seam: the Python side
   honours it too (`resolve_world_state_base`, `lib/campaign_manager.py`) whenever a manager
@@ -57,8 +57,8 @@ Every wrapper sources it, and inherits:
   `world-state` to the **live** tree no matter what the environment says.
   `lib/agent_extractor.py` did exactly that and wrote whole campaigns
   into the developer's world-state during tests, so the rule is that a wrapper hands its
-  manager the base explicitly — `--world-state "$WORLD_STATE_BASE"` (`gm-extract.sh`,
-  `clock_seed.py`) or a `$CAMPAIGN_DIR` built from it.
+  manager the base explicitly — `--world-state "$WORLD_STATE_BASE"` (`gm-extract.sh`)
+  or a `$CAMPAIGN_DIR` built from it.
 - **`require_active_campaign`** — multi-campaign support is a single file,
   `world-state/active-campaign.txt`. Every tool reads it; nothing takes a campaign
   argument by default. It is the ONLY campaign guard (`gm-extract.sh`'s `require_campaign`
@@ -69,7 +69,7 @@ Every wrapper sources it, and inherits:
   only its own routing around the call: usage and mistyped verbs answer BEFORE the guard so
   a typo reports itself as a typo (`gm-session.sh`), and a verb that legitimately runs
   pre-activation takes an explicit campaign name in any argument position instead
-  (`gm-worldgen.sh`).
+  (`gm-extract.sh`'s campaign-named verbs).
 
 ## The `--json` envelope is the machine contract
 

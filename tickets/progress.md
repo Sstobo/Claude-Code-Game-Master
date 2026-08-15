@@ -1,6 +1,8 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-15T12:00:00Z  claimed: play-pack-contract, import-play-pack, new-game-play-pack, materialize-one  [gk-p4ck15]
+- 2026-08-15T11:46:00Z  prd: play-pack active (supersedes trust-the-agent); ready: play-pack-contract, import-play-pack, new-game-play-pack, materialize-one
 - 2026-08-14T20:31:00Z  prd: state-of-the-table superseded by trust-the-agent; world-tick always-on copy matches apply-all  [gk-t8n2wp]
 - 2026-08-14T20:30:00Z  done: fence-disclosures — tick fires 2 and discloses rest; world-tick applies all + warns; context +N more  [gk-t8n2wp]
 - 2026-08-14T20:20:00Z  in-review: fence-disclosures  [gk-t8n2wp]

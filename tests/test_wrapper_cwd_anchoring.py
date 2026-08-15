@@ -12,9 +12,9 @@ file is the bind for the ~25 wrappers that inherit it.
 otherwise break `gm-extract.sh prepare <document>`, the one verb taking a path
 argument. That verb resolves a relative path against TWO anchors in order —
 `CALLER_PWD` (what a human typed at their own prompt) and then `PROJECT_ROOT`
-(what a tool emitted: `/new-game` feeds it `compile-canon`'s
-`world-state/campaigns/<name>/authored-canon.md`) — and only then reports it
-missing. Both directions are bound below, plus the tie.
+(what a tool emitted, e.g. a `world-state/campaigns/<name>/authored-canon.md`
+binder) — and only then reports it missing. Both directions are bound below,
+plus the tie.
 
 GM_WORLD_STATE_BASE is pinned at a tmp tree throughout, so nothing here can read
 or write the player's live campaign — and the `prepare` tests, which run a
@@ -217,15 +217,15 @@ def test_extract_prepare_finds_a_relative_document_from_a_foreign_cwd(
 def test_extract_prepare_finds_a_project_root_relative_document(
     isolated_world_state, foreign_cwd, project_root_scratch, live_world_state_untouched
 ):
-    """The /new-game pipe (`.claude/commands/new-game.md`, Phase E):
-    `gm-worldgen.sh compile-canon --json` prints its path relative to the PROJECT
-    ROOT — the directory every wrapper now `cd`s to — and that string is fed
-    straight to `prepare`. Resolving relatives against CALLER_PWD alone broke
-    that pipe from every cwd but the repo root, so `prepare` tries the caller's
-    directory first and the project root second.
+    """A tool that emits a path relative to the PROJECT ROOT — the directory
+    every wrapper now `cd`s to — can feed that string straight to `prepare`
+    (e.g. a `world-state/campaigns/<name>/authored-canon.md` binder). Resolving
+    relatives against CALLER_PWD alone broke that from every cwd but the repo
+    root, so `prepare` tries the caller's directory first and the project root
+    second.
 
-    The path here has the same forward `<dir>/authored-canon.md` shape the pipe
-    emits, and names the file only when read from the project root."""
+    The path here has the same forward `<dir>/authored-canon.md` shape such a
+    tool emits, and names the file only when read from the project root."""
     canon = project_root_scratch / "authored-canon.md"
     canon.write_text("The spires of Vaeltheon burn green at dusk.\n")
     root_relative = f"{project_root_scratch.name}/{canon.name}"

@@ -32,7 +32,7 @@ class SessionManager(EntityManager):
     # `rag_inspiration` makes the GM pull source passages every beat or so for
     # grounded narration detail rather than improvising from memory.
     DEFAULT_PREFERENCES = {"action_menu": True, "player_rolls": False,
-                           "beat_length": "adaptive", "rag_inspiration": False}
+                           "beat_length": "adaptive", "rag_inspiration": True}
 
     SAVE_VERSION = 1
     AUTOSAVE_KEEP = 3
@@ -178,7 +178,87 @@ class SessionManager(EntityManager):
             f.write("\n---\n\n")
 
         print(f"[SUCCESS] Session {session_num} ended and logged")
+
+        health = self._session_health()
+        print("\n--- SESSION HEALTH (housekeeping, not canon) ---")
+        if health:
+            for line in health:
+                print(line)
+        else:
+            print("All quiet — nothing stale.")
         return True
+
+    def _session_health(self) -> list:
+        """Read-only staleness scan for the session-end footer.
+
+        Reports only what existing state already tracks: open threads (+ the
+        stalest), clocks sitting at a full/due beat, and pending consequences.
+        Surfaces the silent-lapse failure mode without adding any new tracking.
+        ponytail: NPC canon-drift is not here yet — the re-grounding pass adds it.
+        """
+        plots = self.json_ops.load_json("plots.json") or {}
+        clocks = self.json_ops.load_json("threat-clocks.json") or {}
+        consequences = self.json_ops.load_json("consequences.json") or {}
+        try:
+            from npc_manager import NPCManager
+            stale = NPCManager().stale_npcs()
+        except Exception:
+            stale = {}
+        return self._health_summary(self._get_session_number(), plots, clocks,
+                                    consequences, stale_npcs=stale)
+
+    @staticmethod
+    def _health_summary(session_num, plots, clocks, consequences, stale_npcs=None) -> list:
+        """Pure staleness computation over already-loaded state (unit-testable)."""
+        closed = {'completed', 'resolved', 'failed', 'done', 'abandoned', 'dropped'}
+
+        open_threads = []
+        if isinstance(plots, dict):
+            for name, p in plots.items():
+                if not isinstance(p, dict):
+                    continue
+                if str(p.get('status', 'active')).lower() in closed:
+                    continue
+                if p.get('background'):
+                    continue  # import's background tier: real, but not a live thread
+                events = p.get('events', [])
+                last_sess = events[-1].get('session_number') if events and isinstance(events[-1], dict) else None
+                stale = (session_num - last_sess) if (session_num and isinstance(last_sess, int)) else None
+                open_threads.append((name, stale))
+
+        due = []
+        if isinstance(clocks, dict):
+            for name, c in clocks.items():
+                if not isinstance(c, dict):
+                    continue
+                cur, mx = c.get('current', 0), c.get('max', 0)
+                if isinstance(cur, int) and isinstance(mx, int) and mx > 0 and cur >= mx:
+                    due.append(name)
+
+        pending = 0
+        if isinstance(consequences, dict):
+            for section in ('active', 'pending'):
+                pending += sum(1 for x in consequences.get(section, []) if isinstance(x, dict))
+        elif isinstance(consequences, list):
+            pending += sum(1 for x in consequences if isinstance(x, dict))
+
+        lines = []
+        if open_threads:
+            staley = [(n, s) for n, s in open_threads if s is not None and s > 0]
+            tail = ""
+            if staley:
+                nm, s = max(staley, key=lambda t: t[1])
+                tail = f" · stalest \"{nm}\" untouched {s} session{'s' if s != 1 else ''}"
+            lines.append(f"Threads: {len(open_threads)} open{tail}")
+        if due:
+            lines.append(f"Clocks: {len(due)} at a due beat ({', '.join(due)}) — resolve or advance the fiction")
+        if pending:
+            lines.append(f"Pending consequences: {pending} waiting on a trigger")
+        if stale_npcs:
+            worst = max(stale_npcs.items(), key=lambda kv: kv[1])
+            lines.append(f"Canon drift: {len(stale_npcs)} NPC(s) need re-grounding "
+                         f"(worst \"{worst[0]}\", {worst[1]} beats) — gm-npc.sh stale")
+        return lines
 
     def get_status(self) -> Dict[str, Any]:
         """
@@ -562,6 +642,16 @@ class SessionManager(EntityManager):
             lines.append(f"progression: {kit.progression_model()}")
             lines.append(f"vitals: {', '.join(vitals) if vitals else '(none)'}")
             lines.append(f"skills: {', '.join(skills) if skills else '(none)'}")
+
+        # --- PRIMER (play pack: tonight's table, not the gazetteer) ---
+        try:
+            from play_pack import render_primer, normalize_pack, pack_is_set
+            pack = normalize_pack(campaign.get("play_pack"))
+            if pack_is_set(pack):
+                lines.append("")
+                lines.append(render_primer(pack))
+        except Exception:
+            pass
 
         # --- Play style (honor every beat; player toggles anytime) ---
         if self.get_preferences().get("beat_length", "adaptive") == "tight":
@@ -1287,6 +1377,11 @@ def main():
                                 choices=['on', 'off', 'toggle', 'show'],
                                 help='on | off | toggle | show (default: show)')
 
+    dice_parser = subparsers.add_parser('dice', help='Toggle whether the player rolls their own dice')
+    dice_parser.add_argument('value', nargs='?', default='show',
+                             choices=['on', 'off', 'toggle', 'show'],
+                             help='on | off | toggle | show (default: show)')
+
     from cli_output import wants_json, strip_json_flag, emit
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
@@ -1366,6 +1461,20 @@ def main():
         else:
             print(f"Action menu turned {state}. "
                   f"{'Beats will end with a few numbered choices.' if current else 'Beats will end with an open prompt.'}")
+
+    elif args.action == 'dice':
+        val = getattr(args, 'value', 'show')
+        current = manager.get_preferences().get('player_rolls', False)
+        if val != 'show':
+            new = (not current) if val == 'toggle' else (val == 'on')
+            manager.set_preference('player_rolls', new)
+            current = new
+        state = 'on' if current else 'off'
+        if val == 'show':
+            print(f"Player rolls is {state}.")
+        else:
+            print(f"Player rolls turned {state}. "
+                  f"{'You roll your own dice; the GM only rolls hidden/NPC dice.' if current else 'The GM rolls for you again.'}")
 
 
 if __name__ == "__main__":

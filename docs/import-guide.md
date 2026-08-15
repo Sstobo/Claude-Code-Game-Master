@@ -1,7 +1,7 @@
 ---
 type: Playbook
 title: Import operations guide
-description: Running, inspecting, and troubleshooting an import by hand — the operator's side of the /import flow.
+description: Operator's side of import — the live path is index then stage; this page also covers repairing a leftover census run.
 sources:
   - { resource: /tools/gm-extract.sh }
   - { resource: /tools/gm-search.sh }
@@ -9,7 +9,7 @@ sources:
   - { resource: /lib/extraction_cap.py }
   - { resource: /lib/entity_enhancer.py }
   - { resource: /.claude/commands/import.md }
-generated: { by: claude-opus-5, at: 2026-08-13T22:05:54Z }
+generated: { by: cursor-grok-4.6, at: 2026-08-14T23:39:02Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
@@ -20,9 +20,14 @@ verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ```
 
 Drop a PDF, DOCX, TXT, or MD into `source-material/` and run it. The campaign name defaults
-to the filename. **What each pass does and why the order matters is in
-[importing a book](flows/import-a-book.md)** — this page is the operator's side: running
-steps by hand, checking the result, and fixing a bad run.
+to the filename. **The live path is index → identity → one stage** — see
+[importing a book](flows/import-a-book.md) and [the dream](conventions/the-dream.md).
+This page is the operator's side: running steps by hand, and repairing a **legacy
+census** import that already scraped the book into a gazetteer.
+
+`/import` does **not** run the four extractors, `cap`, `reconcile`, `stub-npcs`, or
+`integrity`. Those verbs still exist for old campaigns. Do not use them to "finish"
+a new import.
 
 `bash tools/gm-extract.sh` with no arguments prints the authoritative command list. Prefer
 that over any list written here.
@@ -49,11 +54,9 @@ bash tools/gm-extract.sh validate "campaign-name"
 It exits **non-zero**, naming the type and the reason, when any of the four
 `extracted/*.json` files is missing, is unparseable, holds a malformed entity (a non-object
 entry, a non-string `name`), or when `npcs`/`locations` came back with zero entities. Empty
-`items` or `plots` only warn — a book with no treasure or no explicit quest hooks is
-unusual, not broken. Run it before `normalize`; `/import` runs the whole Step 6 chain under
-`set -e` behind it, so a failed extraction stops before anything is written to the campaign
-root. There is **no partial-data override**: everything the gate rejects is something the
-rest of the chain cannot work from, and a thin-but-valid extraction already passes.
+`items` or `plots` only warn. This gate belongs to the **legacy census** path
+(`normalize` and the repair chain). A stage-first import never writes `extracted/` and
+never needs this gate.
 
 Two entities with the same `name` collapse onto one key, so a count reads
 `43 entries, 41 unique names` when they differ. That is the runtime shape being honest —
@@ -69,10 +72,8 @@ while the run reported success.
 ## `merge` / `save` / `review` are the legacy path
 
 `gm-extract.sh` still offers `merge`, `save [rename|skip|overwrite]`, and `review`. The
-`/import` command does **not** call them: it uses `normalize` to move `extracted/*.json`
-into the campaign root, then the repair chain. Reach for `merge`/`save` only when
-deliberately folding a second extraction into an existing campaign; running them as a
-"finish the import" step will not produce what the current pipeline produces.
+`/import` command does **not** call them. Reach for `merge`/`save` only when
+deliberately folding a second extraction into a **legacy** campaign.
 
 ## Checking a finished import
 

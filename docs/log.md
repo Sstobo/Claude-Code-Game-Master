@@ -15,6 +15,16 @@ Swap `check` for `drift` / `noise` / `index` as needed; the flags never change.
 
 ---
 
+## 2026-08-15 — play pack (kit + primer + one room)
+
+- `docs/conventions/the-dream.md`, `docs/schema-reference.md`, `docs/modules/scene-context.md` — `play_pack` on the overview; PRIMER in context; `gm-playpack.sh` set / stage / from-book.
+- `docs/flows/import-a-book.md`, `author-a-world.md`, `play-turn.md` — import and new-game write a pack, not a census; fan-out is opt-in later.
+
+## 2026-08-14 — the dream (holodeck, not gazetteer)
+
+- `docs/conventions/the-dream.md` — campaign JSON is a journal; the book is the world; session 0 is one stage.
+- `docs/flows/import-a-book.md`, `import-guide.md`, `play-turn.md`, `author-a-world.md`, `onboarding-and-death.md` — `/import` indexes and opens a door; census extractors/cap/stub/integrity are leftover machinery, not the path.
+
 ## 2026-08-14 — fence-disclosures ingest
 
 - `docs/modules/living-world.md` — tick fires 2 and discloses the rest (already-fired annotates, does not suppress); world-tick applies every proposal and warns on cap overflow (`fence-disclosures`).

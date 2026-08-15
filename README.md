@@ -1,17 +1,17 @@
 # Game Master Claude
 
-**A harness that turns Claude Code into a persistent Game Master — running a living game world that's genuinely yours.**
+**A harness that turns Claude Code into a persistent Game Master — a holodeck door and a fresh 1980s D&D table.**
 
-This is not a chatbot you roleplay with. It's a *harness*: a thin, opinionated shell around Claude Code that gives the most capable model on the planet the three things it normally lacks to run a real campaign — **durable memory, a custom rulebook, and a world that keeps moving when you look away.** Claude builds the world, then runs it for you, session after session, remembering everything.
+You do not load a wiki. You step through a door. Someone you came to meet is already talking. The book stays on the GM's chair; the campaign file is a journal of where you've been, not an encyclopedia of every city the book named.
 
-The idea is simple and, as far as we can tell, fairly new: stop asking the model to *pretend* to be a GM inside a single conversation, and instead give it a real GM's tools — state on disk, mechanics it can look up, a clock that ticks. Then get out of its way. Claude does the imagining; the harness makes it stick.
+This is not a chatbot you roleplay with. It's a *harness*: a thin, opinionated shell around Claude Code that gives the model the three things it lacks to run a real campaign — **durable memory, a custom rulebook, and a world that keeps moving when you look away.** Claude runs the table. The harness makes it stick.
 
 ### Two front doors
 
 There are two ways into a world, and both get the same living-world treatment:
 
 - **🌍 Author something original — `/new-game`.** A genre-aware questionnaire interviews you, then Claude authors a *book's worth* of brand-new canon and a custom ruleset — and runs it through an anti-generic pipeline whose explicit job is to keep your world from collapsing into off-the-shelf high fantasy. This is the headline act. ([jump ↓](#-author-an-original-world--new-game))
-- **📖 Import a book you own — `/import`.** Drop in a PDF and Claude reads the real text, writes a bespoke game out of *that book*, and drops you into it as whoever you want to be. ([jump ↓](#-import-a-book--import))
+- **📖 Import a book you own — `/import`.** Drop in a PDF. The book goes on the shelf. Claude asks who you came to be (or meet), opens *that* page, and you talk. The rest of the book walks on when you do. ([jump ↓](#-import-a-book--import))
 
 Pick either. The persistence, the custom rulebook, the living world, the dying-and-handoff stakes — all identical underneath.
 
@@ -75,15 +75,14 @@ You don't write the world. You answer a short **genre-aware questionnaire** (pow
 - **A narrative voice** — *whose* voice should narrate this world? Howard, Le Guin, Gibson, Pratchett, or your own pick. Claude writes original prose *in that author's fingerprint*, and narrates every beat in it. Your world doesn't read like a generic narrator; it reads like a book.
 - **A locked art style** — a deliberately surprising mashup (*"a gilded medieval illuminated manuscript depicting cyberpunk megacities"*) and an in-world chronicler who "draws" every image, so the whole gallery reads like one artist's sketchbook.
 
-From those answers Claude runs a **five-stage authoring pipeline** — *seed → skeleton → fan-out → reconcile → ground*:
+From those answers Claude builds **one stage, not a planet** — *seed → skeleton → play pack → handoff*:
 
-1. **Seed.** Your answers become a structured world-seed, with an **adaptive axis list** — Claude picks the dimensions that actually matter for *your* genre (a sword-and-sorcery world gets deep blood-magic lore and skips heavy tech; a sci-fantasy world gets deep infrastructure and corporate factions).
-2. **Skeleton.** Claude authors the world's coherent spine in one pass while the seed is fresh — name, voice, themes, factions, geography, signature systems — then **shows it to you for approval before going further.**
-3. **Fan-out.** A swarm of specialist `world-author` agents runs *in parallel*, each deepening exactly one axis (geography, factions, history, magic-lore, culture, bestiary…), while a `world-kit-author` derives the custom ruleset from the world — never defaulting to 5e.
-4. **Reconcile — the anti-drift pass.** A `world-reconciler` agent reads everything and runs three checks: a **genericness critic** that flags anything that could've come from any generic fantasy, a kit↔flavor agreement check, and a cross-link pass that weaves the axes together. Generic flags get rewritten. *This stage exists for the sole purpose of making your world play distinct, not just read distinct.*
-5. **Ground.** All the authored canon is folded into runtime state, compiled, and embedded for retrieval — the **same grounding machinery an imported book gets** — so scenes draw on your world's own canon as if it were a published source.
+1. **Seed.** Your answers become a structured world-seed — premise, tone, genre bend, voice, art style, chronicler. No gazetteer; the world's shape emerges at the table.
+2. **Skeleton.** Claude authors the world's coherent spine in one pass while the seed is fresh — name, voice, themes, factions, signature systems — then **shows it to you for approval before going further.**
+3. **Play pack.** Claude derives a custom **World Kit** from your world (never a silent 5e default), then stages exactly what tonight needs: one room you can stand in, the people in it, the exits you can see, and a hook that won't wait — never a continent.
+4. **Handoff.** Claude locks the chronicler and art style, then asks the one question — *who are you in this world?* — and the story begins.
 
-The result is a world with its own voice, its own rules, its own art, and a corpus deep enough to play in for a hundred sessions. Then Claude hands you to `/create-character` and the story begins.
+The world is a world with its own voice, its own rules, and its own art, and it grows **as you play**: when a long-game opportunity appears, Claude seeds a threat clock, a story thread, or a new plot and lets it tick. That is the campaign's real long-term planning — authored at the table, not pre-built. `/create-character` remains an opt-in full sheet whenever you want one.
 
 ```
 You: /new-game
@@ -95,7 +94,7 @@ GM:  Genre bend? (1) sword-and-sorcery  (2) high fantasy  (3) sci-fantasy  (4) f
 
 ## 📖 Import a book — `/import`
 
-Got a favorite novel, a classic adventure module, a weird pulp paperback from the 70s? Drop the PDF into `source-material/`, and Claude reads large spans of the actual text, writes a **World Bible** for it, drafts a **World Kit** ruleset, indexes the book for retrieval, and drops you in. Not a reskin — the imported world plays by its *own* logic, and narration stays grounded in real passages until your choices change things.
+Got a favorite novel, a classic adventure module, a weird pulp paperback from the 70s? Drop the PDF into `source-material/`. Claude indexes the real text (the binder), writes a **World Bible** and **World Kit** so the room *sounds* like that book, then asks the only question that matters: **who did you come to meet?** You get that room, those voices, one hook. Not a gazetteer. Not a reskin. When you walk toward Stygia, Stygia is read from the book and written into the journal — not scraped on night zero.
 
 > **Where to find books:** the [Internet Archive](https://archive.org/) is a goldmine — thousands of free books, modules, and old pulp novels. Jump into *IT* and help the bad guys. Drop into *Lord of the Rings* and play from Gollum's perspective. It's your call.
 
@@ -213,7 +212,6 @@ The harness is plumbing you can poke at: bash wrappers (`tools/`) → Python man
 | `gm-recall.sh` | Campaign memory — semantic recall, arc entries, memoir |
 | `gm-clock.sh` | Threat clocks — pressure that mounts as time passes |
 | `gm-lore.sh` | Grounded chapter briefs from the source book |
-| `gm-worldgen.sh` | Consolidate an authored world's fan-out output |
 | `gm-note.sh` | Record world facts by category |
 | `gm-time.sh` | Advance in-game time |
 | `gm-search.sh` | Search world state and/or source material |

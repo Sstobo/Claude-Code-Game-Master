@@ -13,6 +13,7 @@ show_usage() {
     echo "  move <location>          - Move party to new location"
     echo "  context                  - Full session context (character, party, consequences, rules)"
     echo "  choices [on|off|toggle]  - Toggle the [A]-[E] action menu (no arg: show state)"
+    echo "  dice [on|off|toggle]     - Toggle player rolling their own dice (no arg: show state)"
     echo "  world-tick '<json>'      - Persist off-screen developments (warns if >3, rollback-able)"
     echo "  world-tick-rollback      - Undo the most recent world tick"
     echo "  world-tick-log           - Show world-tick history"
@@ -42,7 +43,7 @@ shift
 
 # Every action the case below handles, in one place: the guard and the
 # unknown-action message both read this, so they cannot drift apart.
-VALID_ACTIONS="start end status move context choices world-tick world-tick-rollback world-tick-log save restore list-saves delete-save history"
+VALID_ACTIONS="start end status move context choices dice world-tick world-tick-rollback world-tick-log save restore list-saves delete-save history"
 
 is_valid_action() {
     local valid
@@ -260,6 +261,10 @@ case "$ACTION" in
 
     choices)
         $PYTHON_CMD "$LIB_DIR/session_manager.py" choices "$@"
+        ;;
+
+    dice)
+        $PYTHON_CMD "$LIB_DIR/session_manager.py" dice "$@"
         ;;
 esac
 

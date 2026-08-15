@@ -1,7 +1,6 @@
 """Tests for full-clock-fires.
 
-A threat clock stores what happens when the countdown runs out, and import seeds
-it for real (clock_seed pulls the plot's own stated consequence). At runtime that
+A threat clock stores what happens when the countdown runs out. At runtime that
 text was only ever echoed in a print, so a filled clock was a line the GM might
 notice rather than a beat that arrived. These assert it fires into the
 consequence engine exactly once.

@@ -95,9 +95,6 @@ Commands:
   reconcile [campaign]      Stub every location ref that doesn't resolve to a node
                             (low_confidence:true); only routing rule-prose is dropped,
                             and that is recorded as a fact (before the integrity gate)
-  spine [campaign]          Derive plot arc (sequence + depends_on + through-line)
-  seed-clocks [campaign]    Seed threat clocks from headline time-pressure in plots
-  seed-opening [campaign]   Set starting position + opening beat from the spine
   draft-bible [campaign] [--name N] [--voice-json J] [--fields-json J]
                             Draft/refresh the campaign's world-bible.json from
                             current-document.txt (chapter map + verbatim-filtered
@@ -153,10 +150,9 @@ prepare_document() {
 
     # common.sh moved us to the project root, so a relative path now has two
     # possible meanings. A human types one relative to their OWN directory
-    # (CALLER_PWD). A tool EMITS one relative to the project root — the /new-game
-    # pipe feeds us `gm-worldgen.sh compile-canon`'s
-    # world-state/campaigns/<name>/authored-canon.md, which is only findable from
-    # the root we are already standing in. Try the caller's first (a typed path
+    # (CALLER_PWD). A tool EMITS one relative to the project root — e.g. a
+    # world-state/campaigns/<name>/authored-canon.md binder, which is only findable
+    # from the root we are already standing in. Try the caller's first (a typed path
     # wins), then the root, and name both when neither is there.
     case "$document" in
         /*) ;;
@@ -596,15 +592,6 @@ case "$1" in
         cap_extracted "$2" "$3"
         ;;
 
-    seed-opening)
-        # Set starting position + opening beat + session-log hook from the spine.
-        campaign_name=$(require_campaign "$2" "$1") || exit 1
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-        echo "Seeding opening beat: $campaign_name"
-        echo "================================="
-        $PYTHON_CMD "$LIB_DIR/opening_seed.py" "$CAMPAIGN_DIR"
-        ;;
-
     draft-bible|draft-ruleset|campaign-rules)
         # The bible -> kit -> campaign_rules chain (lib/book_bible.py). The
         # campaign argument is optional here because every flag these verbs take
@@ -621,24 +608,6 @@ case "$1" in
         echo "Running $verb: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/book_bible.py" "$verb" "$CAMPAIGN_DIR" "$@"
-        ;;
-
-    spine)
-        # Derive plot arc ordering (sequence + depends_on) + through-line.
-        campaign_name=$(require_campaign "$2" "$1") || exit 1
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-        echo "Deriving plot spine: $campaign_name"
-        echo "================================="
-        $PYTHON_CMD "$LIB_DIR/plot_spine.py" "$CAMPAIGN_DIR"
-        ;;
-
-    seed-clocks)
-        # Detect headline time pressure in plots and seed threat clocks.
-        campaign_name=$(require_campaign "$2" "$1") || exit 1
-        CAMPAIGN_DIR=$(campaign_dir "$campaign_name") || exit 1
-        echo "Seeding threat clocks from plots: $campaign_name"
-        echo "================================="
-        $PYTHON_CMD "$LIB_DIR/clock_seed.py" "$CAMPAIGN_DIR" --world-state "$WORLD_STATE_BASE"
         ;;
 
     stat-npcs)

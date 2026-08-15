@@ -7,6 +7,11 @@ description: The Art of Game Mastering — narration, NPC, pacing, and improvisa
 
 *Wisdom, not rules. Internalize, then forget — the best moments happen when you stop thinking about technique and just play.*
 
+The dream is a holodeck mixed with a fresh 1980s table. They did not come for a
+wiki. They came to stand in the room and talk to someone they already love. Open
+on a face and a problem, not on a map of the continent. The book is on your
+chair; pull a page when the beat needs it. Never make them wait through a census.
+
 ## Narration
 - **Match narration length to drama.** A nat 20 gets a cinematic moment; a routine check gets a sentence.
 - **When the player flavors their action — heroic, comical, cold, theatrical, reckless — LEAN INTO IT HARD.** This is the payoff moment players came for; cherish it. They didn't just "open the door," they kicked it off the hinges with a one-liner — so give that the full cinematic treatment: amplify their chosen tone, let the world react in kind, make their flourish *land*. Don't flatten a styled action back into a neutral beat. This is core gameplay, not garnish.

@@ -1,189 +1,96 @@
 ---
 type: Flow
 title: Importing a book
-description: How a PDF becomes a playable campaign — parallel extraction, then a strictly-ordered sequence of repair and seeding passes.
+description: Index the book, ask who they are, open one stage. The rest stays in the binder until play walks toward it.
 sources:
   - { resource: /.claude/commands/import.md }
-  - { resource: /.claude/agents/extractor-npcs.md }
   - { resource: /tools/gm-extract.sh }
-  - { resource: /lib/agent_extractor.py }
   - { resource: /lib/campaign_manager.py }
   - { resource: /lib/book_bible.py }
   - { resource: /lib/world_bible.py }
-  - { resource: /lib/extraction_cap.py }
-  - { resource: /lib/minor_stubs.py }
-  - { resource: /lib/location_reconcile.py }
-  - { resource: /lib/plot_spine.py }
-  - { resource: /lib/clock_seed.py }
   - { resource: /lib/opening_seed.py }
-  - { resource: /lib/player_manager.py }
   - { resource: /lib/identity_onboarding.py }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:15:42Z }
+  - { resource: /lib/session_manager.py }
+  - { resource: /lib/play_pack.py }
+  - { resource: /tools/gm-playpack.sh }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:45:56Z }
 ---
 
 # Importing a book
 
-`/import` is a long orchestration where the model drives and the tools stay deterministic.
-The pattern is **parallel author → serial normalize**: four extractor agents read the book
-concurrently and write to separate files, then a single-threaded chain of passes folds
-their output into runtime state. That split is what keeps the fan-out race-free.
+`/import` puts a book on the GM's chair and opens a door. It does not finish a
+database of the book. The invariant lives in [the dream](../conventions/the-dream.md):
+the campaign file is a journal; the book is the world.
 
 ## The shape
 
-1. **`prepare`** — extract text, chunk it, build the vector index — then **`gm-campaign.sh
-   switch` immediately**. Every RAG read downstream resolves against the *active*
-   campaign's vector store, so the switch has to precede the preview and the agents, not
-   trail them at the summary step. The command asserts the switch took (`gm-campaign.sh
-   active` equals the expected slug) and stops the import on a mismatch — a silent failure
-   here has all four agents extracting the *previous* campaign's book.
-2. **Preview** — sample RAG queries, shown to the user so they can see what the book yields
-   before committing.
-3. **Four extractor agents in parallel** — `extractor-npcs` / `-locations` / `-items` /
-   `-plots`, each writing `extracted/<type>.json`. They are launched simultaneously and
-   share no files. Each finds its material through `gm-search.sh --rag-only` queries rather
-   than reading `chunks/` wholesale, which is why step 1's switch is load-bearing. Their
-   prompts live in the **markdown body** of `.claude/agents/extractor-*.md`; the agent
-   loader reads the body and ignores unknown frontmatter keys, so a prompt parked in
-   frontmatter never reaches the agent.
-4. **`validate`** then the repair-and-seed chain (below).
-5. **Bible → kit → overview → voice → chronicler** — the world's identity, drafted from
-   large-span reads rather than chunks, and strictly in that order because each step
-   reads the one before it (below). See [the World Bible](../modules/world-bible.md).
-6. **`gm-enhance.sh batch`** — RAG enrichment of every **active** entity. Marked "critical
-   for quality" in the command, and it is: this is what fills NPC `context` with real
-   dialogue. `EntityEnhancer.list_unenhanced` skips `background: true` entities, which is
-   what keeps tiering-instead-of-deleting from multiplying the enhancement bill by the
-   size of the book's walk-on cast; a background entity is enhanced when it is promoted.
+1. **`prepare` + immediate `switch`.** Extract text, chunk it, build the vector
+   index, then make the campaign active. Every later RAG read
+   (`gm-search.sh --rag-only`, `gm-lore.sh`, `gm-context.sh`) resolves against
+   the *active* store. Assert the switch (`gm-campaign.sh active` matches the
+   slug). A silent mismatch here grounds the opening in the wrong book — or none.
+2. **The door.** Ask who they are, or who they came to meet. Do not preview
+   entity counts. Do not launch the four extractor agents.
+3. **World identity.** Bible → kit → campaign_rules → voice → chronicler. Tone
+   and how the holodeck *sounds*. Horizon names, not a gazetteer. The player
+   confirms the bible; `/import` never confirms on their behalf.
+4. **The stage.** One room, the exits you can see, the people in it, one hook.
+   Persist with `gm-playpack.sh set` + `stage`, then `onboard`. Enhance only the
+   people in this room. The pack is the opening; `onboard` keeps its room + hook
+   (`gm-playpack.sh set` marked it matched) — still not a fake session.
+5. **Play.** When someone new walks on, `gm-playpack.sh from-book "<name>"`, then
+   RAG, then narrate. `move` already creates a blank destination; first visit
+   already fires a lore brief.
 
-## The chain is ordered, and the order is load-bearing
+## Why the switch is load-bearing
 
-Run these out of sequence and the strict gate fails on references an earlier pass would
-have repaired:
+`prepare` can create the folder; tools read `active-campaign.txt`. Switch late
+and the stage is built from the previous campaign's book, or from nothing.
+Compare slugs, not display names. Resolve the directory with
+`gm-campaign.sh path` — never hand-build `world-state/campaigns/<display-name>`.
 
-| Pass | Does | Depends on |
-|---|---|---|
-| `normalize` | copy `extracted/*.json` to the campaign root, unwrapping agent wrappers; unify `location_tags` → `tags.locations` | agents finished |
-| `cap` | rank each type; top-N stay active, the rest get `background: true` | normalize |
-| `fix-items` | clear lore-only cursed flags, reclassify wondrous, null non-price values | cap |
-| `normalize-connections` | canonicalize `connections[].to`; move rule-phrases into `notes` | cap |
-| `reconcile` | stub unresolved location references (`low_confidence`); drop only a dead connection edge whose target is routing prose | connections normalized |
-| `stub-npcs` | stub plot-referenced NPCs extraction never produced | cap |
-| `stat-npcs` | assign difficulty-tier proxy stats, flag non-combatants statless | NPC set final |
-| `integrity` | canonicalize every cross-reference; **strict-fail on unresolved** | all repairs done |
-| `spine` | order main plots into an arc by source position | plots final |
-| `seed-clocks` | seed threat clocks from time pressure in plot text | spine |
-| `seed-opening` | **provisional** location + `opening_hook` + a `plot_local` KEY FACT (`Opening (not yet played): …`) so the first brief sees the hook without a fake session. Plots stay as they were (typically `available`). Re-seeded when the PC first exists (`gm-player.sh onboard`, or the first `gm-player.sh set` after `/create-character` `save-json`) — same fields, still not an active stamp | spine |
-| `archive` | move `extracted/` aside | everything |
+## Why identity precedes the stage
 
-The passes most likely to surprise:
+A book has more than one first page. King-era Conan and corsair-era Conan are
+different rooms. Spine-position-1 as a universal opening is a lie. The
+protagonist picks the page; the stage is built from that page.
 
-- **`cap` tiers, it does not delete.** Every entity the agents extracted stays in
-  `npcs.json` / `locations.json` / `items.json` / `plots.json`; the ones ranked below the
-  limit are rewritten in place with `"background": true`. The pipeline must not pre-make
-  the creative decision of who exists in the world — a walk-on the book named is still a
-  person the GM can pull into a scene. Because nothing leaves the file, no cross-reference
-  is orphaned by capping, and `reconcile` / `stub-npcs` repair only what extraction
-  genuinely missed. See [the entity graph](../modules/entity-graph.md).
-- **Importance is book-agnostic on purpose.** `extraction_cap` scores by source mention
-  frequency, plus a large boost for being referenced by a plot, plus a party-member boost.
-  No name is hardcoded, which is what guarantees the main cast is active in any book: the
-  main cast is precisely who the main plots reference. Plots rank by their canonical type's
-  priority, read from `schemas.PLOT_TYPE_SORT` — so `threat` and `mystery` outrank `side`
-  and `optional` instead of falling to the unknown-type floor, as a local hardcoded weight
-  table used to make them. The cap also maps `PLOT_TYPE_SYNONYMS` itself, because
-  `validate_plot_types` runs a pass later in `stub-npcs`: a plot the agent typed
-  "main quest" arrives here raw, and ranking it raw files the book's spine below an errand.
-- **`reconcile` keeps places it cannot verify.** A reference that resolves to no node
-  becomes a stub flagged `low_confidence: true` rather than a deletion: "the book named
-  this, nobody has checked what it is" is a judgment for play, not for a shape heuristic.
-  The one thing still dropped is a **connection target** that states a routing rule instead
-  of a destination ("Transfer stations ending in 1"), and each dropped name lands in
-  `facts.json` under `dropped_references`. The same string arriving from a plot or an NPC
-  tag is stubbed, not dropped — "The Upper Level of the Tower of the Elephant" and
-  "Kandahar via the Zhaibar Pass" are places, and a phrase test run over them deletes real
-  geography.
+## World identity is not inventory
 
-## The identity chain hangs off one file
+`draft-bible` writes what the source can prove (chapter map, verbatim voice
+filter, skeleton keys). The model authors tone / themes / a *handful* of
+factions and places. `draft-ruleset` takes attributes, progression, and `kit`
+from the importer — `dnd5e` only when the file is a D&D module. Signature
+systems live in the bible and map into `campaign_rules`. A missing
+`current-document.txt` means `prepare` did not finish; an already-confirmed
+bible refuses a silent overwrite.
 
-`world-bible.json` is written first and everything downstream derives from it, through
-three `gm-extract.sh` verbs that wrap `lib/book_bible.py`:
+## Leftover census machinery
 
-| Step | Verb | Reads | Writes |
-|---|---|---|---|
-| bible | `draft-bible` | `current-document.txt` | `world-bible.json` (`confirmed: false`) |
-| kit | `draft-ruleset` | the bible | `ruleset.json` |
-| overview | `campaign-rules` | the bible's `signature_systems` | `campaign-overview.json` → `campaign_rules` |
-| voice | `draft-bible --voice-json` | the bible + source | the bible's `voice` block |
+`gm-extract.sh` still exposes `normalize`, `cap`, `reconcile`, `stub-npcs`,
+`integrity`, and the four extractor agents. Those verbs
+exist. They front-load a closed graph so integrity can pass — including stubs
+for `the desert` and walk-ons a plot string named. **`/import` must not run
+them.** They are the old path. Operators repairing a legacy gazetteer import
+use [the operations guide](../import-guide.md).
 
-Three things about that chain:
-
-- **The bible is drafted, not generated.** `draft-bible` writes only what the source
-  proves — the chapter map, the verbatim-filtered voice, the skeleton keys — and the
-  model authors tone/themes/factions/geography/signature systems into it by re-running
-  the same verb with `--fields-json`. It is idempotent and refuses a confirmed bible, so
-  a re-run never flattens authorship.
-- **The kit is derived, not pasted.** `draft-ruleset` takes the attribute list,
-  progression model and `kit` router from the importer and everything else from the
-  bible. `kit: dnd5e` is reserved for books that genuinely are D&D modules; it is what
-  puts `spell-caster` in `active_agents`. It refuses to overwrite an existing
-  `ruleset.json`, which is what makes the "copy a sibling book's kit" path safe.
-- **The world is not the player's until they say so.** The draft carries
-  `confirmed: false`; `world_bible.py review` prints it and `world_bible.py confirm`
-  stamps it, after the user approves. `/import` never confirms on their behalf.
-
-If `draft-bible` fails, the whole tail fails — the kit, the campaign rules and the voice
-pass all read the bible. The two real failures are a missing `current-document.txt` (a
-`prepare` that did not finish) and an already-confirmed bible.
-
-## Ordering is deterministic, not model judgment
-
-`plot_spine` orders the arc by **earliest chunk position in the source**, not by asking a
-model which plot comes first. Same book in, same arc out. `seed-opening` then reads that
-arc so the campaign is not a void — a location to stand in, a hook on
-`overview.opening_hook`, and the same hook as a `plot_local` KEY FACT so
-`get_full_context` already prints it (KEY FACTS is the existing channel;
-`opening_hook` alone is invisible to the first `/gm` brief). That seed is
-**provisional**, and it is not play: it does not write a `### Session Ended` into
-`session-log.md` (PREVIOUSLY ON is earned), and it does not stamp a spine plot
-`active` with an "Opening beat:" the player never took. There is no protagonist yet,
-so spine position 1 is a placeholder, not a commitment. A book with two viable
-entry arcs (king-era vs pirate-era) will otherwise open on the wrong life. Location
-+ hook are rewritten when the PC first exists: `onboard` (the three-door handoff)
-always re-seeds; `set_current_player` re-seeds only while `opening_matched_to_pc` is
-unset (the `/create-character` `save-json` path). Reseed still picks the PC-matched
-plot for where you stand and which hook is offered; it does not start that plot. A
-previously seeded fake session-log block is stripped so import repair does not leave
-the lie, and the KEY FACT is replaced (not stacked). The PC's own name on
-`plot.npcs` does not pick the arc — the protagonist is listed on many plots — era
-and concept overlap do.
+`integrity` failing strict on unresolved names is the old product saying the
+wiki is incomplete. The new product says those names are not on stage yet.
 
 ## Where an import goes wrong
 
-- Silent entity loss at the merge — see
-  [wrapped vs unwrapped](../gotchas/wrapped-vs-unwrapped-merge.md).
+- A punctuated campaign name splitting across two directories — slug via
+  `campaign_manager.py slugify`; resolve existing folders via `resolve`, never
+  a `tr | sed` pipeline. See the same landmine in older notes: an empty slug
+  joined onto `campaigns/` is what `clean` would read as every campaign.
 - Agents validating against a live campaign file — see
-  [extraction vs runtime schema](../gotchas/extraction-vs-runtime-schema.md).
-- A punctuated campaign name ("Baldur's Gate: Book 1") splitting across two directories.
-  A **new** name gets its folder from one rule everywhere — `CampaignManager._slugify`
-  (`lib/campaign_manager.py`), used by campaign creation and by extraction, exposed to shell
-  as `campaign_manager.py slugify`. Never re-implement it in a `tr | sed` pipeline. It also
-  never returns empty — a name with no ASCII alphanumerics ("龍の伝説") gets a deterministic
-  `campaign-<hash>` slug, because an empty slug joined onto `campaigns/` is what an
-  `rm -rf` in `gm-extract.sh clean` would read as *every* campaign. A shell caller that needs
-  an **existing** directory does not slug at all: it asks `campaign_manager.py resolve`
-  (every `gm-extract.sh` verb that needs one does), which routes through `_resolve_name` /
-  `_resolve_in` and matches against what is on disk. That is what keeps folders created under
-  the older, looser rule (`baldur's-gate`, `curse_of_strahd`) reachable — re-slugifying
-  `curse_of_strahd` yields `curse-of-strahd` and reports a real campaign as missing. Nothing
-  on disk is renamed. Resolution only ever returns a **direct child** of `campaigns/`:
-  slugging used to make `clean "../rag"` impossible by stripping slashes, and matching real
-  folder names has to refuse paths explicitly instead — `campaigns/../rag` is a directory,
-  and `rm -rf` does not care that it sits outside the campaign tree.
-- `integrity` failing strict: read its unresolved list. Each entry names the owner and the
-  reference; the fix is almost always a missed `reconcile` or an out-of-order run, not a
-  bad extraction.
+  [extraction vs runtime schema](../gotchas/extraction-vs-runtime-schema.md)
+  (legacy extractors only).
+- Silent entity loss at a merge — see
+  [wrapped vs unwrapped](../gotchas/wrapped-vs-unwrapped-merge.md) (legacy).
 
 ## Related
 
-- [RAG stack](../modules/rag-stack.md) — what `prepare` builds and `enhance` queries
-- [Authoring a world](author-a-world.md) — the same grounding machinery, no book
+- [The dream](../conventions/the-dream.md)
+- [RAG stack](../modules/rag-stack.md) — what `prepare` builds
+- [Authoring a world](author-a-world.md) — same shelf, authored canon instead of a PDF

@@ -142,6 +142,57 @@ class NPCManager(EntityManager):
             return True
         return False
 
+    @staticmethod
+    def _drift_map(npcs) -> Dict[str, int]:
+        """Per-NPC count of improvised beats piled up since the last canon check.
+
+        drift = len(events) - canon_checked_at. A materialized NPC is grounded
+        at birth (0 events); every gm-npc update is an improvised beat that has
+        NOT been re-verified against the source. Returns {name: drift} for
+        drift > 0, worst first. Pure over a loaded dict (unit-testable).
+        """
+        drift = {}
+        if isinstance(npcs, dict):
+            for name, data in npcs.items():
+                if not isinstance(data, dict):
+                    continue
+                events = data.get('events', [])
+                n = len(events) if isinstance(events, list) else 0
+                checked = data.get('canon_checked_at', 0)
+                if not isinstance(checked, int):
+                    checked = 0
+                d = n - checked
+                if d > 0:
+                    drift[name] = d
+        return dict(sorted(drift.items(), key=lambda kv: kv[1], reverse=True))
+
+    def canon_drift(self) -> Dict[str, int]:
+        """{name: drift} for NPCs improvised-on since their last re-grounding."""
+        return self._drift_map(self.json_ops.load_json(self.npcs_file) or {})
+
+    def stale_npcs(self, threshold: int = 3) -> Dict[str, int]:
+        """The re-grounding worklist: NPCs whose canon drift >= threshold."""
+        return {n: d for n, d in self.canon_drift().items() if d >= threshold}
+
+    def mark_canon_checked(self, name: str) -> bool:
+        """Stamp an NPC re-grounded: watermark = current event count, so only
+        future improvisation counts as fresh drift. Call after verifying the
+        NPC's journal against the source (RAG)."""
+        valid, error = self.validators.validate_name(name)
+        if not valid:
+            print(f"[ERROR] {error}")
+            return False
+        npcs = self.json_ops.load_json(self.npcs_file) or {}
+        if not isinstance(npcs.get(name), dict):
+            print(f"[ERROR] NPC {name} not found")
+            return False
+        events = npcs[name].get('events', [])
+        n = len(events) if isinstance(events, list) else 0
+        npcs[name]['canon_checked_at'] = n
+        self.json_ops.save_json(self.npcs_file, npcs)
+        print(f"[SUCCESS] {name} re-grounded — canon check stamped at {n} beat(s)")
+        return True
+
     def get_npc_status(self, name: str) -> Optional[Dict[str, Any]]:
         """
         Get NPC status and information
@@ -918,6 +969,15 @@ def main():
     for _f in va_mod.VISUAL_FIELDS:
         setappear_parser.add_argument(f'--{_f}')
 
+    # Canon re-grounding (truth-drift worklist)
+    stale_parser = subparsers.add_parser('stale',
+                                         help='List NPCs that have drifted from canon and need re-grounding')
+    stale_parser.add_argument('--threshold', type=int, default=3,
+                              help='Min improvised beats since last check (default 3)')
+    checked_parser = subparsers.add_parser('checked',
+                                           help='Mark an NPC re-grounded (run after verifying vs source)')
+    checked_parser.add_argument('name', help='NPC name')
+
     # List NPCs
     list_parser = subparsers.add_parser('list', help='List NPCs')
     list_parser.add_argument('--attitude', help='Filter by attitude')
@@ -1078,6 +1138,22 @@ def main():
 
     elif args.action == 'mood':
         if not manager.shift_mood(args.name, args.mood):
+            sys.exit(1)
+
+    elif args.action == 'stale':
+        worklist = manager.stale_npcs(args.threshold)
+        if json_mode:
+            emit({"stale": worklist}, json_mode=True)
+        elif worklist:
+            print(f"=== NPCs DRIFTED FROM CANON (>= {args.threshold} improvised beats) ===")
+            for name, d in worklist.items():
+                print(f"  {name}: {d} improvised beat(s) since last canon check")
+            print("Re-ground each: pull source via RAG, reconcile, then gm-npc.sh checked \"<name>\".")
+        else:
+            print(f"No NPCs past the drift threshold ({args.threshold}). All grounded.")
+
+    elif args.action == 'checked':
+        if not manager.mark_canon_checked(args.name):
             sys.exit(1)
 
     elif args.action == 'appearance':

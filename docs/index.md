@@ -11,9 +11,13 @@ The knowledge layer over the GM harness. It does not replace reading the code �
 you to the right files, holds what no single file states, and reports (via `okf drift`)
 when the code moves out from under it.
 
-**Start here:** [a play turn](flows/play-turn.md) for how the loop works ·
+The product: a holodeck door and a 1983 table. The book is the world; the campaign
+file is a journal. [The dream](conventions/the-dream.md).
+
+**Start here:** [the dream](conventions/the-dream.md) ·
+[a play turn](flows/play-turn.md) ·
 [importing a book](flows/import-a-book.md) or
-[authoring a world](flows/author-a-world.md) for how a campaign comes into being ·
+[authoring a world](flows/author-a-world.md) ·
 [gotchas/](gotchas/) before debugging anything.
 
 Every doc declares the files whose change would make it wrong. Update the claiming docs in
@@ -26,11 +30,11 @@ the same commit as the code — `okf.mjs status <files>` says which ones those a
 
 ## Playbook
 
-* [Import operations guide](import-guide.md) - Running, inspecting, and troubleshooting an import by hand — the operator's side of the /import flow.
+* [Import operations guide](import-guide.md) - Operator's side of import — the live path is index then stage; this page also covers repairing a leftover census run.
 
 ## Directories
 
-* [conventions/](conventions/) - 3 concepts
+* [conventions/](conventions/) - 4 concepts
 * [flows/](flows/) - 5 concepts
 * [gotchas/](gotchas/) - 4 concepts
 * [modules/](modules/) - 9 concepts

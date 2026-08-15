@@ -1,7 +1,7 @@
 ---
 type: Flow
 title: Onboarding and the death hand-off
-description: How a player enters a world in one question, and how the story continues after the PC dies rather than ending.
+description: The holodeck door — one question, then the room — and how the story continues after the PC dies rather than ending.
 sources:
   - { resource: /lib/identity_onboarding.py }
   - { resource: /tools/gm-player.sh }
@@ -9,15 +9,16 @@ sources:
   - { resource: /lib/opening_seed.py }
   - { resource: /CLAUDE.md }
   - { resource: /.claude/commands/create-character.md }
-generated: { by: cursor-grok-4.6, at: 2026-08-14T19:39:48Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:45:56Z }
 verified: { by: claude-fable-5, at: 2026-08-13T15:15:27Z }
 ---
 
 # Onboarding and the death hand-off
 
 Two flows, one shared conviction: **the mechanics are not the point, and the player should
-never be made to do bookkeeping to keep playing.** Entering a world costs one question;
-dying costs one choice.
+never be made to do bookkeeping to keep playing.** Entering a world is the holodeck
+door — one question, then the room. Dying costs one choice. The book stays on the
+chair; do not make them wait through a census to talk to someone they came for.
 
 ## Entry: three doors, one question
 
@@ -45,16 +46,19 @@ half-swapped PC:
   archives the outgoing sheet to `fallen/` before writing
 - it sets `current_character` on `campaign-overview.json`, which is what session start,
   status, and world stats read
-- it **re-seeds the opening** (`reseed_opening`) so *where you stand* and *which hook is
-  offered* match this PC — provisional location, `overview.opening_hook`, and a
-  `plot_local` KEY FACT (`Opening (not yet played): …`) that the first `/gm` brief
-  already prints. Not a fabricated session and not an `active` plot stamp. Only while
-  `opening_matched_to_pc` is absent/false (the real first-PC path; import / `/new-game`
-  never call `set`). `--replace` after that flag is true is a death hand-off into a
-  world already in play, and must leave the opening; same gate as `set`. Provisional
-  `seed-opening` left the flag unset; re-seed sets it. `/create-character` persists via
-  `save-json` and does not re-seed; the first `set` covers that path while the flag is
-  still unset
+- it leaves the opening in place. In the play-pack flow **the pack is the matched
+  opening**: `gm-playpack.sh set` writes `player_position` + `overview.opening_hook`
+  and sets `opening_matched_to_pc: true` (see [`save_pack`](/lib/play_pack.py)), so the
+  handoff's `reseed_opening` call finds the flag already true — and even when called it
+  no-ops, because the play-pack flow writes no `plots.json` for it to open on. This is
+  the guard that stops a later death-swap from teleporting the incoming PC onto a
+  mid-campaign plot's location. `reseed_opening` still exists for the legacy plot-spine
+  path (location, `overview.opening_hook`, and a `plot_local` KEY FACT
+  (`Opening (not yet played): …`), chosen PC-aware from a `type:main` plot); it fires
+  only while `opening_matched_to_pc` is absent/false. `--replace` after the flag is true
+  is a death hand-off into a world already in play and must leave the opening; same gate
+  as `set`. `/create-character` persists via `save-json`; the first `set` covers that
+  path while the flag is still unset
 - `canon` marks the source NPC `is_player_character` (plus `is_party_member: false` /
   `became_pc: true`) so scene context stops voicing the PC as an NPC standing nearby, and
   the lifted sheet is `status: alive` with no death stamp — the allow-list lift can't carry

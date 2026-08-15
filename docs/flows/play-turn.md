@@ -1,15 +1,16 @@
 ---
 type: Flow
 title: A play turn
-description: What happens between the player typing an action and reading the result — the loop, the routing table, and the three things that fire without being asked.
+description: The play loop, the three things that fire unasked, and the rule that a missing face or place is read from the book and written into the journal — not scraped ahead.
 sources:
   - { resource: /CLAUDE.md }
   - { resource: /tools/gm-session.sh }
   - { resource: /tools/gm-context.sh }
   - { resource: /tools/gm-enhance.sh }
-  - { resource: /tools/gm-worldgen.sh }
   - { resource: /.claude/settings.json }
-generated: { by: claude-opus-5, at: 2026-08-13T18:35:05Z }
+  - { resource: /lib/play_pack.py }
+  - { resource: /tools/gm-playpack.sh }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:24:29Z }
 verified: { by: cursor-grok-4.6, at: 2026-08-14T18:59:59Z }
 ---
 
@@ -32,6 +33,12 @@ the harness adds over "a model pretending to be a GM" lives in the first and fou
    [persist before narrate](../conventions/persist-before-narrate.md).
 5. **NARRATE** — prose length matched to the beat, and the action menu on or off per the
    player's stored preference.
+
+When the beat needs a face or place that is not in the journal yet,
+`bash tools/gm-playpack.sh from-book "<name>"`, then RAG, then narrate. Do not
+scrape ahead. The campaign file is a journal; `move` already creates a blank
+destination, and first visit already asks the book for a brief. See
+[the dream](../conventions/the-dream.md).
 
 ## Three things fire without anyone asking
 
@@ -72,10 +79,11 @@ specific destination — see [onboarding and the death hand-off](onboarding-and-
 The "exists but none active" state is its own branch because it is not a broken install and
 `/setup` does not fix it. `world-state/active-campaign.txt` is what every tool resolves state
 through; without it `WORLD_STATE_DIR` is empty. The state-reading wrappers
-(`gm-session.sh`, `gm-enhance.sh`, and `gm-worldgen.sh` when given no campaign name) guard on
+(`gm-session.sh` and `gm-enhance.sh` when given no campaign name) guard on
 that and exit with the two commands that fix it, rather than handing the Python layer an
 empty path and surfacing a traceback. Usage/help output still prints without a campaign, and
-`gm-worldgen.sh consolidate <campaign>` still runs pre-activation because the name is explicit.
+a verb given an explicit campaign name (e.g. `gm-extract.sh draft-bible <campaign>`) still
+runs pre-activation because the name is explicit.
 
 ## Related
 
