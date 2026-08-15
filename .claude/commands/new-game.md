@@ -108,6 +108,15 @@ Write only what tonight needs:
    **guarded_payoff** guarded-or-cursed treasure), name them for this world, and
    persist: `bash tools/gm-extract.sh write-systems --systems-json '[{"primitive":"named_track","name":"Dread","config":{"max":4,"thresholds":[{"at":4,"consequence":"..."}]}}]'`.
    They surface as YOUR WORLD'S SIGNATURE SYSTEMS and are rolled, not narrated.
+2c. **Author the World Index** — a scannable one-sentence roster of the named
+   figures, places, relics, and monsters this world contains. There is no book to
+   extract from, so **you invent it** from the world's tone/themes (same schema as
+   an imported world's index). The GM scans it before inventing a name, so the
+   world stays consistent. Persist:
+   ```bash
+   bash tools/gm-extract.sh write-index --index-json '{"npcs":[{"name":"<Name>","note":"one sentence"}],"locations":[...],"items":[...],"monsters":[...]}'
+   ```
+   Recognizable, not a gazetteer — the faces the player might actually meet.
 3. Set the play pack and stage:
 
 ```bash

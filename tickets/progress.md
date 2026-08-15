@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-15T16:19:00Z  done: world-index-newgame-authored — new-game authors the index for bookless worlds (fast-lane, hitl auto-run)  [ss-rt14b]
 - 2026-08-15T16:18:00Z  done: seed-antagonist-clock — import/new-game seed >=1 off-screen antagonist clock at creation (fast-lane)  [ss-rt14b]
 - 2026-08-15T16:17:00Z  done: seed-bible-edges — import/new-game wire 2-4 faction/geography edges at creation (fast-lane)  [ss-rt14b]
 - 2026-08-15T16:16:00Z  done: kit-systems-authoring — kit `systems` block + write-systems + ROLL-these context block; import/new-game author them (HEADLINE: primitives now usable)  [ss-rt14b]
