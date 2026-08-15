@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-15T16:06:00Z  done: source-path-reader-sweep — audit clean (all readers already source/-aware); gm-reset help strings fixed (fast-lane, cosmetic)  [ss-rt14b]
 - 2026-08-15T16:04:00Z  done: entity-anchored-memory — facts naming a present NPC surface under them; false-positive caught+fixed in review  [ss-rt14b]
 - 2026-08-15T16:03:00Z  done: entity-dedupe-materialize — bidirectional alias merge on materialize; over-merge caught+fixed in review (2 rounds)  [ss-rt14b]
 - 2026-08-15T15:58:30Z  in-review: entity-anchored-memory — facts naming a present NPC surface under them (read-time), 4 tests green, review dispatched  [ss-rt14b]

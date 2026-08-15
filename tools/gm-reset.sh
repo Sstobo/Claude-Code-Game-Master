@@ -33,7 +33,7 @@ done
 ARCHIVE_BASE="$WORLD_STATE_BASE/archive"
 
 # Reset keeps the SOURCE, the WORLD and the KIT, clears the STORY.
-#   SOURCE (kept): current-document.txt, metadata.json, chunks/, vectors/,
+#   SOURCE (kept): source/current-document.txt, metadata.json, chunks/, vectors/,
 #                  extracted*/, canon/, authored/, images/
 #   WORLD  (kept): world-bible.json, world-seed.json — world identity, authored
 #                  once and never regenerated during play (the bible feeds
@@ -69,7 +69,7 @@ show_usage() {
     echo "  gm-reset.sh archive --yes        # Same, no prompt (scripts/CI)"
     echo "  gm-reset.sh hard                 # Nuclear option"
     echo ""
-    echo "Reset keeps the SOURCE (current-document.txt, metadata.json, chunks/, vectors/,"
+    echo "Reset keeps the SOURCE (source/current-document.txt, metadata.json, chunks/, vectors/,"
     echo "images/), the WORLD (world-bible.json, world-seed.json) and the KIT (ruleset.json,"
     echo "rules.md, chronicler.json); it clears the STORY (characters, NPCs, locations,"
     echo "facts, plots, items, consequences, combat, memory, clocks, session log, saves/,"
@@ -135,7 +135,7 @@ preview_world() {
     done
     echo ""
     echo "📚 Kept (reset keeps the SOURCE, the WORLD and the KIT, clears the STORY):"
-    echo "  • Source: current-document.txt, metadata.json, chunks/, vectors/, images/"
+    echo "  • Source: source/current-document.txt, metadata.json, chunks/, vectors/, images/"
     echo "  • World:  world-bible.json, world-seed.json"
     echo "  • Kit:    ruleset.json, rules.md, chronicler.json"
 }
@@ -216,7 +216,7 @@ EOF
     done
 
     echo ""
-    echo "✅ Story reset to blank slate — source (chunks/, vectors/, current-document.txt,"
+    echo "✅ Story reset to blank slate — source (chunks/, vectors/, source/current-document.txt,"
     echo "   images/), world (world-bible.json, world-seed.json) and kit (ruleset.json,"
     echo "   rules.md, chronicler.json) kept."
 }
