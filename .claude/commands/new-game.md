@@ -123,6 +123,16 @@ bash tools/gm-playpack.sh set --json '{
 bash tools/gm-playpack.sh stage
 ```
 
+3b. **Give the story a spine — seed the antagonist's clock.** A stage without a
+   countdown is inert. Seed **at least one** threat clock whose aim completes
+   off-screen (the looming danger your tone/themes imply), so the world moves on
+   the player whether or not they engage:
+   ```bash
+   bash tools/gm-clock.sh add "<the antagonist's aim>" 4 --on time \
+     --consequence "<what happens when it fills>"
+   ```
+   One clock, not a doom gazetteer — it rides into every scene as a THREAT CLOCK.
+
 4. Optional thin binder: a short `authored-canon.md` of *this street only*, then
    `gm-extract.sh prepare` so RAG has something to pull. Do not author the continent.
 

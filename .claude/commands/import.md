@@ -217,6 +217,19 @@ bash tools/gm-playpack.sh set --json '{
 bash tools/gm-playpack.sh stage
 ```
 
+**Give the story a spine — seed the antagonist's clock.** A stage without a
+countdown is inert. Seed **at least one** threat clock whose aim completes
+off-screen whether or not the player engages — the book's looming danger (Yara's
+sorcery, the caravan fleeing the city, the cult's ritual):
+
+```bash
+bash tools/gm-clock.sh add "<the antagonist's aim>" 4 --on time \
+  --consequence "<what happens in the world when it fills>"
+```
+
+One clock, grounded in the book's plot — not a gazetteer of doom. It rides into
+every scene as a THREAT CLOCK and ticks on `gm-time.sh`.
+
 When play walks toward a new name: `bash tools/gm-playpack.sh from-book "<name>"` then RAG.
 
 Onboard the PC (the play pack's room + hook are the opening; onboard keeps them):
