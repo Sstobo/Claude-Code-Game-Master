@@ -10,7 +10,7 @@ sources:
   - { resource: /lib/entity_manager.py }
   - { resource: /tools/gm-context.sh }
   - { resource: /lib/play_pack.py }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:02:00Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:15:00Z }
 verified: { by: claude-fable-5, at: 2026-08-14T12:19:52Z }
 ---
 
@@ -35,7 +35,8 @@ no history, threads, clocks, voice, or rules. Narrating a scene generally wants 
 **KIT** · **PRIMER** (play pack, when set) · play style (pacing, action menu, player-rolls dice, RAG inspiration) · **failure (one informing sentence)** · scene-image gate + chronicler · **narrative voice** · **world index** ·
 **previously on** + where-we-paused + open threads · **the world remembers** · story threads · key facts · threat
 clocks · character · party members · **NPC voices** · pending consequences · **your
-world's rules**.
+world's rules** · **signature systems** (executable kit primitives — `WorldKit.systems()`,
+rendered "ROLL these", distinct from the prose rules block).
 
 Eight of those blocks carry design decisions that are not obvious from reading them:
 

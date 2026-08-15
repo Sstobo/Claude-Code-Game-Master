@@ -266,6 +266,29 @@ def write_index(campaign_dir, index: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+def write_systems(campaign_dir, systems: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Persist executable signature systems onto the kit (ruleset.json `systems`).
+
+    Each kept entry is `{primitive, name, config}` — an instantiation of a
+    game_core primitive (named_track / price_roll / reaction_roll /
+    guarded_payoff). Malformed entries (no primitive or no name) are dropped.
+    Requires an existing ruleset.json (run `draft-ruleset` first).
+    """
+    path = Path(campaign_dir) / "ruleset.json"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"no ruleset.json in {campaign_dir} — run `gm-extract.sh draft-ruleset` first")
+    ruleset = json.loads(path.read_text(encoding="utf-8"))
+    clean = []
+    for s in (systems or []):
+        if isinstance(s, dict) and s.get("primitive") and s.get("name"):
+            clean.append({"primitive": s["primitive"], "name": s["name"],
+                          "config": s.get("config") or {}})
+    ruleset["systems"] = clean
+    path.write_text(json.dumps(ruleset, indent=2, ensure_ascii=False), encoding="utf-8")
+    return clean
+
+
 def main():
     import argparse
 
@@ -295,6 +318,12 @@ def main():
     p_index.add_argument("campaign_dir")
     p_index.add_argument("--index-json", required=True,
                          help='{"npcs":[{"name":..,"note":..}],"locations":[...],"items":[...],"monsters":[...]}')
+
+    p_sys = sub.add_parser("write-systems",
+                           help="persist executable signature systems onto the kit (ruleset.json)")
+    p_sys.add_argument("campaign_dir")
+    p_sys.add_argument("--systems-json", required=True,
+                       help='[{"primitive":"named_track","name":"Menace","config":{"max":6,"thresholds":[...]}}]')
 
     args = parser.parse_args()
 
@@ -329,6 +358,9 @@ def main():
             idx = write_index(args.campaign_dir, json.loads(args.index_json))
             counts = ", ".join(f"{len(idx.get(b, []))} {b}" for b in INDEX_BUCKETS)
             print(f"world index written: {counts}")
+        elif args.action == "write-systems":
+            sysv = write_systems(args.campaign_dir, json.loads(args.systems_json))
+            print(f"kit systems written: {', '.join(s['name'] for s in sysv) or '(none)'}")
         else:
             rules = write_campaign_rules(args.campaign_dir)
             print(f"campaign_rules written: {len(rules['signature_systems'])} signature systems")

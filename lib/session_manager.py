@@ -1042,6 +1042,20 @@ class SessionManager(EntityManager):
                         else:
                             lines.append(f"- {rule}")
 
+        # --- Signature Systems (executable primitives; the GM ROLLS these, not vibes) ---
+        try:
+            sys_list = kit.systems() if kit is not None else []
+        except Exception:
+            sys_list = []
+        if sys_list:
+            lines.append("")
+            lines.append("--- YOUR WORLD'S SIGNATURE SYSTEMS (executable — ROLL these, "
+                         "do not just narrate them) ---")
+            lines.append("Resolve with lib/game_core primitives "
+                         "(named_track / price_roll / reaction_roll / guarded_payoff).")
+            for s in sys_list:
+                lines.append(f"- {s['name']} ({s['primitive']}): {self._system_summary(s)}")
+
         context = "\n".join(lines)
 
         # Token observability: soft ~2k-token target is GUIDANCE only, never a hard
@@ -1053,6 +1067,25 @@ class SessionManager(EntityManager):
         return context
 
     # ==================== Private Helpers ====================
+
+    def _system_summary(self, system):
+        """One-line render of an instantiated signature system for the brief."""
+        prim = system.get("primitive")
+        cfg = system.get("config") or {}
+        if prim == "named_track":
+            mx = cfg.get("max", "?")
+            ths = cfg.get("thresholds") or []
+            parts = "; ".join(
+                f"at {t.get('at')}: {t.get('consequence', '')}".strip()
+                for t in ths if isinstance(t, dict))
+            return f"track 0–{mx}" + (f" — {parts}" if parts else "")
+        if prim == "price_roll":
+            return "taking the marked action forces a cost roll"
+        if prim == "reaction_roll":
+            return "NPC opening reaction, modified by this world's reputation/track"
+        if prim == "guarded_payoff":
+            return "roll BEFORE taking marked treasure: clean / guardian wakes / curse attaches"
+        return system.get("summary") or prim or ""
 
     def _recent_session_summaries(self, n=3):
         """Return recent completed-session summary paragraphs (oldest -> newest).

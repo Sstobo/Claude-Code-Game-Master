@@ -6,7 +6,7 @@ sources:
   - { resource: /lib/game_core.py }
   - { resource: /lib/world_kit.py }
   - { resource: /lib/overview_seed.py }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T15:42:00Z }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-15T16:15:00Z }
 ---
 
 # Game core and World Kit
@@ -131,11 +131,16 @@ argument, none of it is book-specific:
 Like `spectacle_award`, all four **compute and return a plain dict — they read no
 files and write none**; persistence is the caller's job. Rolls are seedable via
 `rng` for deterministic tests, and reuse the module dice roller when it is
-omitted. A forthcoming **World Kit layer will instantiate and name these per
-world** (a Warhammer Corruption track, a Warp price, a morale reaction) — that
-wiring does **not** exist yet and is a separate ticket; today they are pure core
-primitives with no kit binding. `uv run python lib/game_core.py` runs their
-edge-case self-check.
+omitted. `uv run python lib/game_core.py` runs their edge-case self-check.
+
+**The World Kit binds them per world** (as of 2026-08-15). `ruleset.json` may carry
+a `systems` list of `{primitive, name, config}` instantiations — a Conan **Menace**
+named_track, a **Sorcery's Price** price_roll — read by `WorldKit.systems()`
+(malformed entries dropped) and persisted at creation by `book_bible.write_systems`
+(`gm-extract.sh write-systems`). `SessionManager.get_full_context` renders them as a
+distinct **YOUR WORLD'S SIGNATURE SYSTEMS (executable — ROLL these)** block, separate
+from the prose YOUR WORLD'S RULES, so the GM rolls the primitives instead of narrating
+by vibes. `/import` and `/new-game` author 1–3 at world creation.
 
 ## The kit decides which mechanics Skills are legitimate
 

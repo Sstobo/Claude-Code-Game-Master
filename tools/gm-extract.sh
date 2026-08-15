@@ -592,7 +592,7 @@ case "$1" in
         cap_extracted "$2" "$3"
         ;;
 
-    draft-bible|draft-ruleset|campaign-rules|write-index)
+    draft-bible|draft-ruleset|campaign-rules|write-index|write-systems)
         # The bible -> kit -> campaign_rules chain (lib/book_bible.py). The
         # campaign argument is optional here because every flag these verbs take
         # is a --long option: anything starting with -- is passed through, so

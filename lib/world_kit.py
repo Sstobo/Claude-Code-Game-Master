@@ -157,6 +157,21 @@ class WorldKit:
         """
         return _normalize_signature_systems(self.ruleset.get("signature_systems"))
 
+    def systems(self) -> List[Dict[str, Any]]:
+        """Executable signature-system primitives instantiated by this kit.
+
+        Each entry is ``{primitive, name, config}`` where ``primitive`` names a
+        game_core calculator (named_track / price_roll / reaction_roll /
+        guarded_payoff) and ``config`` skins it for this world. Distinct from
+        ``signature_systems`` (prose flavor): these are the dice the GM rolls.
+        Malformed entries (no primitive or no name) are dropped.
+        """
+        raw = self.ruleset.get("systems") or []
+        if not isinstance(raw, list):
+            return []
+        return [s for s in raw
+                if isinstance(s, dict) and s.get("primitive") and s.get("name")]
+
     # --- play, driven through the generic core ---
     def resolve(self, modifier: int = 0, dc: int = 10, advantage: str = None) -> Dict[str, Any]:
         """Roll under THIS world's resolution model (d20, 2d6, dice pool, ...)."""

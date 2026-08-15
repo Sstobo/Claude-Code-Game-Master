@@ -139,6 +139,22 @@ uv run python lib/overview_seed.py "$CAMPAIGN_DIR" \
 
 Write a short `rules.md` if the book has signature systems, then point the kit at it.
 
+**Make the signature systems executable — dice, not vibes.** Instantiate 1–3 of
+the `game_core` primitives, name them for this world, and persist onto the kit so
+the GM *rolls* them:
+
+```bash
+bash tools/gm-extract.sh write-systems --systems-json '[
+  {"primitive":"named_track","name":"Menace","config":{"max":6,"thresholds":[{"at":3,"consequence":"men step aside for you"},{"at":6,"consequence":"the city turns out to hunt you"}]}},
+  {"primitive":"price_roll","name":"Sorcery'"'"'s Price","config":{"dice":"1d20","ladder":[{"min_roll":15,"cost":"a night lost to dreams"},{"min_roll":5,"cost":"a year of your life"},{"min_roll":-99,"cost":"something now watches you"}]}}
+]'
+```
+
+Primitives: **named_track** (a Menace/Dread/Corruption meter with threshold beats),
+**price_roll** (forbidden power exacts a cost), **reaction_roll** (reputation shifts
+an NPC's opening stance), **guarded_payoff** (treasure guarded/cursed — roll before
+the hand closes). They ride into every scene as YOUR WORLD'S SIGNATURE SYSTEMS.
+
 Voice — verbatim excerpts only (the filter drops paraphrase):
 
 ```bash

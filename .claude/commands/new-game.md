@@ -100,6 +100,12 @@ Write only what tonight needs:
 
 1. Draft the kit (`gm-extract.sh draft-ruleset`) — derive it from the world, not a 5e default.
 2. Write a short `rules.md` if the world has signature systems.
+2b. **Make the signature systems executable — dice, not vibes.** Instantiate 1–3
+   `game_core` primitives (**named_track** meter with threshold beats / **price_roll**
+   cost for forbidden power / **reaction_roll** reputation-shifted NPC stance /
+   **guarded_payoff** guarded-or-cursed treasure), name them for this world, and
+   persist: `bash tools/gm-extract.sh write-systems --systems-json '[{"primitive":"named_track","name":"Dread","config":{"max":4,"thresholds":[{"at":4,"consequence":"..."}]}}]'`.
+   They surface as YOUR WORLD'S SIGNATURE SYSTEMS and are rolled, not narrated.
 3. Set the play pack and stage:
 
 ```bash
