@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-08-15T16:12:00Z  done: pc-signature-move — create-character grants a signature move into features (non-5e), fast-lane  [ss-rt14b]
 - 2026-08-15T16:11:00Z  done: world-index-import-swarm — write_index helper + gm-extract write-index + /import Step 5.5 (light roster, 6-cap)  [ss-rt14b]
 - 2026-08-15T16:06:00Z  done: source-path-reader-sweep — audit clean (all readers already source/-aware); gm-reset help strings fixed (fast-lane, cosmetic)  [ss-rt14b]
 - 2026-08-15T16:04:00Z  done: entity-anchored-memory — facts naming a present NPC surface under them; false-positive caught+fixed in review  [ss-rt14b]

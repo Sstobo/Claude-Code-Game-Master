@@ -31,8 +31,14 @@ Present this world's `stat_schema.attributes` and `stat_schema.vitals`. Walk:
 3. **Vitals** — the kit's vitals. **Author HP** (and every other declared vital). This kit
    does not derive HP; if you omit it, save falls back to 10/10 and warns.
 4. **Gear** — starting equipment that fits the concept and the world
-5. **Look** — author `visual_appearance` (all 11 keys, below)
-6. **Confirm** — show the sheet in plain text, then save
+5. **Signature move** — grant **at least one** signature ability so the hero has a
+   mechanical fingerprint (never an empty `features`). Draw it from the kit's
+   declared `systems` / `signature_systems` when it has them (e.g. a Menace-spending
+   intimidation, a sorcery Price gamble), otherwise from the concept and the world's
+   tone. One is enough. **No 5e class features** unless the kit is exactly `dnd5e`.
+   Persist it in `features`.
+6. **Look** — author `visual_appearance` (all 11 keys, below)
+7. **Confirm** — show the sheet in plain text, then save
 
 **Step 1 - Identity**:
 What shall we call your character?
@@ -49,14 +55,21 @@ vital the schema names). Author them — do not leave HP blank.
 **Step 4 - Gear**:
 Starting equipment that belongs in this world.
 
-**Step 5 - Look**:
+**Step 5 - Signature move**:
+Author at least one signature ability and put it in `features`. Tie it to a kit
+`system`/signature system when one exists; otherwise to the concept. Keep it to a
+short evocative phrase (e.g. `"Reaver's Fury: once per fight, trade defense for a
+crushing blow"`). Never leave `features` empty; never grant 5e class features on a
+non-`dnd5e` kit.
+
+**Step 6 - Look**:
 Ask how they picture the character. Fill every `visual_appearance` key.
 
-**Step 6 - Confirm**, then **Step 7 - Save**.
+**Step 7 - Confirm**, then **Step 8 - Save**.
 
-When they confirm, persist (author `hp` and `visual_appearance`):
+When they confirm, persist (author `hp`, `features`, and `visual_appearance`):
 ```bash
-./tools/gm-player.sh save-json '{"name":"Character Name","level":1,"stats":{"might":16,"guile":12,"grit":15},"hp":{"current":18,"max":18},"equipment":["broadsword"],"visual_appearance":{"sex":"male","age":"early 30s","race":"Cimmerian","species":"human","hair":"black, square-cut, coarse","face":"sun-dark, scarred, grim","eyes":"volcanic blue, steady","clothing":"plain mail shirt, worn leather","gear":"broadsword at the hip","demeanor":"planted, hungry, unhurried","size":"tall, heavily muscled"}}'
+./tools/gm-player.sh save-json '{"name":"Character Name","level":1,"stats":{"might":16,"guile":12,"grit":15},"hp":{"current":18,"max":18},"equipment":["broadsword"],"features":["Reaver's Fury: once per fight, trade defense for a crushing blow"],"visual_appearance":{"sex":"male","age":"early 30s","race":"Cimmerian","species":"human","hair":"black, square-cut, coarse","face":"sun-dark, scarred, grim","eyes":"volcanic blue, steady","clothing":"plain mail shirt, worn leather","gear":"broadsword at the hip","demeanor":"planted, hungry, unhurried","size":"tall, heavily muscled"}}'
 ```
 
 ## dnd5e branch
