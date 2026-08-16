@@ -11,6 +11,9 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: gm-plot.sh <action> [args]"
     echo ""
     echo "=== Plot Management ==="
+    echo "  add <name> [--type T] [--description \"...\"] [--status dormant]"
+    echo "             [--objective \"...\"]... [--npc \"...\"]... [--location \"...\"]..."
+    echo "                                   Seed a NEW plot thread (dormant by default)"
     echo "  list [--type X] [--status Y]     List plots (filter by type/status)"
     echo "  show <name>                      Show full plot details"
     echo "  search <query>                   Search plots by name, NPCs, locations"
@@ -42,6 +45,9 @@ shift  # Remove action from arguments
 
 # Delegate to Python module based on action
 case "$ACTION" in
+    add)
+        $PYTHON_CMD "$LIB_DIR/plot_manager.py" add "$@"
+        ;;
     list)
         $PYTHON_CMD "$LIB_DIR/plot_manager.py" list "$@"
         ;;

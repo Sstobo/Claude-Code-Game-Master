@@ -107,6 +107,7 @@ grounded source passages.
 
 ## The living world (fires on its own)
 - **Plan as you go, never pre-build.** The world grows from the table, not from a gazetteer authored before play. When you see a long-game opportunity, seed it with one of these tools and let it develop — a threat clock, an open thread, a new plot beat, or a triggered consequence. That IS the campaign's mid- to long-term planning; do not fan out a book's worth of canon up front (`/new-game` and `/import` both stop at one stage on purpose).
+- **Async plot planning — don't break narration to plan.** When you spot a long-game opportunity mid-scene and don't want to stop narrating, **spawn the `plot-weaver` agent IN THE BACKGROUND** (Agent tool, `run_in_background: true`) with a one-line seed. It grounds the idea in RAG, weaves it onto EXISTING entities/factions/clocks (via the WORLD INDEX), and persists **one dormant thread** — a `gm-plot.sh add` plot + a linked clock + an on-contact surfacing trigger — then returns one line you drop later. Keep narrating. The dormant thread stays out of the way and **resurfaces on its own** under `--- READY THREADS ---` when its NPC/place comes into play or its clock matures; `gm-plot.sh update` wakes it. Inline fallback (no background): `gm-plot.sh add "<name>" --status dormant …` + `gm-clock.sh add … --linked-plot "<name>"`. Still ONE grounded thread — never a gazetteer.
 - **Reactivity:** `gm-session.sh move` / `gm-time.sh` auto-run `gm-consequence.sh tick` — consequences whose triggers match fire (with a reason; veto for timing). `gm-consequence.sh log` / `rollback` for provenance.
 - **Threat clocks:** `gm-clock.sh` — named pressure. Time-clocks auto-advance on `gm-time.sh`; event clocks advance by hand (`gm-clock.sh advance`). A full clock is a beat due (`gm-clock.sh beats`); record a dramatic-choice fork with `gm-clock.sh choose`.
 - **Memory:** `gm-recall.sh recall "..."` surfaces prior events (memory refreshes on save). For a new/important scene, `gm-lore.sh "<location>" [--important]` returns a grounded chapter brief from the source book.
@@ -128,6 +129,7 @@ grounded source passages.
 | Consequence (structured) | `gm-consequence.sh add "..." "<trigger>" --trigger-type ... --match ...` |
 | Combat | `gm-combat.sh` (optional; for fights worth tracking) |
 | Fact / note | `gm-note.sh` |
+| New plot thread (seed a dormant thread; or async via `plot-weaver`) | `gm-plot.sh add "<name>" --type … --status dormant --description "…" [--npc …] [--location …]` |
 | End session | `gm-session.sh end "<summary>" --cliffhanger "..." --open-thread "..."` — then write the arc entry: `gm-recall.sh arc '{"summary": "...", "who_matters": [...], "open_debts": [...]}'` (this is what long-term recall surfaces) |
 All tools take `--json` for structured returns. **Always prefix with `bash tools/`.**
 
@@ -140,7 +142,8 @@ All tools take `--json` for structured returns. **Always prefix with `bash tools
 ## Specialist agents (spawn proactively, invisibly)
 monster-manual + rules-master (book-first, kit-aware; dnd5eapi only for the
 dnd5e kit), spell-caster, gear-master, loot-dropper, npc-builder, world-builder,
-dungeon-architect, create-character, scene-illustrator (image gen — spawn IN THE BACKGROUND).
+dungeon-architect, create-character, scene-illustrator (image gen — spawn IN THE BACKGROUND),
+plot-weaver (async story planning — spawn IN THE BACKGROUND; develops one dormant thread from a seed).
 
 ## Output Format
 - HP: healthy `████████░░░░ 18/24 ✓` · wounded `█████░░░░░░░ 10/24 ⚠` · critical `██░░░░░░░░░░ 5/24 ⚠⚠`.

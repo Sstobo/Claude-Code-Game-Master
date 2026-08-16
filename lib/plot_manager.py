@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
-from schemas import PLOT_TYPES, PLOT_TYPE_SORT
+from schemas import PLOT_TYPES, PLOT_TYPE_SORT, VALID_PLOT_STATUSES
 
 # Canonical types in display order, with friendlier headings where one reads better
 # than the bare type name.
@@ -114,6 +114,56 @@ class PlotManager(EntityManager):
 
         return results
 
+    def add_plot(self, name: str, plot_type: str = 'idea', description: str = '',
+                 status: str = 'dormant', objectives: Optional[List[str]] = None,
+                 npcs: Optional[List[str]] = None, locations: Optional[List[str]] = None,
+                 sequence: Optional[int] = None) -> bool:
+        """Create a NEW plot row (the only live plot-creation path).
+
+        Refuses to clobber an existing plot of the same name — use `update` to advance
+        one. Type/status validate against the canonical taxonomy (unknown type -> 'idea',
+        unknown status -> 'dormant', both with a stderr warning). Default status
+        'dormant' keeps a seeded thread out of active STORY THREADS until it is woken
+        (`update` flips it to active); its `npcs`/`locations` are what the READY THREADS
+        surfacing keys on. This is what the plot-weaver agent persists through.
+        """
+        name = (name or '').strip()
+        if not name:
+            print("[ERROR] plot name required", file=sys.stderr)
+            return False
+
+        if self._find_entity_name(self.plots_file, name):
+            print(f"[ERROR] plot '{name}' already exists — use `update` to advance it",
+                  file=sys.stderr)
+            return False
+
+        if plot_type not in PLOT_TYPES:
+            print(f"[WARNING] unknown plot type '{plot_type}' -> 'idea'", file=sys.stderr)
+            plot_type = 'idea'
+        if status not in VALID_PLOT_STATUSES:
+            print(f"[WARNING] unknown status '{status}' -> 'dormant'", file=sys.stderr)
+            status = 'dormant'
+
+        row = {
+            'type': plot_type,
+            'status': status,
+            'description': description or '',
+            'npcs': list(npcs or []),
+            'locations': list(locations or []),
+            'objectives': list(objectives or []),
+            'events': [{'event': 'Thread seeded', 'timestamp': self.get_timestamp()}],
+            'created': self.get_timestamp(),
+        }
+        if sequence is not None:
+            row['sequence'] = sequence
+
+        plots = self._load_entities(self.plots_file)
+        plots[name] = row
+        if self._save_entities(self.plots_file, plots):
+            print(f"[SUCCESS] Seeded plot '{name}' ({plot_type}, {status})")
+            return True
+        return False
+
     def update_plot(self, name: str, event: str) -> bool:
         """
         Add a progress event to a plot's history
@@ -136,8 +186,10 @@ class PlotManager(EntityManager):
         }
         plots[actual_name]['events'].append(event_data)
 
-        # Ensure status is set
-        if 'status' not in plots[actual_name]:
+        # Adding progress WAKES a not-yet-active thread: dormant/available (or a
+        # missing status) -> active, so a seeded thread surfaces in STORY THREADS the
+        # moment the GM advances it. Closed threads (completed/failed) are left as-is.
+        if plots[actual_name].get('status') in (None, 'dormant', 'available'):
             plots[actual_name]['status'] = 'active'
 
         if self._save_entities(self.plots_file, plots):
@@ -486,6 +538,16 @@ def main():
     search_parser.add_argument('query', help='Search query')
 
     # Update plot
+    add_parser = subparsers.add_parser('add', help='Seed a NEW plot thread (dormant by default)')
+    add_parser.add_argument('name', help='Plot name')
+    add_parser.add_argument('--type', default='idea', help='Plot type (main/threat/mystery/side/personal/...)')
+    add_parser.add_argument('--description', default='', help='One-line hook')
+    add_parser.add_argument('--status', default='dormant', help='active/dormant/available/... (default dormant)')
+    add_parser.add_argument('--objective', action='append', dest='objectives', help='Objective beat (repeatable)')
+    add_parser.add_argument('--npc', action='append', dest='npcs', help='Linked NPC (repeatable) — surfacing keys on this')
+    add_parser.add_argument('--location', action='append', dest='locations', help='Linked location (repeatable)')
+    add_parser.add_argument('--sequence', type=int, help='Arc order within the type')
+
     update_parser = subparsers.add_parser('update', help='Add progress event to plot')
     update_parser.add_argument('name', help='Plot name')
     update_parser.add_argument('event', help='Progress event description')
@@ -531,6 +593,12 @@ def main():
             print(manager.format_plot_list(plots))
         else:
             print(f"No plots found matching '{args.query}'")
+
+    elif args.action == 'add':
+        if not manager.add_plot(args.name, plot_type=args.type, description=args.description,
+                                status=args.status, objectives=args.objectives,
+                                npcs=args.npcs, locations=args.locations, sequence=args.sequence):
+            sys.exit(1)
 
     elif args.action == 'update':
         if not manager.update_plot(args.name, args.event):

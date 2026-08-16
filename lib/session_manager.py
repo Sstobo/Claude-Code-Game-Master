@@ -817,6 +817,19 @@ class SessionManager(EntityManager):
             if rem:
                 lines.append(rem)
 
+        # --- Ready Threads (dormant seeded plots that just became relevant) ---
+        ready = self._ready_threads(location, full=full)
+        if ready:
+            lines.append("")
+            lines.append("--- READY THREADS (dormant plots now relevant — wake with "
+                         "gm-plot.sh update) ---")
+            shown = ready if full else ready[:5]
+            lines.extend(shown)
+            rem = None if full else self._remainder(
+                len(ready) - len(shown), "ready threads", "--full")
+            if rem:
+                lines.append(rem)
+
         # --- Key Facts (established plot facts the GM must keep continuity on) ---
         key_facts = self._key_facts(per_category=None if full else 3)
         if key_facts:
@@ -1123,6 +1136,60 @@ class SessionManager(EntityManager):
         normalized = summary.replace('!', '.').replace('?', '.')
         parts = [s.strip() for s in normalized.split('.') if s.strip()]
         return ('. '.join(parts[-2:]) + '.') if parts else ''
+
+    def _ready_threads(self, location, full=False):
+        """Dormant seeded plots that just became relevant — a nudge for the GM to wake them.
+
+        A dormant plot surfaces here when (a) one of its linked NPCs is present, (b) its
+        linked location is the current one, or (c) a threat clock linked to it is at
+        least half full. Reuses `npcs_present` (the same presence predicate the NPC
+        block and consequence tick use). Read-only; returns [] on any failure. This is
+        what actively tells the GM a seeded thread is relevant NOW; `gm-plot.sh update`
+        wakes it (dormant -> active).
+        """
+        try:
+            plots = self.json_ops.load_json("plots.json") or {}
+        except Exception:
+            return []
+        dormant = [(n, p) for n, p in plots.items()
+                   if isinstance(p, dict) and p.get('status') == 'dormant']
+        if not dormant:
+            return []
+
+        try:
+            present = set(npcs_present(
+                self.json_ops.load_json("npcs.json") or {}, location).keys())
+        except Exception:
+            present = set()
+
+        # plot name -> a clock linked to it that is at least half full
+        mature_clock = {}
+        clocks = self.json_ops.load_json("threat-clocks.json") or {}
+        if isinstance(clocks, dict):
+            for cname, c in clocks.items():
+                if not isinstance(c, dict):
+                    continue
+                lp, cur, mx = c.get('linked_plot'), c.get('current', 0), (c.get('max', 0) or 0)
+                if lp and mx and cur >= mx / 2:
+                    mature_clock[lp] = (cname, cur, mx)
+
+        cur_loc = (location or '').strip().lower()
+        out = []
+        for name, p in dormant:
+            npc_hit = next((n for n in (p.get('npcs') or []) if n in present), None)
+            if npc_hit:
+                reason = f"{npc_hit} is here"
+            elif cur_loc and any((loc or '').strip().lower() == cur_loc
+                                 for loc in (p.get('locations') or [])):
+                reason = f"you are at {location}"
+            elif name in mature_clock:
+                cname, ccur, cmx = mature_clock[name]
+                reason = f'the "{cname}" clock is {ccur}/{cmx}'
+            else:
+                continue
+            hook = self._truncate(p.get('description', ''), 120, full)
+            out.append(f'💤→ "{name}" — {hook} (because {reason})')
+        return out
 
     def _active_plot_threads(self, limit=6):
         """Active plots, main-first, each with its latest event beat. limit=None = all."""

@@ -8,10 +8,14 @@ sources:
   - { resource: /lib/threat_clocks.py }
   - { resource: /lib/world_tick.py }
   - { resource: /lib/time_manager.py }
+  - { resource: /lib/plot_manager.py }
+  - { resource: /lib/session_manager.py }
   - { resource: /tools/gm-time.sh }
   - { resource: /tools/gm-session.sh }
   - { resource: /tools/gm-clock.sh }
-generated: { by: claude-opus-4-8[1m], at: 2026-08-15T12:26:26Z }
+  - { resource: /tools/gm-plot.sh }
+  - { resource: /.claude/agents/plot-weaver.md }
+generated: { by: claude-opus-4-8[1m], at: 2026-08-16T00:00:00Z }
 verified: { by: cursor-grok-4.6, at: 2026-08-14T19:13:47Z }
 ---
 
@@ -114,7 +118,33 @@ whole wire between "the player picked something at an inflection point" and "it 
 later". Nothing else records choices — though a choice filed as a `player_choices` fact
 now also reaches KEY FACTS, see [scene context](scene-context.md).
 
+## Async plot planning — the plot desk (since 2026-08-16)
+
+Mid/long-game planning gained a live plot-creation path and an async worker. Two facts
+that span files:
+
+- **`gm-plot.sh add` is the only run-time way to CREATE a plot** (`plot_manager.add_plot`).
+  Before it, `plots.json` was populated solely by the `/import` extractor; the GM could
+  only `update`/`complete`/`fail` existing rows. A seeded thread defaults to
+  `status: dormant`, so it stays OUT of active STORY THREADS. Advancing it wakes it:
+  `update_plot` flips `dormant`/`available` -> `active` (a not-yet-active thread that gets
+  progress is now in play). `add` refuses to clobber an existing name — extend that one
+  instead.
+- **Dormant threads resurface on their own via READY THREADS.** `SessionManager._ready_threads`
+  surfaces a dormant plot when one of its linked `npcs` is present (same `npcs_present`
+  predicate as everything else), its linked `location` is current, or a clock whose
+  `linked_plot` names it is at least half full — rendered as `--- READY THREADS ---` in the
+  brief. It only *nudges*; the GM wakes the thread with `gm-plot.sh update`. The plot's
+  `npcs`/`locations` are therefore load-bearing metadata, not decoration.
+
+The **`plot-weaver`** agent (`.claude/agents/plot-weaver.md`) is the async front door:
+spawned in the background from a one-line seed, it grounds the idea in RAG, weaves it onto
+existing entities/edges/clocks (via the WORLD INDEX), and persists ONE dormant thread —
+`add` + a `--linked-plot` clock + an `on_npc` surfacing consequence — then returns one line.
+It is the story analog of the background scene-illustrator, and it fits "plan as you go,
+never pre-build": one small dormant thread, not a gazetteer.
+
 ## Related
 
-- [Scene context](scene-context.md) — where clocks and pending consequences surface
+- [Scene context](scene-context.md) — where clocks, pending consequences, and READY THREADS surface
 - [Importing a book](../flows/import-a-book.md) — where clocks and consequences get seeded
